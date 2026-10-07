@@ -84,7 +84,7 @@ arranque y reinicio; las referencias inválidas impiden completar esa operación
 y los archivos de SQLite están ignorados por Git. El evaluador predeterminado
 es `falso` y no requiere servicios externos.
 
-## Selección de semilla y base (Iteración 1 · F1)
+## Selección de semilla y base (Iteración 1)
 
 La configuración de la base se lee de las variables del proceso:
 
@@ -109,15 +109,40 @@ el archivo y ambas semillas. Una base anterior a versión 5 también se rechaza
 sin migrarla. Las coincidencias de resultados, historial y recomendaciones
 incluyen `codigo`: es `null` en todas las ocupaciones de la demo.
 
-En F1, `SEMILLA=plataforma` prepara la selección y su archivo, pero al cargarla
-falla con «La semilla plataforma aún no está implementada; se incorpora en F2.»
-antes de crear o reiniciar tablas. No carga la demo como sustituto. F2 incorpora
-los datos de prueba de esa semilla. El contenido y los escenarios de
-`demo` se conservan. Ver [la especificación de la iteración](docs/iteraciones/spec-iteracion-1.md)
-y [las decisiones de F1](docs/decisiones.md#iteración-1--f1).
+F2 incorpora la carga real de `plataforma`: 3 cuentas, 2 bloques, 24 actividades,
+4 fichas, 10 insignias y 5 niveles, con 44 reglas y 53 condiciones. Solo crea
+RIASEC: 60 ítems repartidos entre las 14 interacciones de Mara, 36 ocupaciones
+con códigos del front y 6 carreras. Los datos son de prueba; no carga LAB ni
+los otros instrumentos. El contenido y los escenarios de `demo` se conservan.
+
+Para levantar esta semilla en PowerShell:
+
+```powershell
+$env:SEMILLA = 'plataforma'
+$env:RUTA_BD = 'plataforma.db'
+uv run uvicorn app.main:app --reload
+```
+
+`POST /demo/reiniciar` vuelve a cargar la semilla seleccionada. En plataforma
+no se validan los nodos de `REG-ACT08` y las posiciones de registro quedan
+vacías. Los eventos `INVITA_A_CREW`, `FORMA_CREW` y `VENCE_DESAFIO_INTACTO`
+se pueden registrar con `POST /eventos`, sin referencia; ninguna acción los
+emite automáticamente. El evaluador `misiones_camino_sin_inicio` cuenta
+misiones distintas de CAMINO, excluyendo la bienvenida.
+
+Una base de esquema 5 creada en F1 conserva los CHECK antiguos de eventos;
+F2 la rechaza al arrancar con el nombre real del archivo, sin modificarla ni
+migrarla. Conservar un respaldo antes de recrear una base anterior.
+Ver [la especificación de la iteración](docs/iteraciones/spec-iteracion-1.md)
+y [las decisiones de F2](docs/decisiones.md#iteración-1--f2).
 
 Validación de F1: **969 tests pasando, 2 avisos de deprecación**, con
 `uv run pytest -q`, `SEMILLA=demo`, SQLite temporal y `EVALUADOR=falso`.
+
+Validación de F2: **1003 tests pasando, 2 avisos de deprecación**, en
+654,01 segundos, con la misma configuración. Se incluyen exactamente
+P1–P16 y las comprobaciones de semilla, evaluador, reversión y compatibilidad.
+F3 y los fixtures para el frontend quedan pendientes.
 
 ## Configuración del registro y prueba Gemini
 

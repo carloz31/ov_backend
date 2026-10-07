@@ -158,50 +158,6 @@ def test_esquema_anterior_o_incompatible_no_se_migra(tmp_path, variante):
     assert ruta.read_bytes() == antes
 
 
-@pytest.mark.parametrize('caso', ['arranque_nuevo', 'arranque_existente', 'reinicio'])
-def test_rechazo_temporal_plataforma_antes_de_crear_o_reiniciar_tablas(tmp_path, monkeypatch, aplicacion, cliente, caso):
-    """Temporal de F1: eliminar esta prueba al incorporar la carga real en F2."""
-    ruta = tmp_path / 'plataforma.db'
-    if caso == 'arranque_existente':
-        motor = crear_motor_bd(f'sqlite:///{ruta.as_posix()}')
-        try:
-            Base.metadata.create_all(motor)
-            # DATO DE PRUEBA: solo la marca, sin inventar la semilla de F2.
-            with motor.begin() as conexion:
-                conexion.execute(text("INSERT INTO esquema_version VALUES (1, 5, 'plataforma')"))
-        finally:
-            motor.dispose()
-    if caso == 'reinicio':
-        ruta = Path(aplicacion.state.motor_bd.url.database)
-        estado = cliente.get('/cuentas/est-ana/estado').json()
-        cache = aplicacion.state.motor_bd.cache_definiciones.actual
-        posiciones = aplicacion.state.posiciones_registro
-        # Simula la selección antes del reinicio de una aplicación ya abierta.
-        monkeypatch.setattr(aplicacion.state, 'semilla', 'plataforma')
-    antes = ruta.read_bytes() if ruta.exists() else None
-
-    def ddl_prohibido(*args, **kwargs):
-        pytest.fail('El rechazo debe ocurrir antes de create_all o drop_all')
-
-    monkeypatch.setattr(Base.metadata, 'create_all', ddl_prohibido)
-    monkeypatch.setattr(Base.metadata, 'drop_all', ddl_prohibido)
-    mensaje = 'La semilla plataforma aún no está implementada; se incorpora en F2.'
-    if caso == 'reinicio':
-        respuesta = cliente.post('/demo/reiniciar')
-        assert respuesta.status_code == 422
-        assert respuesta.json() == {'detail': {'mensaje': mensaje}}
-        assert cliente.get('/cuentas/est-ana/estado').json() == estado
-        assert aplicacion.state.motor_bd.cache_definiciones.actual is cache
-        assert aplicacion.state.posiciones_registro is posiciones
-    else:
-        monkeypatch.setenv('SEMILLA', 'plataforma')
-        with pytest.raises(ValueError) as error:
-            with TestClient(crear_aplicacion(f'sqlite:///{ruta.as_posix()}')):
-                pass
-        assert str(error.value) == mensaje
-    assert (ruta.read_bytes() if ruta.exists() else None) == antes
-
-
 @REQUIERE_OCUPACIONES
 @pytest.mark.parametrize('codigo', [None, 'range-manager-prueba'])
 def test_codigo_ocupacion_en_resultado_historial_y_via(cliente, aplicacion, codigo):

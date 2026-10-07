@@ -1,5 +1,88 @@
 # Decisiones de implementación
 
+## Iteración 1 · F2
+
+### 2026-10-07 · Decisiones aprobadas antes de implementar
+
+- Una base de esquema 5 creada en F1 cuyo CHECK de `TipoEventoUso` no admite
+  los tres eventos nuevos se rechaza al arrancar con el mensaje de esquema
+  incompatible y el nombre real del archivo, sin modificarla ni migrarla.
+  Se comprobarán `evento_uso.tipo` y `condicion_desbloqueo.tipo_evento`.
+- El catálogo sigue §4.3.8: se agregan las ocupaciones propias de las carreras
+  a las relaciones del frontend y se excluye `drone-operator`, sin cambiar el
+  catálogo local. Solo se cargan las 36 ocupaciones especificadas.
+- Se verificó que `11-3012.00` está presente en el Excel del repositorio;
+  se utiliza para `public-administrator`, sin alternativa ni sustitución.
+- La descripción nueva de I10 será «Venciste al enemigo sin perder destellos
+  en tu primera victoria», marcada como DATO DE PRUEBA.
+- La única eliminación prevista de pruebas existentes es
+  `test_rechazo_temporal_plataforma_antes_de_crear_o_reiniciar_tablas`
+  (sus tres casos), autorizada en F1 y en el plan aprobado de F2. Se conserva
+  el resto de las expectativas de la demo. F3 y el frontend quedan pendientes.
+
+### Implementación y verificación de F2
+
+- `app/semilla_plataforma.py` contiene tablas estáticas adaptadas del frontend
+  y de §4.3. La lectura del Excel valida las 36 referencias antes de insertar.
+  Las etapas usan mapas de objetos, `add_all` e inserciones en lote, sin
+  consultas por objeto ni `commit` propio. La marca es `(1, 5, 'plataforma')`.
+- Se cargan 3 cuentas, 1 vínculo, 2 bloques, 24 actividades, 4 fichas,
+  10 insignias, 5 niveles, 44 reglas y 53 condiciones. RIASEC tiene 60 ítems,
+  una escala y una aplicación en 14 interacciones. Se cargan 36 ocupaciones,
+  216 puntajes, 6 familias, 6 carreras y 23 relaciones carrera–ocupación.
+- Los resúmenes de fichas y mensajes de I1–I9 se copian del frontend; los
+  títulos nuevos de Mara, los enunciados y la descripción de I10 se marcan
+  DATO DE PRUEBA. `nurse` usa el título «Enfermero/a»; la anotación documental
+  de §4.3.8 se conserva como comentario, no como parte del título público.
+- El cargador no llama a `cargar_definiciones_instrumentos`, a
+  `cargar_catalogo_ocupaciones` ni a la semilla demo. No se crean LAB, otros
+  instrumentos, definiciones de registro, testimonios, preguntas ni
+  conversaciones. `mission-compass` no presenta ítems. Las posiciones de
+  registro quedan vacías y el reinicio vuelve a cargar plataforma.
+- `misiones_camino_sin_inicio` usa la regla y su parámetro, las definiciones
+  en caché y los conteos agrupados de la cuenta. Filtra las referencias de
+  COMPLETA_ACTIVIDAD por CAMINO y excluye orden 1; las repeticiones no suman.
+  Conserva la memoización por nombre y umbral y la invalidación existente,
+  sin cambios en `motor.py`. Sin regla o parámetro positivo válido falla
+  explícitamente; sin CAMINO devuelve falso.
+- Los CHECK de ambos campos de eventos se inspeccionan antes de leer estado
+  o cargar caché, comparando sus valores con `TipoEventoUso`. Se conserva el
+  esquema 5 y se rechazan restricciones antiguas o ausentes sin migración.
+
+Pruebas nuevas: `tests/test_plataforma.py` contiene exactamente P1–P16,
+independientes y con fechas explícitas. `tests/test_semilla_plataforma.py`
+verifica catálogos, puntajes, enunciados, distribución, independencia del
+cargador (guardia dinámica y revisión AST), errores de Excel, rollback
+tardío de datos y DDL, CHECK antiguo/ausente en ambas tablas con conservación
+de bytes, parámetros y memoización del evaluador y cero SQL adicional con
+conteos precargados. También verifica permanencia y unicidad de desbloqueos,
+nivel monótono, audiencias, repetición, unicidad de eventos de bloque y
+carta, aislamiento de check-in y unicidad de entradas guiadas. La pregunta
+sintética de este último caso está marcada DATO DE PRUEBA y solo existe en
+su fixture; no se agrega a la semilla.
+
+Se eliminan únicamente los tres casos de la prueba temporal de rechazo
+identificada en F1. No se adaptan otras pruebas ni resultados de demo.
+Las fixtures de plataforma se limitan a los módulos nuevos mediante
+`tests/soporte_plataforma.py`; no se cambia `tests/conftest.py`.
+
+Validación dirigida: colección de 16 escenarios en 0,08 s; P1–P16 pasan
+en 10,81 s, con una advertencia previa. Las pruebas complementarias y de
+configuración dieron 39 pases y una aserción nueva de diario fallida; se
+corrigió para seguir §5 del motor (LIBRE también emite DIARIO), sin cambiar
+producción, y la prueba corregida pasó en 0,80 s.
+
+**Cierre · 2026-10-07.** F2 completa: `uv run pytest -q` con `SEMILLA=demo`,
+`EVALUADOR=falso` y temporales propios dio **1003 passed, 2 warnings** en
+654,01 segundos (10 min 54 s). La suite incluye exactamente los 16 escenarios
+P1–P16 y 21 casos complementarios nuevos; se retiraron los tres casos del
+rechazo temporal autorizado. Las dos advertencias son las deprecaciones
+conocidas de Starlette/httpx y Google en Python 3.14.
+
+El frontend no se modifica ni se reejecutan sus pruebas: conserva la línea
+base de F0 (276 pasan, 16 fallan; build y lint pasan). No se agregan
+dependencias, endpoints ni llamadas reales a Gemini. F3–F7 quedan pendientes.
+
 ## Iteración 1 · F1
 
 ### 2026-10-07 · Decisiones aprobadas antes de implementar

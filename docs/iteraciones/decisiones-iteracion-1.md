@@ -126,3 +126,26 @@ No se agregan dependencias ni se ejecutan llamadas reales a Gemini. Las 45
 tablas y la semántica de la demo se conservan. F2–F7 quedan pendientes,
 incluida la sustitución del rechazo temporal por la semilla `plataforma` real.
 Las 16 fallas previas del frontend siguen pendientes de diagnóstico.
+
+## F2
+
+- 2026-10-07: bases F1 de esquema 5 con CHECK antiguo se rechazan antes de cargar datos o caché, con el archivo real, sin modificación ni migración; ver [Iteración 1 · F2](../decisiones.md#iteración-1--f2).
+- 2026-10-07: las relaciones de carreras incorporan sus ocupaciones propias y excluyen `drone-operator`, según §4.3.8, sin cambiar el catálogo local; ver [Iteración 1 · F2](../decisiones.md#iteración-1--f2).
+- 2026-10-07: `11-3012.00` existe en el Excel y se usa para `public-administrator`; ver [Iteración 1 · F2](../decisiones.md#iteración-1--f2).
+
+**Cierre · 2026-10-07.** F2 completa en el backend: semilla plataforma,
+evaluador, tres eventos nuevos y validación de los CHECK sin migración.
+Se verifican exactamente P1–P16, con una prueba principal por escenario,
+y 21 casos complementarios, incluida la guardia que prohíbe llamar a
+`cargar_definiciones_instrumentos` al arrancar o reiniciar plataforma.
+
+| Repo | Validación de F2 | Resultado |
+|---|---|---|
+| Backend | `uv run pytest -q`, con `SEMILLA=demo`, `EVALUADOR=falso` y temporales propios | 1003 pruebas pasan, 0 fallas, 2 advertencias de deprecación; 654,01 segundos (10 min 54 s). |
+| Frontend | Sin cambios en esta fase; no se reejecutan sus pruebas | Se conserva la línea base de F0: 276 pasan y 16 fallan; build y lint pasan. |
+
+Se elimina únicamente la prueba temporal de F1, con sus tres casos, según
+la autorización previa; no se adaptan otras expectativas existentes. Las
+decisiones, pruebas y resultados están en [Decisiones](../decisiones.md#iteración-1--f2).
+No se agregan dependencias ni endpoints ni se llama a Gemini. F3–F7 y el
+diagnóstico de las 16 fallas previas del frontend quedan pendientes.

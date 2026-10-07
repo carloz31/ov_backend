@@ -16,8 +16,9 @@ def obtener_cargador_semilla(semilla: str):
     if semilla == 'demo':
         return cargar_semilla
     if semilla == 'plataforma':
-        # Temporal de F1: F2 sustituye este rechazo por la carga real.
-        raise ValueError('La semilla plataforma aún no está implementada; se incorpora en F2.')
+        from app.semilla_plataforma import cargar_semilla_plataforma
+
+        return cargar_semilla_plataforma
     raise ValueError('SEMILLA debe ser demo o plataforma')
 
 

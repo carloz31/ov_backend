@@ -1,5 +1,6 @@
 from collections.abc import Iterator
 from pathlib import Path
+import re
 import sqlite3
 
 from fastapi import Request
@@ -43,6 +44,23 @@ def validar_version_esquema(motor_bd: Engine, semilla: str = 'demo') -> None:
             versiones = conexion.execute(text("SELECT id, version, semilla FROM esquema_version")).all()
             if len(versiones) != 1 or versiones[0][:2] != (1, VERSION_ESQUEMA):
                 raise RuntimeError(mensaje)
+            from app.models import TipoEventoUso
+
+            restricciones = inspector.get_multi_check_constraints(
+                filter_names=['evento_uso', 'condicion_desbloqueo'],
+            )
+            esperados = {tipo.value for tipo in TipoEventoUso}
+            for tabla, columna in (('evento_uso', 'tipo'), ('condicion_desbloqueo', 'tipo_evento')):
+                comprobaciones = [restriccion['sqltext'] for restriccion in restricciones[None, tabla]
+                                  if restriccion['name'] == 'tipoeventouso']
+                if len(comprobaciones) != 1:
+                    raise RuntimeError(mensaje)
+                expresion = re.fullmatch(rf'"?{columna}"?\s+IN\s*\((.*?)\)',
+                                         comprobaciones[0].strip(), re.IGNORECASE)
+                if expresion is None or not re.fullmatch(r"\s*'\w+'(?:\s*,\s*'\w+')*\s*", expresion[1]):
+                    raise RuntimeError(mensaje)
+                if set(re.findall(r"'(\w+)'", expresion[1])) != esperados:
+                    raise RuntimeError(mensaje)
             semilla_base = versiones[0].semilla
             if semilla_base != semilla:
                 raise RuntimeError(
