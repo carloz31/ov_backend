@@ -245,8 +245,8 @@ def test_i4_riasec_genera_resultado_solo_en_la_cuarta_actividad(cliente, aplicac
     publico = resultado_publico(cliente)
     assert [(d["codigo"], d["puntaje"], d["puntaje_maximo"], d["porcentaje"]) for d in publico["dimensiones"]] == dimensiones(aplicacion, resultado)
     assert publico["codigo_interes"] == {"codigo": "ERS", "hay_empate": False}
-    assert [(c["posicion"], c["codigo_onet"], c["correlacion"], c["ajuste"]) for c in publico["coincidencias"]] == [
-        (f.posicion, f.codigo_onet, round(f.correlacion, 6), f.ajuste) for f in filas]
+    assert [(c["posicion"], c["codigo"], c["codigo_onet"], c["correlacion"], c["ajuste"]) for c in publico["coincidencias"]] == [
+        (f.posicion, None, f.codigo_onet, round(f.correlacion, 6), f.ajuste) for f in filas]
     avance, = avance_publico(cliente)
     assert avance["estado"] == "COMPLETADO" and avance["hay_resultado_vigente"]
     assert avance["actividades"] == {"completadas": 4, "total": 4, "faltantes": []}
@@ -276,7 +276,8 @@ def test_i5_coincidencias_de_luis_contra_el_notebook(cliente, aplicacion):
     assert resultados(aplicacion, cuenta="est-ana") == []
     publico = resultado_publico(cliente, cuenta="est-luis")
     assert publico["codigo_interes"] == {"codigo": "RIE", "hay_empate": False}
-    assert [(c["posicion"], c["codigo_onet"], c["titulo"], c["correlacion"]) for c in publico["coincidencias"]] == esperadas
+    assert [(c["posicion"], c["codigo"], c["codigo_onet"], c["titulo"], c["correlacion"]) for c in publico["coincidencias"]] == [
+        (posicion, None, codigo_onet, titulo, correlacion) for posicion, codigo_onet, titulo, correlacion in esperadas]
     assert all(c["ajuste"] == "BEST_FIT" for c in publico["coincidencias"])
     assert [(c["codigo"], c["nombre"], c["familia"], [(v["posicion"], v["codigo_onet"]) for v in c["via"]])
             for c in publico["carreras_recomendadas"]] == [

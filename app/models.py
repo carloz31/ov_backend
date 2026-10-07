@@ -350,6 +350,7 @@ class EsquemaVersion(Base):
     __table_args__ = (CheckConstraint("id = 1"),)
     id: Mapped[int] = mapped_column(primary_key=True, default=1)
     version: Mapped[int]
+    semilla: Mapped[str]
 
 
 class Instrumento(Base):
@@ -426,6 +427,7 @@ class AplicacionActividad(Base):
 class Ocupacion(Base):
     __tablename__ = "ocupacion"
     id: Mapped[int] = mapped_column(primary_key=True)
+    codigo: Mapped[str | None] = mapped_column(unique=True)
     codigo_onet: Mapped[str] = mapped_column(unique=True)
     titulo: Mapped[str]
 

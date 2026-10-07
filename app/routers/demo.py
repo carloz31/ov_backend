@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.database import Base, obtener_sesion
 from app.models import Actividad, Carrera, Conversacion, Cuenta, FamiliaCarrera, VinculoFamiliar
 from app.schemas import ReinicioDemo
-from app.seed import cargar_semilla
+from app.seed import obtener_cargador_semilla
 from app.contenido_registro import cargar_posiciones_registro
 
 
@@ -64,6 +64,8 @@ def consultar_catalogo(sesion: Annotated[Session, Depends(obtener_sesion)]):
 @router.post("/reiniciar", response_model=ReinicioDemo)
 def reiniciar_demo(peticion: Request):
     try:
+        semilla = peticion.app.state.semilla
+        cargar = obtener_cargador_semilla(semilla)
         with peticion.app.state.motor_bd.begin() as conexion:
             # SQLite no inicia una transacción para DDL en su modo heredado.
             # BEGIN explícito permite restaurar también las tablas si falla la semilla.
@@ -71,8 +73,8 @@ def reiniciar_demo(peticion: Request):
             Base.metadata.drop_all(conexion)
             Base.metadata.create_all(conexion)
             with Session(bind=conexion) as sesion:
-                cargar_semilla(sesion)
-                posiciones = cargar_posiciones_registro(sesion)
+                cargar(sesion)
+                posiciones = cargar_posiciones_registro(sesion) if semilla == 'demo' else {}
     except ValueError as error:
         raise HTTPException(status_code=422, detail={"mensaje": str(error)}) from error
     peticion.app.state.motor_bd.cache_definiciones.recargar()

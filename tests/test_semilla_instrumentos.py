@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app import models as modelos
 from app import semilla_instrumentos
-from app.database import Base, MENSAJE_ESQUEMA_ANTERIOR, crear_motor_bd
+from app.database import Base, crear_motor_bd
 from app.main import crear_aplicacion
 from app.seed import cargar_semilla
 from app.semilla_instrumentos import (
@@ -44,7 +44,7 @@ def crear_excel(tmp_path, filas, encabezado=("code", "title", "R", "I", "A", "S"
 
 
 def test_catalogos_y_estado_inicial_de_instrumentos(sesion, cliente):
-    assert sesion.scalars(select(modelos.EsquemaVersion.version)).all() == [4]
+    assert sesion.scalars(select(modelos.EsquemaVersion.version)).all() == [5]
     for modelo, cantidad in (
         (modelos.Instrumento, 4), (modelos.Dimension, 19), (modelos.EscalaRespuesta, 4),
         (modelos.OpcionEscala, 13), (modelos.ItemInstrumento, 137),
@@ -270,7 +270,7 @@ def test_catalogo_real_y_relaciones_exactas(sesion):
 def test_version_unica_y_dos_resultados_vigentes_prohibidos(sesion):
     with pytest.raises(IntegrityError):
         with sesion.begin_nested():
-            sesion.add(modelos.EsquemaVersion(id=2, version=2))
+            sesion.add(modelos.EsquemaVersion(id=2, version=2, semilla='demo'))
             sesion.flush()
     ana = buscar(sesion, modelos.Cuenta, "est-ana")
     aplicacion = buscar(sesion, modelos.Aplicacion, "APL-RIASEC")
@@ -335,7 +335,7 @@ def test_coincidencias_rechazan_ajustes_y_posiciones_invalidas(sesion, correlaci
             sesion.flush()
 
 
-@pytest.mark.parametrize("version", [None, 1, 3, 5, "sin_fila"])
+@pytest.mark.parametrize("version", [None, 1, 3, 6, "sin_fila"])
 def test_arranque_rechaza_esquema_anterior_sin_modificar_base(tmp_path, version):
     ruta = tmp_path / "prueba.db"
     motor = crear_motor_bd(f"sqlite:///{ruta.as_posix()}")
@@ -347,14 +347,16 @@ def test_arranque_rechaza_esquema_anterior_sin_modificar_base(tmp_path, version)
         Base.metadata.create_all(motor)
         if version != "sin_fila":
             with motor.begin() as conexion:
-                conexion.execute(text("INSERT INTO esquema_version (id, version) VALUES (1, :version)"), {"version": version})
+                conexion.execute(text("INSERT INTO esquema_version (id, version, semilla) VALUES (1, :version, 'demo')"), {"version": version})
     motor.dispose()
     antes = ruta.read_bytes()
     aplicacion = crear_aplicacion(f"sqlite:///{ruta.as_posix()}")
     with pytest.raises(RuntimeError) as error:
         with TestClient(aplicacion):
             pass
-    assert str(error.value) == MENSAJE_ESQUEMA_ANTERIOR
+    assert str(error.value) == (
+        "La base prueba.db tiene un esquema anterior. Bórrala y vuelve a iniciar la aplicación."
+    )
     assert ruta.read_bytes() == antes
     with sqlite3.connect(ruta) as conexion:
         if version is None:
@@ -378,7 +380,7 @@ def test_reinicio_escribe_version_dos_y_catalogo_completo(cliente, aplicacion):
     for _ in range(2):
         assert cliente.post("/demo/reiniciar").json() == {"mensaje": "Demo reiniciada"}
         with aplicacion.state.fabrica_sesiones() as sesion:
-            assert sesion.scalars(select(modelos.EsquemaVersion.version)).all() == [4]
+            assert sesion.scalars(select(modelos.EsquemaVersion.version)).all() == [5]
             assert sesion.scalar(select(func.count()).select_from(modelos.ItemInstrumento)) == 137
             assert sesion.scalar(select(func.count()).select_from(modelos.ReglaDesbloqueo)) == 47
             validar_distribucion_items(sesion)
@@ -428,4 +430,4 @@ def test_reinicio_con_excel_invalido_conserva_estado_y_muestra_error(cliente, ap
     assert cliente.get("/cuentas/est-ana/eventos").json() == eventos
     assert cliente.get("/cuentas/est-ana/desbloqueos").json() == desbloqueos
     with aplicacion.state.fabrica_sesiones() as sesion:
-        assert sesion.scalars(select(modelos.EsquemaVersion.version)).all() == [4]
+        assert sesion.scalars(select(modelos.EsquemaVersion.version)).all() == [5]

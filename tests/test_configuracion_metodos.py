@@ -8,7 +8,7 @@ from sqlalchemy import inspect, select, text
 
 from app import models as modelos
 from app import motor, semilla_instrumentos
-from app.database import Base, crear_motor_bd, MENSAJE_ESQUEMA_ANTERIOR
+from app.database import Base, crear_motor_bd
 from app.main import crear_aplicacion
 from app.semilla_instrumentos import RUTA_OCUPACIONES, OcupacionArchivo
 from test_consultas import buscar, CADENA_MEDICION, preparar_peticion, datos_medicion
@@ -54,12 +54,15 @@ def test_rechaza_version_dos_completa_sin_modificar_archivo(tmp_path):
     bd = crear_motor_bd(f'sqlite:///{ruta.as_posix()}')
     Base.metadata.create_all(bd)
     with bd.begin() as conexion:
-        conexion.execute(text('INSERT INTO esquema_version VALUES (1, 2)'))
+        conexion.execute(text("INSERT INTO esquema_version (id, version, semilla) VALUES (1, 2, 'demo')"))
     bd.dispose()
     anterior = ruta.read_bytes()
-    with pytest.raises(RuntimeError, match=MENSAJE_ESQUEMA_ANTERIOR):
+    with pytest.raises(RuntimeError) as error:
         with TestClient(crear_aplicacion(f'sqlite:///{ruta.as_posix()}')):
             pass
+    assert str(error.value) == (
+        'La base anterior.db tiene un esquema anterior. Bórrala y vuelve a iniciar la aplicación.'
+    )
     assert ruta.read_bytes() == anterior
 
 

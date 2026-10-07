@@ -106,3 +106,23 @@ permite el `AGENTS.md` del frontend.
 el criterio de la especificación. F1–F7 quedan sin ejecutar. Las 16 fallas
 previas del frontend requieren una tarea posterior de diagnóstico; no se
 corrigen ni se cambian sus resultados esperados en F0.
+
+## F1
+
+- 2026-10-07: se autoriza adaptar los mensajes de esquema incompatible al nombre real del archivo, conservando rechazo y base intacta; ver [Iteración 1 · F1](../decisiones.md#iteración-1--f1).
+- 2026-10-07: `plataforma` se selecciona pero su carga se rechaza antes de crear o reiniciar tablas en F1; F2 sustituye el rechazo por la carga real y elimina su prueba; ver [Iteración 1 · F1](../decisiones.md#iteración-1--f1).
+
+**Cierre · 2026-10-07.** F1 completa en el backend: selección de semilla y base,
+esquema 5, contrato `CoincidenciaPublica.codigo`, adaptaciones autorizadas y
+README. Las nueve pruebas existentes adaptadas y su autorización en §4.2
+se detallan en [Decisiones](../decisiones.md#iteración-1--f1).
+
+| Repo | Validación de F1 | Resultado |
+|---|---|---|
+| Backend | `uv run pytest -q`, con `SEMILLA=demo`, `EVALUADOR=falso` y temporales propios | 969 pruebas pasan, 0 fallas, 2 advertencias de deprecación; 901,12 segundos (15 min 1 s). |
+| Frontend | Sin cambios en esta fase; no se reejecutan sus pruebas | Se conserva la línea base de F0: 276 pasan y 16 fallan; build y lint pasan. |
+
+No se agregan dependencias ni se ejecutan llamadas reales a Gemini. Las 45
+tablas y la semántica de la demo se conservan. F2–F7 quedan pendientes,
+incluida la sustitución del rechazo temporal por la semilla `plataforma` real.
+Las 16 fallas previas del frontend siguen pendientes de diagnóstico.

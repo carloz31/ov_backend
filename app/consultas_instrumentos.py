@@ -238,7 +238,7 @@ def representar_resultado(sesion: Session, resultado: ResultadoInstrumento, hist
     if instrumento.tipo_resultado == TipoResultado.COINCIDENCIAS:
         codigo = calcular_codigo_interes([r.puntaje for d, r in filas], [d.codigo for d, r in filas])
         datos["codigo_interes"] = CodigoInteresPublico(codigo=codigo.codigo, hay_empate=codigo.hay_empate)
-        por_ocupacion = {o.id: CoincidenciaPublica(posicion=c.posicion, codigo_onet=o.codigo_onet,
+        por_ocupacion = {o.id: CoincidenciaPublica(posicion=c.posicion, codigo=o.codigo, codigo_onet=o.codigo_onet,
             titulo=o.titulo, correlacion=round(c.correlacion, DECIMALES_CORRELACION), ajuste=c.ajuste) for c, o in afines}
         datos["coincidencias"] = list(por_ocupacion.values())
         carreras = {}

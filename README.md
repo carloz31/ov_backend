@@ -6,8 +6,8 @@ Cada acción confirma su estado y sus eventos, evalúa reglas y devuelve los nue
 desbloqueos con su explicación en una transacción. El envío de registro primero
 lee su contexto y libera la conexión para evaluar, antes de confirmar los cambios.
 
-**Registro v2 tiene implementadas las fases 1–8.** Incluye el esquema
-4 con 45 tablas, la evaluación, las acciones/consultas de conversaciones y su
+**Registro v2 tiene implementadas las fases 1–8.** Incluye las 45 tablas,
+la evaluación, las acciones/consultas de conversaciones y su
 finalización, con hasta dos seguimientos y respaldo por longitud solo después
 de un fallo. Rehacer conserva conversaciones y auditoría; los seguimientos
 enviados permiten obtener LOG-PENSADOR mediante la regla existente.
@@ -63,15 +63,15 @@ Abrir el [tablero de la demo](http://127.0.0.1:8000/demo) o
 esa terminal; `Ctrl+C` lo detiene. El esquema de la API está en
 [OpenAPI](http://127.0.0.1:8000/openapi.json).
 
-El primer arranque crea las 45 tablas de SQLite y carga la semilla: 3 cuentas,
-11 bloques, 30 actividades, 8 carreras, 47 reglas y 58 condiciones. También
+El primer arranque con la semilla `demo` crea las 45 tablas de SQLite y carga:
+3 cuentas, 11 bloques, 30 actividades, 8 carreras, 47 reglas y 58 condiciones. También
 carga los instrumentos y las 923 ocupaciones del Excel. La base se guarda en
 `demo.db` en la raíz. Los siguientes arranques conservan el estado. Cada
 conexión activa las claves foráneas de SQLite.
 
-El esquema actual es la versión 4. Una base anterior o incompatible impide el
-arranque con un mensaje que indica borrarla y volver a iniciar. No se migra ni
-repara automáticamente. La semilla necesita
+El esquema actual es la versión 5. Una base anterior o incompatible impide el
+arranque con un mensaje que nombra el archivo real e indica borrarla y volver
+a iniciar. No se migra ni repara automáticamente. La semilla necesita
 `data/Career_Interest_RIASEC_Clean.xlsx`; un archivo ausente o inválido produce
 un error explícito. `openpyxl` se instala con las dependencias de `uv sync`.
 
@@ -83,6 +83,41 @@ arranque y reinicio; las referencias inválidas impiden completar esa operación
 `uv.toml` configura la caché local `.uv-cache`. La caché, el entorno `.venv`
 y los archivos de SQLite están ignorados por Git. El evaluador predeterminado
 es `falso` y no requiere servicios externos.
+
+## Selección de semilla y base (Iteración 1 · F1)
+
+La configuración de la base se lee de las variables del proceso:
+
+| Variable | Valores | Por defecto |
+|---|---|---|
+| `SEMILLA` | `demo`, `plataforma` | `demo` |
+| `RUTA_BD` | Ruta de archivo SQLite, absoluta o relativa a la raíz del repo | `demo.db` para `demo`; `plataforma.db` para `plataforma` |
+
+Para usar una base independiente con la demo en PowerShell:
+
+```powershell
+$env:SEMILLA = 'demo'
+$env:RUTA_BD = 'demo_pruebas.db'
+uv run uvicorn app.main:app --reload
+```
+
+`crear_aplicacion(url_bd=..., semilla=...)` permite valores explícitos, que
+prevalecen sobre las variables correspondientes. La creación y `/demo/reiniciar`
+usan la semilla configurada. El esquema guarda `semilla` en `esquema_version`;
+una base de otra semilla se rechaza sin modificarla, con un mensaje que indica
+el archivo y ambas semillas. Una base anterior a versión 5 también se rechaza
+sin migrarla. Las coincidencias de resultados, historial y recomendaciones
+incluyen `codigo`: es `null` en todas las ocupaciones de la demo.
+
+En F1, `SEMILLA=plataforma` prepara la selección y su archivo, pero al cargarla
+falla con «La semilla plataforma aún no está implementada; se incorpora en F2.»
+antes de crear o reiniciar tablas. No carga la demo como sustituto. F2 incorpora
+los datos de prueba de esa semilla. El contenido y los escenarios de
+`demo` se conservan. Ver [la especificación de la iteración](docs/iteraciones/spec-iteracion-1.md)
+y [las decisiones de F1](docs/decisiones.md#iteración-1--f1).
+
+Validación de F1: **969 tests pasando, 2 avisos de deprecación**, con
+`uv run pytest -q`, `SEMILLA=demo`, SQLite temporal y `EVALUADOR=falso`.
 
 ## Configuración del registro y prueba Gemini
 
@@ -110,7 +145,7 @@ la clave local, y arrancar una base independiente compatible con v2:
 uv run python -c "from app.main import crear_aplicacion; import uvicorn; uvicorn.run(crear_aplicacion('sqlite:///demo_registro_gemini.db'), host='127.0.0.1', port=8788)"
 ```
 
-La nueva base `demo_registro_gemini.db` usa esquema 4, conserva respuestas entre
+La nueva base `demo_registro_gemini.db` usa esquema 5, conserva respuestas entre
 arranques y está ignorada por Git. Si ese archivo contiene la estructura v1,
 el arranque lo rechaza: conservar primero un respaldo antes de recrearlo.
 El servidor de comprobación del puerto 8787 siempre fuerza el falso, aunque
@@ -167,7 +202,7 @@ Si el puerto está ocupado, elegir otro con `--puerto 8790` y abrir la misma rut
 en ese puerto.
 
 Abrir [la demo independiente](http://127.0.0.1:8787/demo/registro). Este servidor
-fuerza el evaluador falso y crea una SQLite temporal con esquema 4 y la semilla
+fuerza el evaluador falso y crea una SQLite temporal con esquema 5 y la semilla
 completa. Conserva los cambios mientras permanece activo; al detenerlo con
 `Ctrl+C` se elimina esa base temporal. No modifica `demo.db` ni `.env`. Para
 conservar respuestas entre arranques, usar el servidor habitual con una base

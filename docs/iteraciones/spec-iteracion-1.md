@@ -135,6 +135,7 @@ Contrato: `CoincidenciaPublica` agrega `codigo: str | None` (el `codigo` de la o
 - conteos y listas exactas de tablas y columnas;
 - aserciones exactas de coincidencias, para incluir `"codigo": null` en la semilla `demo`;
 - nuevos valores de `TipoEventoUso` (4.3.4) en listas exactas de enumerados.
+- mensajes de esquema incompatible: las pruebas que esperan la constante fija con `demo.db` pasan a esperar el mensaje con el nombre real del archivo, conservando la comprobación de que la base se rechaza y no se modifica.
 
 Cualquier otra adaptación de una prueba existente requiere detenerse y preguntar.
 

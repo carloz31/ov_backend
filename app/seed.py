@@ -12,13 +12,23 @@ from app.models import (
 )
 
 
-def cargar_semilla_si_vacia(sesion: Session) -> None:
+def obtener_cargador_semilla(semilla: str):
+    if semilla == 'demo':
+        return cargar_semilla
+    if semilla == 'plataforma':
+        # Temporal de F1: F2 sustituye este rechazo por la carga real.
+        raise ValueError('La semilla plataforma aún no está implementada; se incorpora en F2.')
+    raise ValueError('SEMILLA debe ser demo o plataforma')
+
+
+def cargar_semilla_si_vacia(sesion: Session, semilla: str = 'demo') -> None:
+    cargar = obtener_cargador_semilla(semilla)
     if any(
         sesion.execute(select(tabla).limit(1)).first() is not None
         for tabla in Base.metadata.sorted_tables
     ):
         return
-    cargar_semilla(sesion)
+    cargar(sesion)
 
 
 def cargar_semilla(sesion: Session) -> None:
@@ -257,5 +267,5 @@ def cargar_semilla(sesion: Session) -> None:
     from app.semilla_registro import cargar_definiciones_registro
 
     cargar_definiciones_registro(sesion)
-    sesion.add(EsquemaVersion(id=1, version=VERSION_ESQUEMA))
+    sesion.add(EsquemaVersion(id=1, version=VERSION_ESQUEMA, semilla='demo'))
     sesion.flush()

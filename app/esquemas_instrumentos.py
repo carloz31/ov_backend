@@ -113,6 +113,7 @@ class CodigoInteresPublico(BaseModel):
 
 class CoincidenciaPublica(BaseModel):
     posicion: int
+    codigo: str | None
     codigo_onet: str
     titulo: str
     correlacion: float

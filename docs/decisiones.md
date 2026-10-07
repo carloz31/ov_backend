@@ -1,5 +1,85 @@
 # Decisiones de implementación
 
+## Iteración 1 · F1
+
+### 2026-10-07 · Decisiones aprobadas antes de implementar
+
+- **Mensajes de esquema incompatible.** Por autorización explícita del usuario,
+  se agrega a §4.2 de `docs/iteraciones/spec-iteracion-1.md` la adaptación de
+  expectativas del mensaje fijo con `demo.db` al mensaje con el archivo real.
+  Se conservan el rechazo y la comprobación de que la base no se modifica.
+  Afecta a `test_arranque_rechaza_esquema_anterior_sin_modificar_base` de
+  `tests/test_semilla_instrumentos.py` y a
+  `test_rechaza_version_dos_completa_sin_modificar_archivo` de
+  `tests/test_configuracion_metodos.py`.
+- **`SEMILLA=plataforma` en F1.** Se preparan configuración y selección, pero
+  su carga falla con un mensaje claro antes de crear o reiniciar tablas. Nunca
+  se carga `demo` como sustituto. En F2 se reemplaza este rechazo temporal por
+  la carga real y se elimina la prueba que comprueba dicho rechazo.
+
+### Implementación y adaptaciones realizadas
+
+- `app/configuracion_base.py` concentra la selección sin abrir la base.
+  `SEMILLA` y `RUTA_BD` se leen del entorno del proceso; los argumentos
+  explícitos de la fábrica prevalecen sobre su variable correspondiente.
+  Como opción simple para rutas relativas, se resuelven desde la raíz del
+  repositorio, igual que los archivos predeterminados. No se agrega otra
+  carga de `.env` a la configuración de la base.
+- El esquema 5 conserva las 45 tablas y añade `esquema_version.semilla`
+  no nula y `ocupacion.codigo` único y nullable. La demo solo escribe su
+  marca `(1, 5, 'demo')`; sus datos, reglas y resultados se conservan y
+  todas sus ocupaciones mantienen `codigo = NULL`.
+- El arranque comprueba tablas y columnas antes de leer la marca; rechaza
+  esquemas incompatibles y semillas distintas sin migración ni modificación
+  del archivo. La selección de cargador ocurre antes del DDL tanto al
+  arrancar como al reiniciar. El rechazo temporal de `plataforma` no toca
+  tablas, caché ni posiciones; `/demo/reiniciar` conserva su tratamiento
+  existente de errores de carga como 422.
+- `CoincidenciaPublica.codigo` sale de la ocupación ya leída, sin consultas
+  adicionales, y aparece en resultado vigente, historial y `via` de las
+  carreras recomendadas. La validación narrativa de `REG-ACT08` sigue
+  restringida a la demo. Los eventos de §4.3.4 quedan para F2.
+
+Los puntos siguientes corresponden a las viñetas de adaptaciones autorizadas
+de §4.2, en su orden (el punto 5 es la ampliación aprobada arriba):
+
+| Archivo y prueba existente | Adaptación efectuada | Autorización |
+|---|---|---|
+| `tests/test_semilla_instrumentos.py` · `test_catalogos_y_estado_inicial_de_instrumentos` | Versión vigente esperada 4 → 5; mismos catálogos y conteos. | Punto 1: versión vigente. |
+| `tests/test_semilla_instrumentos.py` · `test_version_unica_y_dos_resultados_vigentes_prohibidos` | La fila deliberadamente inválida de id 2 incluye `semilla='demo'`, para seguir comprobando la restricción de id y no fallar por la columna nueva. | Punto 2: adaptación al esquema de columnas. |
+| `tests/test_semilla_instrumentos.py` · `test_arranque_rechaza_esquema_anterior_sin_modificar_base` | Versión futura inválida 5 → 6; las filas preparadas incluyen `semilla`; mensaje exacto con `prueba.db`. Conserva los rechazos de versiones anteriores y la comparación del archivo. | Puntos 1, 2 y 5. |
+| `tests/test_semilla_instrumentos.py` · `test_reinicio_escribe_version_dos_y_catalogo_completo` | Versión vigente esperada 4 → 5; mismos conteos y distribución. | Punto 1: versión vigente. |
+| `tests/test_semilla_instrumentos.py` · `test_reinicio_con_excel_invalido_conserva_estado_y_muestra_error` | Versión vigente esperada 4 → 5; conserva las comprobaciones del estado tras rollback. | Punto 1: versión vigente. |
+| `tests/test_configuracion_metodos.py` · `test_rechaza_version_dos_completa_sin_modificar_archivo` | La fila de versión 2 incluye `semilla`; mensaje exacto con `anterior.db`; mantiene versión antigua, rechazo y comparación del archivo. | Puntos 2 y 5. |
+| `tests/test_registro.py` · `test_rechaza_estructura_registro_v1_con_version_cuatro_sin_modificar_base` | La fila preparada incluye `semilla`; conserva versión 4, todas las variantes y comparación del archivo. | Punto 2: adaptación al esquema de columnas. |
+| `tests/test_instrumentos.py` · `test_i4_riasec_genera_resultado_solo_en_la_cuarta_actividad` | Incluye `codigo = None` en las coincidencias públicas; conserva posiciones, O*NET, correlaciones, ajuste y dimensiones. | Punto 3: coincidencias con `codigo: null` en demo. |
+| `tests/test_instrumentos.py` · `test_i5_coincidencias_de_luis_contra_el_notebook` | Incluye `codigo = None` en las coincidencias públicas; conserva los valores numéricos originales y las carreras. | Punto 3: coincidencias con `codigo: null` en demo. |
+
+No se adaptan enumerados (punto 4) ni otras pruebas existentes. Las pruebas
+nuevas de `tests/test_configuracion_base.py` cubren configuración y precedencia,
+restricciones de columnas, conservación de bases incompatibles o de otra
+semilla y propagación del código a resultado, historial y recomendaciones.
+`test_rechazo_temporal_plataforma_antes_de_crear_o_reiniciar_tablas`, con tres
+casos, queda identificado para eliminarlo en F2 al incorporar la carga real.
+El caso de código no nulo usa una modificación sintética, marcada como
+`DATO DE PRUEBA`, solo en la base temporal; no añade datos a la semilla demo.
+
+Validación dirigida: 38 pruebas pasan, 291 no seleccionadas por `-k`,
+1 advertencia de deprecación; 18,72 segundos.
+
+### Cierre de F1 · 2026-10-07
+
+`uv run pytest -q`, con `SEMILLA=demo`, `EVALUADOR=falso` y temporales propios:
+**969 pruebas pasan, 0 fallas, 2 advertencias; 901,12 segundos (15 min 1 s)**.
+Son las 947 pruebas de la línea base y 22 casos nuevos. Las advertencias son
+las previas de `starlette.testclient` y `google.genai.types`; no se añaden
+dependencias ni se hacen llamadas reales a Gemini.
+
+F1 completa en el backend, rama `iteracion-1`. El frontend no se modifica ni
+se reejecutan sus pruebas en esta fase; conserva la línea base de F0 con sus
+16 fallas previas documentadas. F2–F7 quedan pendientes. En F2 se sustituye
+el rechazo temporal de `plataforma` por la carga real y se elimina su prueba.
+
 ## Fase 1
 
 - Se conserva Python 3.14, ya configurado en el proyecto; cumple Python 3.11+.

@@ -275,7 +275,7 @@ def test_rechaza_estructura_registro_v1_con_version_cuatro_sin_modificar_base(tm
         'evaluacion_v1': 'ALTER TABLE evaluacion_respuesta RENAME COLUMN numero TO intento',
     }
     with motor.begin() as conexion:
-        conexion.execute(text('INSERT INTO esquema_version VALUES (1, 4)'))
+        conexion.execute(text("INSERT INTO esquema_version (id, version, semilla) VALUES (1, 4, 'demo')"))
         conexion.exec_driver_sql(cambios[variante])
     motor.dispose()
     antes = ruta.read_bytes()
