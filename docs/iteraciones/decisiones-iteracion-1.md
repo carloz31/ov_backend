@@ -235,3 +235,40 @@ En el backend solo cambia esta sección; no se agregan dependencias, no se llama
 | Backend | uv run pytest -q, SEMILLA=demo, EVALUADOR=falso, temporales y caché propios | 1006 pasan, cero fallas, dos advertencias previas de deprecación; 1321,45 segundos. |
 
 Las pruebas nuevas cubren construcción y escala, reanudación, despedida, guardado y doble clic, desconexión, 409, revisión de solo lectura, reintento de consultas sin otro POST, concurrencia del resultado, respuestas tardías, bloqueo por URL, aislamiento local, IRA y porcentajes, perfil plano, coincidencias y códigos desconocidos, carreras y via, y sello separado por cuenta y fecha. Sin cambios de contratos, fixtures, dependencias ni áreas protegidas; sin llamadas a Gemini. Un commit en español por repo en iteracion-1, sin push. F6–F7 y las 16 fallas previas quedan pendientes; se detiene antes de F6.
+
+## F7
+
+**Verificación ejecutada · 2026-10-07; aceptación pendiente.** El usuario solicitó expresamente el recorrido completo y el informe F7 sobre el estado actual, con F6 aún sin cerrar. Se mantiene la discrepancia de ocultas registrada en F6; no se resuelve en código ni se consideran aprobadas las HU con defectos. El informe detallado está en `ov_frontend/docs/student-experience/informe-f7.md`.
+
+**Recorrido (§6).** Navegador con SEMILLA=plataforma, EVALUADOR=falso, SQLite desechable, backend 8002 y frontend API 5178 mediante proxy temporal; el proxy versionado sigue en 8000. Reinicio y todas las acciones se hacen desde la interfaz; las consultas directas son GET de contraste. No se prepara el Camino por API. Se ejecutan las nueve actividades del Camino, la repetición completa de enc-mitos, las siete entregas necesarias de la matriz, los 60 ítems en catorce encuentros de Mara, la actividad de resultado, libro, afines/carreras, pasaporte y recargas. Tras tres respuestas de Mara se sale, recarga y retoma la cuarta. Resultado IRA: 100 %, 75 % y 50 %, con I=5, R=4, A=3, S/E/C=1 (DATO DE PRUEBA).
+
+Balance: 24 actividades distintas completadas y 25 eventos COMPLETA_ACTIVIDAD; solo enc-mitos tiene dos. Cuatro fichas, I1–I3 y nivel 3. Consultar libro, revelar y revisar no agrega finalizaciones. Campana final sin pendientes presentables; GET conserva 13 no vistos de ACTIVIDAD posteriores, excluidos de cola y contador por F6. No se fuerza su marcado para producir una respuesta vacía.
+
+| HU | Resultado | Evidencia y límite |
+|---|---|---|
+| HU-002 · Estados | Pasa | Inicialmente solo bienvenida disponible; mapa evoluciona con estado remoto. Final: nueve actividades del Camino y quince de Ciudad COMPLETADA. Casos/desafíos ajenos al alcance siguen bloqueados. |
+| HU-004 · Informativas | Pasa | Bienvenida de cuatro nodos y enc-mitos de 24 nodos completadas desde reproductor; eventos confirmados en servidor. |
+| HU-011 · Siguiente actividad | Pasa | Panel recomienda bienvenida, cada actividad posterior y las catorce interacciones de Mara en orden. Al terminar Ciudad no inventa otra actividad. |
+| HU-013 · Cierre | Pasa | Desbloqueos confirmados de actividad/ficha/I1; después I2/nivel 2; al terminar Camino, Ciudad/I3/nivel 3. |
+| HU-014 · Repetición | Pasa | Segunda ejecución completa de enc-mitos: sin nuevos desbloqueos, conserva COMPLETADA y registra segundo evento, sin aumentar distintas. |
+| HU-015 · Fichas | Pasa | Mochila con cuatro de cuatro fichas obtenidas tras informativas y recarga; contenido del frontend. |
+| HU-021 · Mara | Pasa | Tres respuestas, salida y recarga, reanudación en cuarto ítem; 60 respuestas y catorce interacciones completas. Revisión posterior de solo lectura con opción guardada. |
+| HU-022 · Resultado | Pasa | Libro y actividad de resultado muestran IRA en orden: Investigativa 100 %, Realista 75 %, Artística 50 %, igual al resultado vigente remoto. |
+| HU-025 · Requisitos | Pasa | Detalle de enc-mitos pide bienvenida; I4 consulta «Invita a un compañero a tu Crew». Suites cubren Ciudad, fichas, conteos, error/reintento y consulta por solicitud sin eventos. Inteligencias/habilidades indican próxima iteración. |
+| HU-026 · Afines y carreras | Pasa | Geólogo/a primero, Mejor ajuste y correlación 0.826325. Libro: Ingeniería Civil, Ingeniería Ambiental, Medicina Veterinaria y via; navegación a ocupación/carrera. Perfil plano y códigos desconocidos cubiertos en pruebas. |
+| HU-027 · Sello | Pasa | Cierre 14 muestra Elena y enlace. Sello listo con resultado vigente, revela IRA y persiste tras recarga. Aislamiento por cuenta/fecha cubierto en pruebas. |
+| HU-073 · Avisos | Parcial | Ficha, insignias, Ciudad y niveles observados; Elena solo en cierre. Al abrir detalle Mi horizonte con aviso de nivel 2 activo, aviso y temporizador siguen activos bajo el diálogo. Falta coordinar ese overlay con la pausa. Consulta previa, avisos nuevos y reintentos pasan en suites. |
+| HU-074 · Pasaporte | Falla | Obtenidas I1–I3, bloqueadas públicas y selección vacía persistente funcionan. Oculta pendiente aparece como botón individual «Logro oculto» y grupo, en lugar del contador aprobado. Tres pruebas F6 fallan. |
+| HU-075 · Nivel | Pasa | Niveles 1, 2 y 3 en sus hitos; panel/perfil/pasaporte coinciden en nivel 3, Cartógrafo de posibilidades. Lista de títulos remota; pruebas cubren ausencia de nivel sin cálculo local. |
+
+**Invariantes (§7).** (1) Estados y recompensas remotos en las vistas auditadas; se omiten los cálculos locales en API. (2) Act-07 conserva estado remoto sin completar tras guardar entrega local; la única llamada de finalización desde vista sigue en move de StudentActivityPlayer. (3) Repetición confirmada en eventos; revisión no es nueva realización. (4) La única llamada fetch encontrada en áreas permitidas está en servidor/cliente.ts; no se leen portales protegidos. Adaptadores solo import type. (5) Suites de aislamiento pasan y las 16 fallas anteriores conservan exactamente nombres y líneas; mapa/reproductor local comprobados brevemente en 5179. No se certifica suite local enteramente verde. (6) Los escenarios demo e invariantes pasan dentro de las 1006 pruebas del backend, sin modificar expectativas.
+
+| Repo | Validación F7 | Resultado |
+|---|---|---|
+| Frontend | npm run build, npm run lint | Pasan; aviso previo de bundle grande. |
+| Frontend | npm test | 354: 335 pasan, 19 fallan. Las 16 previas coinciden por nombre y línea con F5/F0; tres de F6 relativas a ocultas, líneas 23, 38 y 63 de servidor-logros.test.mjs. |
+| Backend | uv run pytest -q, SEMILLA=demo, EVALUADOR=falso, temporales/caché propios | 1006 pasan, cero fallas, dos advertencias previas, 1234.34 segundos. |
+
+**Pendientes.** Resolver identificación de ocultas sin cambiar el contrato, adaptar la variante de prueba que busca I10 en el fixture anonimizado y verificar ausencia de tarjetas individuales; coordinar pausa del aviso con detalles de actividades. El paso 11 falla y el 12 conserva también ese defecto visual. Repetir esos puntos y cerrar F6 antes de aprobar la iteración. Las 16 fallas previas permanecen fuera de este alcance, sin cambiar expectativas.
+
+**Cierre de trabajo.** README de ambos repos, este registro y el informe por HU actualizados. Evidencias DOM, GET, capturas y logs guardados fuera de Git en visualizaciones de la conversación. Commits F7 de documentación únicamente; cambios pendientes F6 conservados sin incorporarlos a esos commits. Se retiran servidores/base temporales. Sin dependencias, cambios de contratos, regeneración de fixtures, llamadas a Gemini, lectura de áreas protegidas ni push. F7 queda ejecutada como verificación, con aceptación pendiente.
