@@ -1,5 +1,69 @@
 # Decisiones de implementación
 
+## Iteración 1 · F3
+
+### 2026-10-07 · Exportación de fixtures de contrato
+
+- El script de §4.5 recibe `--destino` obligatorio, sin asumir una ruta entre
+  repos. Esta ejecución usa `ov_frontend/tests/fixtures/servidor`.
+- Se usa una base nueva dentro de un directorio temporal, semilla explícita
+  `plataforma` y `EVALUADOR=falso`, incluso si el entorno selecciona Gemini.
+  No se abre ni reinicia ninguna base del usuario.
+- DATO DE PRUEBA: fecha fija `2026-10-07T10:00:00` y respuestas de §4.6
+  (I=5, R=4, A=3, S/E/C=1) para reproducir los mismos bytes al regenerar.
+- Se capturan P1, P2 y P7 en un recorrido; el fixture de no vistos corresponde
+  a P12 justo después de P7. Se marcan y se comprueba que la consulta queda
+  vacía; después se responden las 14 interacciones para capturar P10.
+  Así se conserva el prerrequisito explícito de P12 sin agregar avisos de Mara.
+- Los ocho JSON conservan las respuestas de la API, sin campos adicionales:
+  la marca DATO DE PRUEBA queda en el código generador. Se completa el
+  recorrido antes de escribir archivos, para no publicar respuestas parciales
+  si falla la aplicación. No se adaptan pruebas existentes ni contratos.
+
+### Implementación y verificación de F3
+
+`scripts/exportar_fixtures_front.py` consulta la aplicación con TestClient,
+ejecuta las acciones existentes y serializa sus respuestas en UTF-8, con
+acentos legibles, indentación y salto final. El directorio temporal y su base
+se eliminan al terminar, incluso al fallar. La variable EVALUADOR previa se
+restaura tras cada exportación. El script funciona como archivo ejecutable
+desde cualquier directorio y no depende de auxiliares de pytest.
+
+Se ejecutó:
+
+```powershell
+uv run python scripts/exportar_fixtures_front.py --destino C:/Users/mauri/Documents/GitHub/ov_frontend/tests/fixtures/servidor
+```
+
+Se generaron exactamente `estado-inicial.json`, `completar-mission-welcome.json`,
+`completar-mission-next-step.json`, `estado-ciudad.json`, `items-act-tip-01.json`,
+`completar-act-tip-14.json`, `resultado-riasec.json` y `desbloqueos-no-vistos.json`.
+El último contiene los 19 avisos del camino, aún no vistos. El resultado
+RIASEC es IRA, con diez coincidencias y `geologist` primero; las carreras son
+ambiental, civil y veterinaria, como P10.
+
+Las tres pruebas nuevas de `tests/test_exportar_fixtures_front.py` pasan en
+3,56 segundos, con una advertencia conocida de Starlette/httpx. Comprueban el
+argumento obligatorio desde otro directorio, los esquemas Pydantic y estados
+de los escenarios, la regeneración con bytes idénticos, conservación de otros
+archivos del destino, limpieza temporal, base ajena intacta, evaluador falso
+ante `EVALUADOR=gemini` y ausencia de salida ante un fallo del recorrido.
+
+Frontend: `npm run build` y `npm run lint` pasan. `npm test` da 276 pases y
+16 fallas entre 292 pruebas, en 18,86 segundos. Se compararon los nombres y
+líneas reportados con F0: son las mismas 16 de `adventure-rendering.test.mjs`.
+No se cambian código ni pruebas existentes del front; solo se agregan los
+ocho JSON. El build conserva su aviso previo sobre chunks mayores de 500 kB.
+
+**Cierre · 2026-10-07.** F3 completa. `uv run pytest -q`, con `SEMILLA=demo`,
+`EVALUADOR=falso` y temporales propios, dio **1006 passed, 2 warnings** en
+774,55 segundos (12 min 54 s). Incluye las tres pruebas del exportador,
+P1–P16 y las pruebas anteriores. Las advertencias son las deprecaciones
+conocidas de Starlette/httpx y Google en Python 3.14. Ambos repos continúan
+en `iteracion-1`, con un commit de F3 por repo. No se agregan dependencias,
+endpoints ni llamadas a Gemini, ni se hace push. F4–F7 y las 16 fallas
+previas del frontend quedan pendientes.
+
 ## Iteración 1 · F2
 
 ### 2026-10-07 · Decisiones aprobadas antes de implementar

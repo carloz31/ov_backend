@@ -142,7 +142,26 @@ Validación de F1: **969 tests pasando, 2 avisos de deprecación**, con
 Validación de F2: **1003 tests pasando, 2 avisos de deprecación**, en
 654,01 segundos, con la misma configuración. Se incluyen exactamente
 P1–P16 y las comprobaciones de semilla, evaluador, reversión y compatibilidad.
-F3 y los fixtures para el frontend quedan pendientes.
+
+F3 agrega el exportador de los ocho fixtures de contrato para el frontend.
+Desde la raíz del backend, indicar explícitamente la carpeta del otro repo:
+
+```powershell
+uv run python scripts/exportar_fixtures_front.py --destino 'C:/ruta/a/ov_frontend/tests/fixtures/servidor'
+```
+
+`--destino` es obligatorio; la carpeta se crea si falta. El script usa una
+base temporal nueva con `plataforma`, fuerza el evaluador falso y ejecuta
+P1, P2, P7, P12 y P10 con fechas y respuestas fijas. Guarda las respuestas
+JSON de la API sin modificar el contrato y las regenera con los mismos bytes.
+Los avisos no vistos corresponden al cierre del camino, antes de responder
+Mara. No modifica las bases existentes ni llama a Gemini. Si cambia el
+contrato, regenerar estos fixtures en la misma tarea. F4–F7 quedan pendientes.
+
+Validación de F3: **1006 tests del backend pasando, 2 avisos de deprecación**,
+en 774,55 segundos, con `SEMILLA=demo` y `EVALUADOR=falso`. Build y lint del
+frontend pasan; su suite mantiene los 276 pases y las 16 fallas previas de F0,
+sin cambios en sus pruebas existentes.
 
 ## Configuración del registro y prueba Gemini
 

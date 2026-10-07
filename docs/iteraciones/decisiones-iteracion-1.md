@@ -149,3 +149,25 @@ la autorización previa; no se adaptan otras expectativas existentes. Las
 decisiones, pruebas y resultados están en [Decisiones](../decisiones.md#iteración-1--f2).
 No se agregan dependencias ni endpoints ni se llama a Gemini. F3–F7 y el
 diagnóstico de las 16 fallas previas del frontend quedan pendientes.
+
+## F3
+
+- 2026-10-07: se exportan los ocho fixtures de §4.5 a `ov_frontend/tests/fixtures/servidor`, desde una base temporal plataforma, con evaluador falso y fecha fija; ver [Iteración 1 · F3](../decisiones.md#iteración-1--f3).
+- 2026-10-07: el fixture de no vistos se toma tras P7 y antes de Mara, según el prerrequisito de P12; se verifica el marcado y luego se captura P10. Los JSON son respuestas de la API sin metadatos añadidos; ver [Iteración 1 · F3](../decisiones.md#iteración-1--f3).
+
+**Cierre · 2026-10-07.** F3 completa: se creó el script de §4.5 y se ejecutó
+con `--destino C:/Users/mauri/Documents/GitHub/ov_frontend/tests/fixtures/servidor`.
+Los ocho archivos se generan desde respuestas de la API, y las tres pruebas
+del exportador verifican el contrato, aislamiento, errores y regeneración.
+
+| Repo | Validación de F3 | Resultado |
+|---|---|---|
+| Backend | `uv run pytest -q`, con `SEMILLA=demo`, `EVALUADOR=falso` y temporales propios | 1006 pruebas pasan, 0 fallas, 2 advertencias de deprecación; 774,55 segundos (12 min 54 s). |
+| Frontend | `npm run build` y `npm run lint` | Ambos pasan; build conserva el aviso previo de chunks mayores de 500 kB. |
+| Frontend | `npm test` | 292 pruebas: 276 pasan, las mismas 16 fallas previas de F0; 18,86 segundos. |
+
+Los nombres y líneas de las fallas coinciden con la tabla de F0; no se
+inspeccionan ni modifican las áreas protegidas del front. No cambian contratos,
+código del frontend ni pruebas existentes. Se mantienen `iteracion-1` y un
+commit de F3 por repo, sin push. Sin nuevas dependencias ni llamadas a Gemini.
+F4–F7 y el diagnóstico de las 16 fallas previas del front quedan pendientes.
