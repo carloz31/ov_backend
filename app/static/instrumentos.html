@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Brújula · Laboratorio de instrumentos</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/demo/recursos/demo.css">
+  <link rel="stylesheet" href="/demo/recursos/instrumentos.css">
+  <script src="/demo/recursos/instrumentos.js" defer></script>
+</head>
+<body class="instrumentos-demo">
+  <a class="salto" href="#preguntas">Ir a las preguntas</a>
+  <aside class="lateral">
+    <a class="marca" href="/demo"><span class="simbolo" aria-hidden="true">↗</span><span>brújula<small>ORIENTACIÓN VOCACIONAL</small></span></a>
+    <p class="etiqueta lateral-titulo">LABORATORIO DE HELENA</p>
+    <label for="cuenta">Explorar como</label>
+    <select id="cuenta" disabled><option>Cargando cuentas…</option></select>
+    <p id="rol" class="texto-suave">Conectando con la demo</p>
+    <nav id="instrumentos" aria-label="Instrumentos"></nav>
+    <div class="ayuda-lateral"><p>Responde, guarda y completa cada actividad para avanzar.</p><p><a href="/demo">← Volver al recorrido</a></p><a href="/docs" target="_blank" rel="noopener">Abrir la API ↗</a></div>
+  </aside>
+  <main>
+    <header class="cabecera"><span class="etiqueta">INSTRUMENTOS <span class="version">DEMO</span></span><button type="button" id="actualizar" disabled>↻ Actualizar</button></header>
+    <section class="intro-instrumentos"><div><p class="etiqueta">EXPLORA TU PERFIL</p><h1>Conócete,<br><em>pregunta a pregunta.</em></h1><p>Un espacio para probar respuestas, resultados y nuevos intentos.</p></div><div class="fecha-panel"><label for="fecha">Fecha simulada <small>(opcional)</small></label><input id="fecha" type="datetime-local" value="2026-10-01T10:00" disabled><div class="botones"><button id="siguiente-dia" type="button" disabled>+ Un día</button><button id="hora-actual" type="button" disabled>Usar hora actual</button></div></div></section>
+    <p id="estado-conexion" role="status">Cargando instrumentos…</p>
+    <section class="caja seleccion-instrumento" aria-labelledby="instrumento-titulo"><div class="fila"><div><p class="etiqueta" id="instrumento-codigo">INSTRUMENTO</p><h2 id="instrumento-titulo">Cargando…</h2></div><button id="reiniciar-instrumento" type="button" disabled>Reiniciar instrumento</button></div><p id="instrumento-descripcion" class="texto-suave"></p><label for="aplicacion">Aplicación</label><select id="aplicacion" disabled></select><div id="avances" class="avances" aria-label="Avance por aplicación"></div><div id="actividades" class="actividades-lab" aria-label="Actividades del instrumento"></div></section>
+    <div class="botones atajos-panel"><a href="#preguntas">Ir a preguntas ↓</a><a href="#resultado">Ver resultado ↓</a><a href="#historial">Ver historial ↓</a></div>
+    <div class="mesa-instrumentos">
+      <section class="caja preguntas-panel" id="preguntas" tabindex="-1" aria-labelledby="actividad-titulo">
+        <p class="etiqueta" id="actividad-codigo">ACTIVIDAD</p><h2 id="actividad-titulo">Selecciona una actividad</h2><p id="actividad-aviso" class="texto-suave"></p>
+        <details id="relleno"><summary>Relleno rápido de prueba</summary><p class="texto-suave">La cadena marca las opciones del formulario. Guardar disponibles escribe solo en actividades abiertas; después de completar una, la cadena se conserva para la siguiente.</p><div id="cadenas-ejemplo" class="botones"></div><label for="cadena">Cadena de respuestas</label><textarea id="cadena" rows="3" placeholder="Pega aquí la cadena completa del instrumento" disabled></textarea><div class="botones"><button id="rellenar" type="button" disabled>Rellenar formulario</button><button id="guardar-disponibles" type="button" disabled>Guardar disponibles</button></div></details>
+        <form id="formulario-items"><div id="items"></div><div class="botones acciones-preguntas"><button id="guardar" type="submit" class="boton-principal" disabled>Guardar respuestas</button><button id="completar" type="button" disabled>Completar actividad</button></div></form>
+      </section>
+      <aside class="resultados-panel" aria-label="Resultados y registro">
+        <section class="caja"><p class="etiqueta">LO QUE DESCUBRES</p><h2 id="resultado-titulo">Resultado vigente</h2><div id="resultado"></div></section>
+        <section class="caja"><p class="etiqueta">CADA INTENTO CUENTA</p><h2>Historial de resultados</h2><div id="historial"></div></section>
+        <section class="caja registro-panel"><div class="fila"><h2>Registro de la API</h2><button id="limpiar-registro" type="button">Limpiar</button></div><p class="texto-suave">Respuestas y errores reales del backend. Abre una entrada para ver su contenido.</p><div id="registro" aria-live="polite"></div></section>
+      </aside>
+    </div>
+    <footer>Laboratorio de instrumentos · Cada acción utiliza la API real y se conserva en SQLite.</footer>
+  </main>
+  <dialog id="confirmar-reinicio" aria-labelledby="reinicio-titulo"><p class="etiqueta">UN NUEVO INTENTO</p><h2 id="reinicio-titulo">¿Reiniciar esta aplicación?</h2><p id="reinicio-detalle"></p><p>Se borrarán sus respuestas y se anulará el resultado vigente. Se conservarán el historial, los eventos anteriores y los desbloqueos.</p><div class="dialogo-botones"><button id="cancelar-reinicio" type="button">Conservar respuestas</button><button id="confirmar-reiniciar" type="button" class="boton-principal">Sí, reiniciar aplicación</button></div></dialog>
+  <dialog id="requisitos" aria-labelledby="requisitos-titulo"><div class="dialogo-cabecera"><h2 id="requisitos-titulo">Requisitos</h2><button id="cerrar-requisitos" type="button" aria-label="Cerrar requisitos">✕</button></div><div id="requisitos-contenido"></div></dialog>
+  <noscript>Activa JavaScript para probar los instrumentos. También puedes usar <a href="/docs">Swagger</a>.</noscript>
+</body>
+</html>

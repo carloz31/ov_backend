@@ -1,0 +1,19 @@
+{
+  "version": "v2",
+  "evaluador": "falso",
+  "navegador": "Edge / Chromium",
+  "escritorio": "1440 × 1000",
+  "movil": "390 y 360 × 844",
+  "errores_javascript": [],
+  "peticiones_interfaz": 257,
+  "pasos": [
+    "Escritorio: reintento de carga, explicación, teclado, fecha y posición recuperable.",
+    "Dos seguimientos: borradores y recarga en ambos, inicial intacto, máximo dos, edición individual sin reevaluar.",
+    "Respaldo genérico sin reevaluación, inicial corto evaluado, LOG-PENSADOR, completar y recargar.",
+    "Aislamiento entre cuentas y borradores locales; Prefiero seguir conserva la pregunta y descarta su borrador.",
+    "Conflicto de seguimiento 409 sin reenvío; espera visible y controles bloqueados.",
+    "Prefiero seguir tras el primer turno: conserva respuestas y omite el segundo; texto literal seguro, vacío bloqueado y lectura fallida recuperable.",
+    "Detalle técnico plegado, números v2 y auditoría tardía aislada entre cuentas.",
+    "Móvil 390/360 px: dos turnos, recarga de borrador, fallo y atención sin marcas técnicas, completar y reinicio confirmado."
+  ]
+}

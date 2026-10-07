@@ -1,0 +1,22 @@
+{
+  "actividad": "REG-ACT08",
+  "plantilla": "registro-guiado",
+  "momentos": [
+    {
+      "id": "explicacion",
+      "tipo": "dialogo",
+      "personaje": "Lumi",
+      "lineas": [
+        "En casi todos los avisos de trabajo se piden habilidades como comunicarse bien, trabajar en equipo o resolver conflictos.",
+        "No se aprenden en un curso: se fortalecen practicando en situaciones del día a día.",
+        "Ahora vas a armar tu propio plan para fortalecer una de tus habilidades."
+      ]
+    },
+    {
+      "id": "plan",
+      "tipo": "registro",
+      "presentacion": "iconos",
+      "items": ["REG-HAB-1", "REG-HAB-2", "REG-HAB-3"]
+    }
+  ]
+}

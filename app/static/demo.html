@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Brújula · Demo de desbloqueos</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/demo/recursos/demo.css">
+  <script src="/demo/recursos/demo.js" defer></script>
+</head>
+<body>
+  <a class="salto" href="#tablero">Ir al tablero</a>
+  <aside class="lateral">
+    <a class="marca" href="/demo"><span class="simbolo" aria-hidden="true">↗</span><span>brújula<small>ORIENTACIÓN VOCACIONAL</small></span></a>
+    <div class="etiqueta lateral-titulo">ESPACIO DE PRUEBAS</div>
+    <label for="cuenta">Explorar como</label>
+    <select id="cuenta" disabled><option>Cargando cuentas…</option></select>
+    <p id="rol" class="texto-suave">Conectando con la demo</p>
+    <nav aria-label="Secciones del tablero" id="navegacion">
+      <button type="button" class="nav activo" data-seccion="ruta" aria-current="page"><span aria-hidden="true">↗</span> Mi recorrido</button>
+      <button type="button" class="nav" data-seccion="ciudad"><span aria-hidden="true">▦</span> La ciudad</button>
+      <button type="button" class="nav" data-seccion="contenido"><span aria-hidden="true">▤</span> Contenido y diario</button>
+      <button type="button" class="nav" data-seccion="insignias"><span aria-hidden="true">◇</span> Insignias</button>
+      <button type="button" class="nav" data-seccion="historial"><span aria-hidden="true">◷</span> Historial de eventos</button>
+    </nav>
+    <div class="ayuda-lateral"><span class="etiqueta">UN CLIC, UN CAMBIO</span><p>Completa una actividad y observa qué se abre, por qué y cuánto falta.</p><p><a href="/demo/instrumentos">Probar instrumentos ↗</a></p><p><a href="/demo/registro">Armar mi plan con Lumi ↗</a></p><a href="/docs" target="_blank" rel="noopener">Abrir la API ↗</a></div>
+    <div class="conexion" id="conexion" role="status"><span class="punto"></span><span id="conexion-texto">Conectando…</span></div>
+  </aside>
+  <main>
+    <header class="cabecera"><span class="etiqueta">LABORATORIO DE DESBLOQUEOS <span class="version">DEMO</span></span><div class="herramientas"><button type="button" id="actualizar">↻ Actualizar</button><button type="button" id="reiniciar" class="boton-suave" data-mutacion disabled>Reiniciar demo</button></div></header>
+    <section class="presentacion">
+      <div><p class="etiqueta">EXPLORA · ACTÚA · DESCUBRE</p><h1>Tu recorrido,<br><em>paso a paso.</em></h1><p id="bienvenida">Las acciones abren caminos. Aquí puedes ver cómo.</p></div>
+      <div class="nivel-tarjeta"><div class="orbita" aria-hidden="true">↗</div><div><span class="etiqueta" id="nivel-etiqueta">NIVEL ACTUAL</span><h2 id="nivel-titulo">Cargando…</h2><div id="niveles" class="pasos-nivel" aria-label="Niveles obtenidos"></div></div></div>
+    </section>
+    <section class="estadisticas" aria-label="Resumen del progreso"><div><span id="total-completadas">—</span><small>Actividades completadas</small></div><div><span id="total-insignias">—</span><small>Insignias obtenidas</small></div><div><span id="total-novedades">—</span><small>Novedades sin leer</small></div><div><span id="total-eventos">—</span><small>Eventos registrados</small></div></section>
+    <div class="espacio-trabajo">
+      <section id="tablero" aria-label="Tablero de progreso" tabindex="-1">
+        <div class="titulo-seccion"><div><p class="etiqueta" id="seccion-etiqueta">MISIONES DE CAMPO</p><h2 id="seccion-titulo">Mi recorrido</h2></div><span id="leyenda" class="leyenda"><i></i> Disponible <i class="hecho"></i> Completada</span></div>
+        <div id="siguiente" class="siguiente" hidden></div>
+        <div id="panel" aria-live="polite"><div class="vacio">Cargando tu recorrido…</div></div>
+      </section>
+      <aside class="acciones-panel" aria-label="Simulador de acciones">
+        <section class="caja simulador">
+          <p class="etiqueta">PRUEBA EL MOTOR</p><h2>Simular una acción</h2><p class="texto-suave">El tablero se actualiza con cada resultado.</p>
+          <label for="fecha">Fecha simulada <small>(opcional)</small></label><input type="datetime-local" id="fecha" value="2026-10-01T10:00">
+          <div class="fecha-controles"><button type="button" id="siguiente-dia" data-mutacion>+ Un día</button><button type="button" id="hora-actual" data-mutacion>Usar hora actual</button></div>
+          <form id="formulario">
+            <label for="accion">Acción</label><select id="accion" disabled></select>
+            <div id="campos"></div><button type="submit" class="boton-principal ejecutar" id="ejecutar" data-mutacion disabled>Ejecutar acción ↗</button>
+          </form>
+        </section>
+        <section class="caja resultado" aria-labelledby="resultado-titulo"><p class="etiqueta">QUÉ CAMBIÓ</p><h2 id="resultado-titulo">Todo empieza con un paso</h2><div id="resultado" aria-live="polite"><p class="texto-suave">Completa Bienvenida para abrir la siguiente actividad. La explicación aparecerá aquí.</p></div></section>
+        <section class="caja novedades"><div class="fila"><h2>Novedades</h2><button type="button" id="marcar-vistos" data-mutacion disabled>Marcar leídas</button></div><div id="novedades"><p class="texto-suave">Cargando…</p></div></section>
+      </aside>
+    </div>
+    <footer>Demo del motor de progreso · Cada acción utiliza la API real y se conserva en SQLite.</footer>
+  </main>
+  <dialog id="detalle" aria-labelledby="detalle-titulo"><div class="dialogo-cabecera"><p class="etiqueta">PROGRESO DEL OBJETIVO</p><button type="button" id="cerrar-detalle" aria-label="Cerrar detalle">✕</button></div><h2 id="detalle-titulo">Qué falta</h2><div id="detalle-contenido"></div></dialog>
+  <dialog id="confirmar-reinicio" aria-labelledby="reinicio-titulo"><p class="etiqueta">VOLVER AL INICIO</p><h2 id="reinicio-titulo">¿Reiniciar las cuentas?</h2><p>Se eliminarán los eventos, progresos, diarios, cartas y desbloqueos. Se restaurará la semilla de la demo.</p><div class="dialogo-botones"><button type="button" id="cancelar-reinicio">Conservar progreso</button><button type="button" id="confirmar-borrar" class="boton-principal">Sí, reiniciar demo</button></div></dialog>
+  <noscript>Activa JavaScript para usar el tablero. También puedes probar las acciones en <a href="/docs">Swagger</a>.</noscript>
+</body>
+</html>

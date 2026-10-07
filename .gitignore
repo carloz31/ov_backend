@@ -1,0 +1,23 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Caché local de uv y pytest
+.uv-cache/
+.pytest_cache/
+
+# Base SQLite de la demo y archivos auxiliares
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Environment variables
+.env

@@ -1,0 +1,69 @@
+.instrumentos-demo .lateral {overflow-y:auto}
+.instrumentos-demo .lateral-titulo {margin-top:32px}
+.instrumentos-demo .nav {display:block;line-height:1.45;white-space:normal;min-width:0}
+.instrumentos-demo .nav small {display:block;margin-top:5px;color:var(--suave)}
+.instrumentos-demo .ayuda-lateral {margin-top:30px}
+.intro-instrumentos {display:flex;justify-content:space-between;gap:24px;padding:30px 0 20px}
+.intro-instrumentos h1 {font-size:clamp(30px,3vw,46px);line-height:1.1;letter-spacing:-1.8px;margin-bottom:15px}
+.intro-instrumentos h1 em {font-family:Georgia,serif;font-weight:400;color:var(--verde)}
+.fecha-panel {width:245px;flex-shrink:0}
+.botones {display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.seleccion-instrumento {margin:20px 0}
+.seleccion-instrumento .fila {gap:16px;flex-wrap:wrap}
+.seleccion-instrumento select {max-width:430px}
+.avances {display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:18px}
+.avance {padding:15px;border:1px solid var(--borde);border-radius:12px;min-width:0}
+.avance.activo {border-color:#8baf66;background:#f4f7e9}
+.avance p {margin:9px 0 0}
+.avance strong {display:block;font-size:12px;margin-bottom:8px}
+.actividades-lab {display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+.actividad-lab {flex:1;min-width:155px;max-width:100%;padding:10px;border:1px solid var(--borde);border-radius:12px}
+.actividad-lab>button:first-child {width:100%;text-align:left;line-height:1.6}
+.actividad-lab small {display:block}
+.actividad-lab .seleccionada {background:var(--lima);border-color:#8baf66}
+.actividad-lab .requisito {width:100%;margin-top:6px}
+.mesa-instrumentos {display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:22px;align-items:start}
+.mesa-instrumentos>* {min-width:0}
+.atajos-panel {margin-bottom:18px;font-size:12px;gap:20px}
+.resultados-panel {display:grid;gap:20px}
+.instrumentos-demo .caja {padding:22px}
+.instrumentos-demo details {min-width:0;margin-top:14px}
+.instrumentos-demo summary {cursor:pointer;font-size:13px;font-weight:650;line-height:1.6}
+#relleno {border:1px solid var(--borde);border-radius:12px;padding:14px;margin-bottom:20px;background:#f5f6ed}
+#cadena {font-family:ui-monospace,monospace;letter-spacing:1px;word-break:break-all;min-height:75px}
+.item-pregunta {margin:0;padding:20px 0;border:0;border-top:1px solid var(--borde);min-width:0}
+.item-pregunta legend {padding:0;padding-top:16px;font-size:13px;font-weight:650;line-height:1.6;overflow-wrap:anywhere}
+.opciones {display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.opcion-radio {display:flex;align-items:center;gap:8px;margin:0;padding:11px;border:1px solid var(--borde);border-radius:9px;font-size:12px;font-weight:450;cursor:pointer;min-height:44px;flex:1 1 130px}
+.opcion-radio:has(input:checked) {background:#e8efd8;border-color:#8baf66}
+.opcion-radio input {width:16px;height:16px;flex-shrink:0;margin:0;accent-color:var(--verde)}
+.opcion-radio:has(input:disabled) {cursor:default}
+.acciones-preguntas {position:sticky;bottom:0;padding:16px 0 8px;background:var(--papel);border-top:1px solid var(--borde)}
+.tabla-contenedor {max-width:100%;overflow-x:auto;margin:14px 0}
+.tabla-comparacion table {min-width:540px}
+.tabla-comparacion td:first-child {min-width:220px}
+.instrumentos-demo table {width:100%;border-collapse:collapse;font-size:11px;text-align:left}
+.instrumentos-demo th,.instrumentos-demo td {padding:10px 7px;border-bottom:1px solid var(--borde);vertical-align:top;line-height:1.5}
+.instrumentos-demo th {color:var(--suave);font-weight:650}
+.instrumentos-demo td {overflow-wrap:normal}
+.instrumentos-demo td:nth-child(3),.instrumentos-demo td:nth-child(4) {white-space:nowrap}
+.instrumentos-demo meter {width:100%;min-width:60px;display:block;height:9px;accent-color:var(--verde);margin-top:6px}
+.codigo-interes {display:flex;align-items:center;gap:14px;padding:17px;background:#edf3df;border-radius:12px;margin:18px 0}
+.codigo-interes strong {font-size:29px;letter-spacing:4px}
+.codigo-interes p {margin:0}
+.carrera-recomendada {padding:13px 0;border-top:1px solid var(--borde)}
+.carrera-recomendada h3 {margin-bottom:5px}
+.carrera-recomendada ul {padding-left:17px;font-size:12px;line-height:1.7}
+.estado.en_curso,.estado.en_progreso {background:#f3edcd;color:#786123}
+.estado.completado {background:#e2edce;color:var(--verde)}
+.anulado {color:var(--error)}
+.mensaje-pendiente {padding:12px;background:#f5f6ed;border-radius:10px;font-size:12px;line-height:1.7}
+.registro-panel details {border-top:1px solid var(--borde);padding-top:10px}
+.registro-panel summary {font:11px ui-monospace,monospace;overflow-wrap:anywhere}
+.instrumentos-demo pre {white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;font:11px/1.65 ui-monospace,monospace;max-height:330px;overflow-y:auto;background:#f2f4ea;border-radius:9px;padding:12px}
+.error-consulta {color:var(--error)}
+.instrumentos-demo #estado-conexion {font-size:12px;margin-bottom:12px}
+.instrumentos-demo[aria-busy=true] #estado-conexion {color:var(--verde)}
+@media(max-width:1250px) {.mesa-instrumentos {grid-template-columns:minmax(0,1fr)} .resultados-panel {grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .registro-panel {grid-column:1/-1}}
+@media(max-width:980px) {.instrumentos-demo {display:block} .instrumentos-demo .lateral {height:auto;width:auto;position:static;overflow:visible;display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:20px} .instrumentos-demo .lateral-titulo,.instrumentos-demo .lateral>label,.instrumentos-demo .ayuda-lateral {display:none} .instrumentos-demo #rol {grid-column:1/-1;margin:0} #instrumentos {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;grid-column:1/-1} .instrumentos-demo .lateral select {align-self:center}}
+@media(max-width:700px) {.intro-instrumentos {display:block;padding-top:24px} .fecha-panel {width:100%;max-width:100%} .resultados-panel {grid-template-columns:minmax(0,1fr)} .instrumentos-demo .caja {padding:17px} .actividad-lab {min-width:135px} .instrumentos-demo .cabecera {gap:10px} .avances {grid-template-columns:minmax(0,1fr)} .opcion-radio {flex-basis:100%} .botones>button {flex:1} .instrumentos-demo dialog {width:calc(100% - 24px)}}
