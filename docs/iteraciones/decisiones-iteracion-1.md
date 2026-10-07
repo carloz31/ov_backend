@@ -171,3 +171,37 @@ inspeccionan ni modifican las áreas protegidas del front. No cambian contratos,
 código del frontend ni pruebas existentes. Se mantienen `iteracion-1` y un
 commit de F3 por repo, sin push. Sin nuevas dependencias ni llamadas a Gemini.
 F4–F7 y el diagnóstico de las 16 fallas previas del front quedan pendientes.
+
+## F4
+
+- 2026-10-07: por solicitud directa del usuario, se implementan §§5.1–5.7 y 5.11 en el frontend. Los pasos de aceptación 3 y 6 se validan mediante el cierre con actividad, fichas, insignias y nivel de `nuevos_desbloqueos`. La cola de avisos, pasaporte, vista de nivel y marcado como vistos se incorporan en F6; Mara y sus resultados, en F5. Se consultan los requisitos de actividades y fichas exigidos por §§5.5–5.7 al abrir sus detalles; el resto de §5.10 queda para F6.
+- La disponibilidad, finalización, fichas, insignias y nivel proceden exclusivamente de la BD en API. Los textos, borradores, respuestas de brújula, comprobaciones, versiones y seguimiento conservan su almacenamiento local. Los límites del prototipo, demostración y contenido pendiente no controlan la disponibilidad API. Ciudad depende de CIUDAD; adicionales, casos y desafíos permanecen bloqueados o excluidos, incluidos accesos por URL.
+- Se crean los siete archivos de `src/features/servidor/`: configuración proporcionada por `main.tsx`, contratos Pydantic copiados sin traducciones, cliente fetch, selección de cuenta, almacén externo, acciones y adaptadores puros con solo imports de tipos. No se cambian contratos del backend ni se regeneran los ocho fixtures.
+- El usuario escrito se compara con cuentas ESTUDIANTE y el respaldo es Ana. La sesión `ov.cuenta-servidor.v1` queda en `sessionStorage`; las dos copias API usan sus claves `.api` y entradas por cuenta, para conservar borradores sin mezclarlos al cambiar de estudiante. Los ingresos concurrentes se deduplican y los resultados tardíos de una sesión anterior se descartan.
+- El único punto que informa finalización es `StudentActivityPlayer.tsx`, función `move`, cuando el siguiente destino es `$fin`. Repetir una informativa vuelve a enviar la acción. Las entregas y el seguimiento guardan sus datos sin aplicar finalización o recompensas locales. No hay finalizaciones desde shell, hidratación ni cierre recuperado.
+- El POST precede al cierre y al refresco de la proyección. Ante 409 se muestra el requisito o los ítems faltantes; ante desconexión se ofrece reintento. Si el POST tuvo éxito y falla el refresco, se conserva su respuesta y solo se reintentan las consultas. No se marcan desbloqueos vistos en F4. El reinicio requiere confirmación y está disponible únicamente en API y desarrollo; tras éxito limpia las dos claves API y recarga.
+
+**Recorrido manual · SEMILLA=plataforma, EVALUADOR=falso.** Se usa una base temporal independiente. El puerto 8000 estaba ocupado: backend de prueba en 8001, frontend en 5175 y configuración temporal del proxy. El proxy entregado apunta a 8000. Las respuestas escritas llevan DATO DE PRUEBA F4.
+
+| Paso | Resultado |
+|---|---|
+| 1 | Reinicio desde el menú e ingreso como est-ana; primera actividad recomendada y resto bloqueado. |
+| 2 | La segunda informativa bloqueada muestra «Requisito: completa “El inicio del viaje”». |
+| 3 | La bienvenida confirma y muestra actividad siguiente, first-steps e I1 en FinishScreen, según la delimitación aprobada. |
+| 4 | La segunda informativa habilita tres fichas más; la mochila conserva cuatro obtenidas tras recargar. |
+| 5 | Repetición completa de sus 24 nodos: sin nuevos desbloqueos y conserva COMPLETADA. |
+| 6 | act-07 y mission-story confirmadas al llegar a su último diálogo; cierre con I2 y nivel 2 (Recolector de pistas). |
+| 7 | Resto del camino, incluida la matriz con sus siete entregas necesarias, confirmado. Cierre final con CIUDAD, I3 y nivel 3 (Cartógrafo de posibilidades). Ciudad abre y Mara muestra su primera interacción pendiente con cinco ítems consultados, sin ejecutar el TIP local. |
+
+**Cierre · 2026-10-07.** F4 completa con la delimitación aprobada; las decisiones de presentación y comprobaciones del navegador se registran en `ov_frontend/docs/student-experience/plan.md`.
+
+| Repo | Validación de F4 | Resultado |
+|---|---|---|
+| Frontend | `npm run build`, `npm run lint` | Pasan; permanece el aviso previo de chunks mayores de 500 kB. |
+| Frontend | Pruebas nuevas de servidor y modo local | 20 casos pasan; fixtures sin modificaciones. |
+| Frontend | `npm test` | 312 pruebas: 296 pasan y las mismas 16 fallas de F3; nombres y líneas coinciden con F0. No se cambian expectativas anteriores. |
+| Backend | `uv run pytest -q`, con `SEMILLA=demo`, `EVALUADOR=falso`, basetemp y caché propias | 1006 pruebas pasan, 0 fallas, dos advertencias previas de deprecación; 656,83 segundos. |
+
+Las pruebas nuevas cubren cuenta y respaldo, montaje concurrente y respuesta tardía, claves por modo y cuenta, borradores y nodos conservados, hidratación sin espacio, fuente de estado y fichas, cierre y repetición, doble clic, 409, desconexión, reintento de consulta sin otro POST, cierre recuperado, lectura sin adquisición, URL y reinicio exclusivo de desarrollo. El modo local no usa adaptadores ni red. Todos los accesos fetch quedan en el módulo de servidor.
+
+En el backend solo cambia esta sección; no se agregan dependencias, no se llama a Gemini ni se accede a las áreas protegidas del frontend. Un commit F4 por repo en `iteracion-1`, sin push. F5–F7 y el diagnóstico de las 16 fallas previas del frontend quedan pendientes; se detiene el trabajo antes de F5.
