@@ -205,3 +205,33 @@ F4–F7 y el diagnóstico de las 16 fallas previas del front quedan pendientes.
 Las pruebas nuevas cubren cuenta y respaldo, montaje concurrente y respuesta tardía, claves por modo y cuenta, borradores y nodos conservados, hidratación sin espacio, fuente de estado y fichas, cierre y repetición, doble clic, 409, desconexión, reintento de consulta sin otro POST, cierre recuperado, lectura sin adquisición, URL y reinicio exclusivo de desarrollo. El modo local no usa adaptadores ni red. Todos los accesos fetch quedan en el módulo de servidor.
 
 En el backend solo cambia esta sección; no se agregan dependencias, no se llama a Gemini ni se accede a las áreas protegidas del frontend. Un commit F4 por repo en `iteracion-1`, sin push. F5–F7 y el diagnóstico de las 16 fallas previas del frontend quedan pendientes; se detiene el trabajo antes de F5.
+
+## F5
+
+- 2026-10-07: se implementa §5.8 en el frontend con los contratos existentes de respuestas, avance, resultado, coincidencias y carreras. No se modifica el backend ni se regeneran fixtures. El contenido narrativo permanece en el front; las respuestas, disponibilidad, finalización y resultado proceden del servidor. El modo local conserva el TIP y su comportamiento anterior.
+- Las interacciones de Mara se construyen con apertura, ítems ordenados y despedida. El primer saludo procede de instrumento_mara.json; las otras interacciones usan tres variantes DATO DE PRUEBA. Cada opción envía su orden mediante responder-items. Las consultas y acciones descartan respuestas tardías al cambiar de cuenta; las consultas simultáneas del resultado se deduplican por sesión. Un 409 con avance indica resultado pendiente; otros 409 y los errores de conexión se muestran como tales.
+- Se retoma el primer ítem pendiente, o la despedida si todos están respondidos. Las completadas abren revisión desde el primer ítem. Con resultado vigente la revisión es de solo lectura; un 409 por respuestas fijadas actualiza esa condición. Se bloquean envíos simultáneos. Ante POST confirmado y fallo de refresco, se reintentan solo GET. El único punto de finalización sigue siendo move en StudentActivityPlayer.tsx al llegar a $fin; revisión, resultado, libro e hidratación no completan actividades.
+- **Aviso acordado:** el cierre de act-tip-14 muestra «Elena tiene algo que mostrarte» y enlaza el libro cuando resultados_generados incluye TEST-RIASEC. La cola de avisos y marcado como visto quedan para F6, junto con pasaporte y nivel.
+- **Sello acordado:** intereses queda listo solo con resultado vigente y la revelación API se registra por cuenta y calculado_en en el almacenamiento de descubrimiento existente, sin alterar revealedPages local. Otra cuenta o un nuevo resultado exige revelar de nuevo. Antes del resultado, el libro consulta el requisito de Ciudad o el avance de Mara; un fallo no se sustituye por resultados de demostración.
+- Resultado y libro muestran las dimensiones de codigo_interes en su orden, con nombres y porcentajes. El libro añade carreras recomendadas y ocupaciones via enlazadas por código. Qué significa abre act-tip-final en revisión. Las afinidades quedan ocultas hasta revelar intereses; después catálogo y detalle usan posición, correlación y ajuste del servidor. Afines antepone por posición; BEST/GREAT/GOOD se presentan como Mejor ajuste/Gran ajuste/Buen ajuste. Un código desconocido conserva su título sin enlace a detalle. Perfil plano ofrece revisión y omite afinidades y recomendaciones. Inteligencias y habilidades conservan ejemplos señalados como disponibles en una próxima iteración.
+
+**Archivos afectados.** En el frontend se amplían tipos, almacén, acciones y adaptadores de servidor; se incorpora MaraInteractionPlayer y se adaptan reproductor, nodos, cierre, Ciudad, detalle de Mara, perfil, libro, descubrimiento, catálogo y rutas. Se agregan servidor-mara.test.mjs y servidor-resultados.test.mjs, su ayuda de fixtures y una comprobación local. Las decisiones de presentación quedan en ov_frontend/docs/student-experience/plan.md. En el backend cambia únicamente este documento, sección F5.
+
+**Recorrido manual · SEMILLA=plataforma, EVALUADOR=falso.** Base SQLite temporal independiente; Camino preparado por API como prerrequisito, sin repetir F4. Backend 8001 y frontend 5176 con proxy temporal; el proxy entregado conserva 8000. Los 60 ítems se responden en el navegador con el patrón de §6 (I=5, R=4, A=3, S/E/C=1).
+
+| Paso | Resultado |
+|---|---|
+| 8 | Salir tras tres respuestas y volver retoma el cuarto ítem de act-tip-01, conservando las respuestas confirmadas. |
+| 9 | Se completan las catorce interacciones. El cierre muestra el aviso de Elena y el libro exige revelar intereses; IRA en orden con 100%, 75% y 50%. |
+| 10 | Afines ordenadas por posición, con Geólogo/a primero y correlación 0.826325; detalle con Mejor ajuste. Libro con Ingeniería Civil, Ingeniería Ambiental, Medicina Veterinaria y via; navegación a ocupación y carrera. Las pistas usa el resultado vigente, completa una vez y al recargar abre revisión. Revelación conservada tras recargar. |
+
+**Cierre · 2026-10-07.** F5 completa con las decisiones anteriores.
+
+| Repo | Validación de F5 | Resultado |
+|---|---|---|
+| Frontend | npm run build y npm run lint | Pasan; aviso previo de bundle mayor de 500 kB. |
+| Frontend | Integración con fixtures y modo local | 42 casos pasan: 20 de F4 y 22 nuevos de F5. |
+| Frontend | npm test | 334 pruebas: 318 pasan y las mismas 16 fallas previas; nombres y líneas comparados exactamente con F0. No se alteran sus expectativas. |
+| Backend | uv run pytest -q, SEMILLA=demo, EVALUADOR=falso, temporales y caché propios | 1006 pasan, cero fallas, dos advertencias previas de deprecación; 1321,45 segundos. |
+
+Las pruebas nuevas cubren construcción y escala, reanudación, despedida, guardado y doble clic, desconexión, 409, revisión de solo lectura, reintento de consultas sin otro POST, concurrencia del resultado, respuestas tardías, bloqueo por URL, aislamiento local, IRA y porcentajes, perfil plano, coincidencias y códigos desconocidos, carreras y via, y sello separado por cuenta y fecha. Sin cambios de contratos, fixtures, dependencias ni áreas protegidas; sin llamadas a Gemini. Un commit en español por repo en iteracion-1, sin push. F6–F7 y las 16 fallas previas quedan pendientes; se detiene antes de F6.
