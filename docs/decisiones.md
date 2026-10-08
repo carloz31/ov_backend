@@ -1,5 +1,51 @@
 # Decisiones de implementación
 
+## Actividades por dominio · B2 · 2026-10-08
+
+- Se extraen las lecturas de `estado_cuenta` a los servicios de cuentas,
+  actividades, fichas, testimonios, diario, logros y comunidad, conforme a
+  §4 y §5.3. Cada servicio conserva la lógica de disponibilidad y audiencia;
+  las llamadas anidadas comparten `ContextoConsultas`. Actividades queda en
+  un archivo (255 líneas, por debajo del umbral de unas 300 de la spec).
+- `estado_cuenta` compone esos mismos servicios. Proyecta exclusivamente
+  los campos anteriores y conserva el orden de bloques por `codigo`.
+  La consulta nueva usa `(numero, codigo)`; ambas conservan `(orden, codigo)`
+  para actividades. La diferencia se prueba también con `demo`, cuyos bloques
+  distinguen realmente esos órdenes.
+- `ContenidoEstado` y el alias `EstadoDisponibilidad` pasan a los esquemas
+  comunes; las demás respuestas se trasladan a sus dominios. `NivelEstado`
+  declara sus mismos campos sin heredar de `NivelActual`, para evitar el ciclo
+  entre los esquemas de cuentas y logros mientras existe `EstadoCuenta`.
+  `progreso_objetivo` se importa dentro de `exigir_disponible`, para evitar
+  el ciclo de servicios al mover `estado_contenido` al módulo común.
+  La comparación con HEAD confirma que los 16 esquemas anteriores conservan
+  exactamente su JSON Schema, incluidos los trasladados a otros archivos.
+- `CuentaDemo` y su dependencia HTTP se trasladan a `dependencies`; las siete
+  lecturas nuevas usan el mismo 404 «Cuenta no encontrada». No cambian acciones,
+  modelos, migraciones, conjuntos ni dependencias.
+- Se agregan 51 casos en `test_consultas_dominio.py` y
+  `test_estado_equivalente.py`: contrato inicial y Camino completo, audiencia,
+  404, orden, ambas visibilidades y sus cuatro estados, bloqueo sobre progreso,
+  cuestionario parcial, cuentas aisladas, ocultas y equivalencia temporal.
+  La equivalencia cubre `plataforma` y `demo` en tres momentos; la de `piloto`
+  se agrega en B3, cuando exista el conjunto. Esta secuencia fue aprobada
+  por el usuario en el plan de B2. No cambia ninguna prueba existente.
+- La primera ejecución dirigida detecta una importación de `Insignia`
+  eliminada durante la extracción (ocho fallas existentes); se restaura.
+  Una prueba nueva esperaba conversaciones bloqueadas tras el Camino completo,
+  pero la regla vigente `R-FAM-ESTUDIANTE` las habilita; se corrige solo esa
+  expectativa nueva. La revisión posterior aprueba 56 casos: los 51 nuevos
+  y cinco existentes de progreso de insignias.
+- La suite completa cierra B2 con **1087 correctas, 4 omitidas, cero fallas
+  y 2 advertencias**, en 660,79 segundos; antes eran 1036 correctas y las
+  mismas cuatro omisiones. Pasan todos los escenarios y límites SQL existentes.
+  Las omisiones corresponden a PostgreSQL sin `TEST_POSTGRES_URL` y los
+  avisos son los previos de dependencias. El front conserva sus 15 fallas
+  previas por nombre (364 de 379 pasan), con build, lint y estructura correctos;
+  solo cambia su documento de pendientes. Las decisiones de la iteración
+  detallan el cierre, con un commit por repo y sin iniciar B3 ni hacer push.
+  Los temporales, caché, bases y registros están fuera de los repos.
+
 ## Actividades por dominio · B1 · 2026-10-08
 
 - `contenido` se valida en `datos/cargar.py` con `re.fullmatch('[a-z0-9_]+', ...)`,

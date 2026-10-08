@@ -8,9 +8,9 @@ from app.core.definiciones import MODELOS_FIJOS
 from app.exceptions import ErrorAccion
 from app.models import Cuenta, Desbloqueo, EventoUso, Rol, TipoEventoUso, TipoObjetivo
 from app.schemas.acciones import FechaAccion, RespuestaAccion, RespuestaAgrupada
+from app.schemas.comun import ContenidoEstado
 from app.schemas.cuentas import EventoLegible
 from app.schemas.motor import DesbloqueoNuevo
-from app.services.cuentas import progreso_objetivo
 from app.services.motor.referencias import referencia_legible
 from app.services.motor.reglas import objetivo_disponible, registrar_eventos
 
@@ -36,6 +36,8 @@ def exigir_estudiante(cuenta: Cuenta) -> None:
 
 
 def exigir_disponible(sesion: Session, cuenta: Cuenta, tipo: TipoObjetivo, entidad=None) -> None:
+    from app.services.cuentas import progreso_objetivo
+
     identificador = None if entidad is None else entidad.id
     if objetivo_disponible(sesion, cuenta, tipo, identificador):
         return
@@ -96,3 +98,11 @@ def responder_varias_cuentas(sesion, cuentas, eventos_por_cuenta, fecha):
     finally:
         sesion.info.pop('lote_eventos', None)
         sesion.info.pop('lote_desbloqueos', None)
+
+
+@usar_contexto
+def estado_contenido(sesion: Session, cuenta: Cuenta, modelo, tipo: TipoObjetivo) -> list[ContenidoEstado]:
+    return [ContenidoEstado(
+        codigo=contenido.codigo, titulo=contenido.titulo,
+        estado="DISPONIBLE" if objetivo_disponible(sesion, cuenta, tipo, contenido.id) else "BLOQUEADA",
+    ) for contenido in sorted(contexto(sesion).definiciones.listar(modelo), key=lambda contenido: contenido.codigo)]

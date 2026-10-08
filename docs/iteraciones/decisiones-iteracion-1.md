@@ -4,6 +4,63 @@ Registro de decisiones que afectan a ambos repos. Las internas de cada repo van 
 
 Formato de cada entrada: fecha, fase, decisión, motivo y archivos afectados.
 
+## Actividades por dominio · B2 · 2026-10-08
+
+Se implementan únicamente las consultas por dominio de §4 y §5.3:
+`resumen`, `actividades`, `fichas`, `logros`, `testimonios`,
+`diario/preguntas` y `conversaciones`, todas bajo `/cuentas/{cuenta}/`.
+La lógica se extrae a los servicios de cada dominio y se comparte con
+`/estado`, que conserva sus campos y su orden anterior por código. Las
+actividades nuevas incluyen tipo, orden, contenido, visibilidad y `visible`;
+sus bloques se ordenan por número y código. No se alteran las reglas,
+la semilla `plataforma` ni los escenarios de `demo`.
+
+Se crean `tests/test_consultas_dominio.py` y
+`tests/test_estado_equivalente.py`, con 51 casos. La equivalencia compara
+todos los campos anteriores para `plataforma` y `demo` al inicio, tras dos
+actividades y al completar el Camino (B0 en demo). El usuario aprueba
+completar la equivalencia de `piloto` en B3, cuando se cree ese conjunto.
+No se modifican pruebas existentes, fixtures ni el exportador.
+
+El único cambio del front es la anotación en `docs/pendientes-interfaz.md`
+de los campos de testimonios, preguntas del diario y conversaciones que
+todavía no tienen vista en modo API, según el Anexo A. No se implementa
+ninguna opción visual, ni se agregan tipos, servicios o hooks para esos
+dominios: §4 los reserva para sus futuras iteraciones. La integración del
+resto de consultas corresponde a F2 y los fixtures a B3.
+
+Validación de B2:
+
+- Backend antes: **1036 pasan, 4 omitidas, cero fallas y 2 advertencias**
+  (cierre de B1). Tras corregir los dos problemas de la ejecución dirigida,
+  la revisión de las consultas nuevas y del progreso de insignias aprueba
+  **56 pruebas**, con una advertencia de dependencia.
+- Backend después, suite completa: **1087 pasan, 4 omitidas, cero fallas
+  y 2 advertencias**, en **660,79 segundos**. Se agregan los 51 casos nuevos;
+  pasan los escenarios y los límites SQL existentes sin cambiar aserciones.
+  Las cuatro omisiones son los casos opcionales de PostgreSQL sin
+  `TEST_POSTGRES_URL`; las advertencias son las previas de dependencias.
+- Frontend antes y después: **379 pruebas, 364 pasan, las mismas 15 fallan,
+  cero omitidas**. Se comparan exactamente sus nombres y orden; coinciden
+  con la tabla de B0. Build y lint pasan; estructura: **515 archivos,
+  cero infracciones y cero excepciones**. Se conserva el aviso de bundle
+  mayor de 500 kB. No se modifican código ni pruebas del frontend.
+- Las pruebas usan `EVALUADOR=falso`, sin llamadas a Gemini. Se ejecuta
+  `uv run python -m pytest` por el problema previo del lanzador de este
+  entorno; las pruebas HTTP se corren fuera del sandbox por el bloqueo
+  de `TestClient` diagnosticado en B0/B1. Los registros, las bases y los
+  temporales se guardan fuera de los repositorios.
+- La auditoría de rutas conserva todas las anteriores y encuentra exactamente
+  los siete GET pedidos. La comparación de los 16 esquemas anteriores contra
+  HEAD confirma que sus JSON Schema no cambian, incluso al moverlos de archivo.
+
+**Cierre de B2:** un commit por repo en `iteracion-1`, sin push. En el
+frontend, `7204a3d` registra únicamente los pendientes de interfaz; el
+backend guarda las consultas, las pruebas nuevas y estas decisiones.
+B3 y las fases posteriores no se inician. Quedan pendientes el conjunto
+`piloto`, su cobertura de equivalencia y los fixtures (B3), y la integración
+del frontend desde F0/F1/F2 según el orden de la spec.
+
 ## Actividades por dominio · B1 · 2026-10-08
 
 El usuario autoriza explícitamente `codigo.lower().replace("-", "_")`

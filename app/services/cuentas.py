@@ -5,16 +5,16 @@ from sqlalchemy.orm import Session
 
 from app.core.contexto import contexto, usar_contexto
 from app.models import (
-    Actividad, Audiencia, Bloque, Cuenta, Desbloqueo, EntradaDiario, EventoUso, Ficha, Insignia,
-    Nivel, OrigenEntrada, PreguntaDiario, ReglaDesbloqueo, Rol, Testimonio, TipoEventoUso,
-    TipoObjetivo,
+    Cuenta, Desbloqueo, EventoUso, Insignia, Nivel, ReglaDesbloqueo, TipoEventoUso, TipoObjetivo,
 )
 from app.schemas.cuentas import (
-    ActividadEstado, BloqueEstado, ContenidoEstado, ConversacionesEstado, CuentaResumen,
-    DesbloqueoLegible, EstadoCuenta, EventoLegible, InsigniaEstado, NivelActual, NivelEstado,
-    ObjetivoProgreso, PreguntaDiarioEstado, ProgresoObjetivo, ProgresoRegla,
+    ActividadEstado, BloqueEstado, CuentaResumen, DesbloqueoLegible, EstadoCuenta, EventoLegible,
+    NivelActual, ObjetivoProgreso, ProgresoObjetivo, ProgresoRegla, ResumenCuenta,
 )
 from app.schemas.motor import CondicionLegible, ReglaLegible
+from app.services import actividades as servicio_actividades, comunidad as servicio_comunidad
+from app.services import diario as servicio_diario, fichas as servicio_fichas
+from app.services import logros as servicio_logros, testimonios as servicio_testimonios
 from app.services.motor.referencias import (
     MODELOS_OBJETIVO, objetivo_legible, precargar_referencias, referencia_legible,
 )
@@ -51,76 +51,30 @@ def listar_cuentas(sesion: Session) -> list[CuentaResumen]:
 
 
 @usar_contexto
-def estado_contenido(sesion: Session, cuenta: Cuenta, modelo, tipo: TipoObjetivo) -> list[ContenidoEstado]:
-    return [ContenidoEstado(
-        codigo=contenido.codigo, titulo=contenido.titulo,
-        estado="DISPONIBLE" if objetivo_disponible(sesion, cuenta, tipo, contenido.id) else "BLOQUEADA",
-    ) for contenido in sorted(contexto(sesion).definiciones.listar(modelo), key=lambda contenido: contenido.codigo)]
+def resumen_cuenta(sesion: Session, cuenta: Cuenta) -> ResumenCuenta:
+    actual = nivel_actual(sesion, cuenta)
+    return ResumenCuenta(
+        cuenta=CuentaResumen.model_validate(cuenta),
+        nivel_actual=None if actual is None else NivelActual(numero=actual.numero, titulo=actual.titulo),
+    )
 
 
 @usar_contexto
 def estado_cuenta(sesion: Session, cuenta: Cuenta) -> EstadoCuenta:
-    datos = contexto(sesion)
-    progresos = {identificador: progreso.estado for identificador, progreso in datos.progresos_de(cuenta.id).items()}
-    bloques = []
-    for bloque in sorted((bloque for bloque in datos.definiciones.listar(Bloque)
-                         if bloque.audiencia == Audiencia(cuenta.rol.value)), key=lambda bloque: bloque.codigo):
-        bloque_disponible = objetivo_disponible(sesion, cuenta, TipoObjetivo.BLOQUE, bloque.id)
-        actividades = []
-        for actividad in sorted((actividad for actividad in datos.definiciones.listar(Actividad)
-                                 if actividad.bloque_id == bloque.id), key=lambda actividad: (actividad.orden, actividad.codigo)):
-            disponible = bloque_disponible and objetivo_disponible(
-                sesion, cuenta, TipoObjetivo.ACTIVIDAD, actividad.id,
-            )
-            estado = "BLOQUEADA" if not disponible else (
-                progresos[actividad.id].value if actividad.id in progresos else "DISPONIBLE"
-            )
-            actividades.append(ActividadEstado(codigo=actividad.codigo, titulo=actividad.titulo, estado=estado))
-        bloques.append(BloqueEstado(
-            codigo=bloque.codigo, nombre=bloque.nombre, espacio=bloque.espacio,
-            estado="DISPONIBLE" if bloque_disponible else "BLOQUEADA", actividades=actividades,
-        ))
-
-    insignias = []
-    for insignia in sorted((insignia for insignia in datos.definiciones.listar(Insignia)
-                           if insignia.audiencia == Audiencia(cuenta.rol.value)), key=lambda insignia: insignia.codigo):
-        obtenida = objetivo_disponible(sesion, cuenta, TipoObjetivo.INSIGNIA, insignia.id)
-        oculta = insignia.es_oculta and not obtenida
-        insignias.append(InsigniaEstado(
-            codigo="???" if oculta else insignia.codigo,
-            nombre="Logro oculto" if oculta else insignia.nombre,
-            descripcion=None if oculta else insignia.descripcion,
-            requisito=None if oculta else insignia.requisito,
-            estado="OBTENIDA" if obtenida else "BLOQUEADA",
-        ))
-
-    fichas, testimonios, preguntas, niveles = [], [], [], []
-    if cuenta.rol == Rol.ESTUDIANTE:
-        fichas = estado_contenido(sesion, cuenta, Ficha, TipoObjetivo.FICHA)
-        testimonios = estado_contenido(sesion, cuenta, Testimonio, TipoObjetivo.TESTIMONIO)
-        respondidas = set(sesion.scalars(select(EntradaDiario.pregunta_id).where(
-            EntradaDiario.cuenta_id == cuenta.id, EntradaDiario.origen == OrigenEntrada.GUIADA,
-        )))
-        preguntas = [PreguntaDiarioEstado(
-            codigo=pregunta.codigo, pregunta=pregunta.pregunta,
-            estado="DISPONIBLE" if objetivo_disponible(sesion, cuenta, TipoObjetivo.PREGUNTA_DIARIO,
-                                                       pregunta.id) else "BLOQUEADA",
-            respondida=pregunta.id in respondidas,
-        ) for pregunta in sorted(datos.definiciones.listar(PreguntaDiario), key=lambda pregunta: pregunta.codigo)]
-        niveles = [NivelEstado(
-            numero=nivel.numero, titulo=nivel.titulo,
-            estado="OBTENIDO" if objetivo_disponible(sesion, cuenta, TipoObjetivo.NIVEL, nivel.id) else "BLOQUEADO",
-        ) for nivel in sorted(datos.definiciones.listar(Nivel), key=lambda nivel: nivel.numero)]
-    actual = nivel_actual(sesion, cuenta)
+    resumen = resumen_cuenta(sesion, cuenta)
+    logros = servicio_logros.logros_cuenta(sesion, cuenta)
+    bloques = [BloqueEstado(
+        codigo=bloque.codigo, nombre=bloque.nombre, espacio=bloque.espacio, estado=bloque.estado,
+        actividades=[ActividadEstado(codigo=actividad.codigo, titulo=actividad.titulo, estado=actividad.estado)
+                     for actividad in bloque.actividades],
+    ) for bloque in sorted(servicio_actividades.listar_bloques_cuenta(sesion, cuenta), key=lambda bloque: bloque.codigo)]
     return EstadoCuenta(
-        cuenta=CuentaResumen.model_validate(cuenta),
-        nivel_actual=None if actual is None else NivelActual(numero=actual.numero, titulo=actual.titulo),
-        bloques=bloques, fichas=fichas, testimonios=testimonios, preguntas_diario=preguntas,
-        conversaciones=ConversacionesEstado(
-            estado="DISPONIBLE" if objetivo_disponible(sesion, cuenta, TipoObjetivo.CONVERSACIONES, None)
-            else "BLOQUEADA",
-        ),
-        insignias=insignias, niveles=niveles,
+        cuenta=resumen.cuenta, nivel_actual=resumen.nivel_actual, bloques=bloques,
+        fichas=servicio_fichas.listar_fichas_cuenta(sesion, cuenta),
+        testimonios=servicio_testimonios.listar_testimonios_cuenta(sesion, cuenta),
+        preguntas_diario=servicio_diario.listar_preguntas_cuenta(sesion, cuenta),
+        conversaciones=servicio_comunidad.estado_conversaciones(sesion, cuenta),
+        insignias=logros.insignias, niveles=logros.niveles,
     )
 
 

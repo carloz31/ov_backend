@@ -1,12 +1,10 @@
-from typing import Annotated
+from fastapi import APIRouter, HTTPException
 
-from fastapi import APIRouter, Depends, HTTPException
-
-from app.dependencies import SesionBD
-from app.models import Cuenta, TipoObjetivo
+from app.dependencies import CuentaDemo, SesionBD
+from app.models import TipoObjetivo
 from app.schemas.cuentas import (
     CuentaResumen, DesbloqueoLegible, DesbloqueosMarcados, EstadoCuenta, EventoLegible,
-    ProgresoObjetivo,
+    ProgresoObjetivo, ResumenCuenta,
 )
 from app.schemas.motor import ReglaLegible
 from app.services import cuentas as servicio_cuentas
@@ -19,16 +17,6 @@ from app.services.cuentas import (
 router = APIRouter(tags=["Consultas"])
 
 
-def obtener_cuenta_demo(cuenta: str, sesion: SesionBD) -> Cuenta:
-    resultado = servicio_cuentas.obtener_cuenta_demo(sesion, cuenta)
-    if resultado is None:
-        raise HTTPException(status_code=404, detail="Cuenta no encontrada")
-    return resultado
-
-
-CuentaDemo = Annotated[Cuenta, Depends(obtener_cuenta_demo)]
-
-
 @router.get("/reglas", response_model=list[ReglaLegible])
 def consultar_reglas(sesion: SesionBD):
     return listar_reglas(sesion)
@@ -37,6 +25,11 @@ def consultar_reglas(sesion: SesionBD):
 @router.get("/cuentas", response_model=list[CuentaResumen])
 def consultar_cuentas(sesion: SesionBD):
     return listar_cuentas(sesion)
+
+
+@router.get("/cuentas/{cuenta}/resumen", response_model=ResumenCuenta)
+def consultar_resumen(cuenta_demo: CuentaDemo, sesion: SesionBD):
+    return servicio_cuentas.resumen_cuenta(sesion, cuenta_demo)
 
 
 @router.get("/cuentas/{cuenta}/estado", response_model=EstadoCuenta)

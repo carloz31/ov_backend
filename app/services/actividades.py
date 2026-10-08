@@ -4,10 +4,10 @@ from sqlalchemy.orm import Session
 from app.core.contexto import contexto, usar_contexto
 from app.exceptions import ErrorAccion
 from app.models import (
-    Actividad, ActividadItem, AplicacionActividad, Cuenta, EstadoProgreso, EstadoRespuestaRegistro,
-    Instrumento, ItemInstrumento, OpcionEscala, ProgresoActividad, RespuestaItem,
+    Actividad, ActividadItem, AplicacionActividad, Audiencia, Bloque, Cuenta, EstadoProgreso,
+    EstadoRespuestaRegistro, Instrumento, ItemInstrumento, OpcionEscala, ProgresoActividad, RespuestaItem,
     RespuestaRegistro, ResultadoCaso, ResultadoInstrumento, Rol, TipoActividad, TipoEventoUso,
-    TipoObjetivo, TipoResultado,
+    TipoObjetivo, TipoResultado, Visibilidad,
 )
 from app.schemas.acciones import (
     CompletarActividadEntrada, ProgresoRespuestas, ReiniciarInstrumentoEntrada,
@@ -15,11 +15,13 @@ from app.schemas.acciones import (
     RespuestaItemGuardada, RespuestaItemsGuardados, RespuestaReiniciarInstrumento,
     ResultadoAnulado,
 )
+from app.schemas.actividades import ActividadCuenta, BloqueActividades
 from app.services.comun import (
     buscar_por_codigo, exigir_disponible, existe_evento, fecha_accion, responder_con_eventos,
 )
 from app.services.instrumentos.consultas import actividades_de_aplicacion, seleccionar_aplicacion
 from app.services.instrumentos.resultados import generar_resultados_al_completar
+from app.services.motor.reglas import objetivo_disponible
 
 
 @usar_contexto
@@ -222,3 +224,32 @@ def resolver_caso(sesion: Session, entrada: ResolverCasoEntrada) -> RespuestaAcc
     ):
         eventos.append((TipoEventoUso.SUPERA_CASO, actividad.id))
     return responder_con_eventos(sesion, cuenta, eventos, fecha)
+
+
+@usar_contexto
+def listar_bloques_cuenta(sesion: Session, cuenta: Cuenta) -> list[BloqueActividades]:
+    datos = contexto(sesion)
+    progresos = {identificador: progreso.estado for identificador, progreso in datos.progresos_de(cuenta.id).items()}
+    bloques = []
+    for bloque in sorted((bloque for bloque in datos.definiciones.listar(Bloque)
+                         if bloque.audiencia == Audiencia(cuenta.rol.value)), key=lambda bloque: (bloque.numero, bloque.codigo)):
+        bloque_disponible = objetivo_disponible(sesion, cuenta, TipoObjetivo.BLOQUE, bloque.id)
+        actividades = []
+        for actividad in sorted((actividad for actividad in datos.definiciones.listar(Actividad)
+                                 if actividad.bloque_id == bloque.id), key=lambda actividad: (actividad.orden, actividad.codigo)):
+            disponible = bloque_disponible and objetivo_disponible(
+                sesion, cuenta, TipoObjetivo.ACTIVIDAD, actividad.id,
+            )
+            estado = "BLOQUEADA" if not disponible else (
+                progresos[actividad.id].value if actividad.id in progresos else "DISPONIBLE"
+            )
+            actividades.append(ActividadCuenta(
+                codigo=actividad.codigo, titulo=actividad.titulo, tipo=actividad.tipo, orden=actividad.orden,
+                contenido=actividad.contenido, visibilidad=actividad.visibilidad,
+                visible=actividad.visibilidad == Visibilidad.SIEMPRE or estado != "BLOQUEADA", estado=estado,
+            ))
+        bloques.append(BloqueActividades(
+            codigo=bloque.codigo, nombre=bloque.nombre, numero=bloque.numero, espacio=bloque.espacio,
+            estado="DISPONIBLE" if bloque_disponible else "BLOQUEADA", actividades=actividades,
+        ))
+    return bloques

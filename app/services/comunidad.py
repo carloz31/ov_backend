@@ -13,10 +13,12 @@ from app.schemas.acciones import (
     CompletarConversacionEntrada, EscribirCartaEntrada, PublicarEntrevistaEntrada, RespuestaAccion,
     RespuestaAgrupada,
 )
+from app.schemas.comunidad import ConversacionesEstado
 from app.services.comun import (
     buscar_por_codigo, exigir_disponible, exigir_estudiante, existe_evento, fecha_accion,
     responder_con_eventos, responder_varias_cuentas,
 )
+from app.services.motor.reglas import objetivo_disponible
 
 
 @usar_contexto
@@ -90,3 +92,11 @@ def completar_conversacion(sesion: Session, entrada: CompletarConversacionEntrad
         ) else [] for otra in cuentas
     }
     return responder_varias_cuentas(sesion, cuentas, eventos_por_cuenta, fecha)
+
+
+@usar_contexto
+def estado_conversaciones(sesion: Session, cuenta: Cuenta) -> ConversacionesEstado:
+    return ConversacionesEstado(
+        estado="DISPONIBLE" if objetivo_disponible(sesion, cuenta, TipoObjetivo.CONVERSACIONES, None)
+        else "BLOQUEADA",
+    )

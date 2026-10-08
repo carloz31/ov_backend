@@ -4,10 +4,11 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 
 from app.models import Espacio, Rol, TipoEventoUso, TipoObjetivo
+from app.schemas.comun import ContenidoEstado, EstadoDisponibilidad
+from app.schemas.comunidad import ConversacionesEstado
+from app.schemas.diario import PreguntaDiarioEstado
+from app.schemas.logros import InsigniaEstado, NivelEstado
 from app.schemas.motor import ObjetivoLegible, ProgresoCondicion, ResultadoEvaluador
-
-
-EstadoDisponibilidad = Literal["DISPONIBLE", "BLOQUEADA"]
 
 
 class CuentaResumen(BaseModel):
@@ -23,6 +24,11 @@ class NivelActual(BaseModel):
     titulo: str
 
 
+class ResumenCuenta(BaseModel):
+    cuenta: CuentaResumen
+    nivel_actual: NivelActual | None
+
+
 class ActividadEstado(BaseModel):
     codigo: str
     titulo: str
@@ -35,35 +41,6 @@ class BloqueEstado(BaseModel):
     espacio: Espacio
     estado: EstadoDisponibilidad
     actividades: list[ActividadEstado]
-
-
-class ContenidoEstado(BaseModel):
-    codigo: str
-    titulo: str
-    estado: EstadoDisponibilidad
-
-
-class PreguntaDiarioEstado(BaseModel):
-    codigo: str
-    pregunta: str
-    estado: EstadoDisponibilidad
-    respondida: bool
-
-
-class ConversacionesEstado(BaseModel):
-    estado: EstadoDisponibilidad
-
-
-class InsigniaEstado(BaseModel):
-    codigo: str
-    nombre: str
-    descripcion: str | None
-    requisito: str | None
-    estado: Literal["BLOQUEADA", "OBTENIDA"]
-
-
-class NivelEstado(NivelActual):
-    estado: Literal["BLOQUEADO", "OBTENIDO"]
 
 
 class EstadoCuenta(BaseModel):

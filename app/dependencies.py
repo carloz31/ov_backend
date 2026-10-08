@@ -7,9 +7,21 @@ from sqlalchemy.orm import Session
 
 from app.database import obtener_sesion
 from app.exceptions import ErrorAccion, traducir_error_accion
+from app.models import Cuenta
+from app.services import cuentas as servicio_cuentas
 
 
 SesionBD = Annotated[Session, Depends(obtener_sesion)]
+
+
+def obtener_cuenta_demo(cuenta: str, sesion: SesionBD) -> Cuenta:
+    resultado = servicio_cuentas.obtener_cuenta_demo(sesion, cuenta)
+    if resultado is None:
+        raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+    return resultado
+
+
+CuentaDemo = Annotated[Cuenta, Depends(obtener_cuenta_demo)]
 
 
 def ejecutar_accion(sesion: Session, operacion: Callable):

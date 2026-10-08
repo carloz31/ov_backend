@@ -1,17 +1,19 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.contexto import usar_contexto
+from app.core.contexto import contexto, usar_contexto
 from app.exceptions import ErrorAccion
 from app.models import (
-    CheckIn, Cuenta, EntradaDiario, OrigenEntrada, PreguntaDiario, TipoEventoUso, TipoObjetivo,
+    CheckIn, Cuenta, EntradaDiario, OrigenEntrada, PreguntaDiario, Rol, TipoEventoUso, TipoObjetivo,
 )
 from app.schemas.acciones import (
     CheckInEntrada, EscribirEntradaEntrada, ResponderRegistroEntrada, RespuestaAccion,
 )
+from app.schemas.diario import PreguntaDiarioEstado
 from app.services.comun import (
     buscar_por_codigo, exigir_disponible, exigir_estudiante, fecha_accion, responder_con_eventos,
 )
+from app.services.motor.reglas import objetivo_disponible
 
 
 @usar_contexto
@@ -61,3 +63,20 @@ def registrar_check_in(sesion: Session, entrada: CheckInEntrada) -> RespuestaAcc
     sesion.add(registro)
     sesion.flush()
     return responder_con_eventos(sesion, cuenta, [(TipoEventoUso.REGISTRA_CHECK_IN, registro.id)], fecha)
+
+
+@usar_contexto
+def listar_preguntas_cuenta(sesion: Session, cuenta: Cuenta) -> list[PreguntaDiarioEstado]:
+    if cuenta.rol != Rol.ESTUDIANTE:
+        return []
+    datos = contexto(sesion)
+    respondidas = set(sesion.scalars(select(EntradaDiario.pregunta_id).where(
+        EntradaDiario.cuenta_id == cuenta.id, EntradaDiario.origen == OrigenEntrada.GUIADA,
+    )))
+    preguntas = [PreguntaDiarioEstado(
+        codigo=pregunta.codigo, pregunta=pregunta.pregunta,
+        estado="DISPONIBLE" if objetivo_disponible(sesion, cuenta, TipoObjetivo.PREGUNTA_DIARIO,
+                                                   pregunta.id) else "BLOQUEADA",
+        respondida=pregunta.id in respondidas,
+    ) for pregunta in sorted(datos.definiciones.listar(PreguntaDiario), key=lambda pregunta: pregunta.codigo)]
+    return preguntas
