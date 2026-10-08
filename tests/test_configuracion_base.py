@@ -1,7 +1,7 @@
 """Iteración 1 · F1: configuración, esquema y compatibilidad de la demo."""
 
 import pytest
-from sqlalchemy import inspect, select, text
+from sqlalchemy import inspect, select
 from sqlalchemy.exc import IntegrityError
 from test_instrumentos import CADENA_B, REQUIERE_OCUPACIONES, aplicar_cadena
 
@@ -10,19 +10,13 @@ from app import models as modelos
 
 def test_columnas_y_restricciones_nuevas_con_demo_intacta(sesion, aplicacion):
     inspector = inspect(aplicacion.state.motor_bd)
-    assert len(inspector.get_table_names()) == 45
-    version = {columna['name']: columna for columna in inspector.get_columns('esquema_version')}
+    assert len(inspector.get_table_names()) == 44
     ocupacion = {columna['name']: columna for columna in inspector.get_columns('ocupacion')}
-    assert set(version) == {'id', 'version', 'semilla'}
-    assert version['semilla']['nullable'] is False
     assert set(ocupacion) == {'id', 'codigo', 'codigo_onet', 'titulo'}
     assert ocupacion['codigo']['nullable'] is True
     assert any(restriccion['column_names'] == ['codigo']
                for restriccion in inspector.get_unique_constraints('ocupacion'))
     assert all(codigo is None for codigo in sesion.scalars(select(modelos.Ocupacion.codigo)))
-    with pytest.raises(IntegrityError):
-        with sesion.begin_nested():
-            sesion.execute(text('INSERT INTO esquema_version (id, version, semilla) VALUES (1, 5, NULL)'))
     # DATO DE PRUEBA: ocupaciones sintéticas para unicidad y nulos múltiples.
     sesion.add_all([
         modelos.Ocupacion(codigo_onet='PRUEBA-NULO-1', titulo='Prueba'),

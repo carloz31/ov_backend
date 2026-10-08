@@ -119,7 +119,7 @@ class ResultadoInstrumento(Base):
     __tablename__ = "resultado_instrumento"
     __table_args__ = (
         Index("resultado_vigente_unico", "cuenta_id", "aplicacion_id", unique=True,
-              sqlite_where=text("anulado_en IS NULL")),
+              sqlite_where=text("anulado_en IS NULL"), postgresql_where=text("anulado_en IS NULL")),
     )
     id: Mapped[int] = mapped_column(primary_key=True)
     cuenta_id: Mapped[int] = mapped_column(ForeignKey("cuenta.id"))
@@ -142,7 +142,7 @@ class Coincidencia(Base):
     __tablename__ = "coincidencia"
     __table_args__ = (
         UniqueConstraint("resultado_id", "posicion"),
-        CheckConstraint(f"posicion BETWEEN 1 AND {LIMITE_COINCIDENCIAS}"),
+        CheckConstraint(f"posicion BETWEEN 1 AND {LIMITE_COINCIDENCIAS}", name="posicion_valida"),
         CheckConstraint(
             f"(correlacion >= {UMBRAL_BEST_FIT} AND ajuste = 'BEST_FIT') OR "
             f"(correlacion >= {UMBRAL_GREAT_FIT} AND correlacion < {UMBRAL_BEST_FIT} AND ajuste = 'GREAT_FIT') OR "

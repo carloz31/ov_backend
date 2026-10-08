@@ -23,7 +23,6 @@ CATALOGO = {
     'escala_respuesta', 'opcion_escala', 'item_instrumento', 'actividad_item',
     'aplicacion', 'aplicacion_actividad', 'ocupacion', 'puntaje_ocupacion',
     'carrera_ocupacion', 'item_registro', 'criterio_completitud', 'actividad_item_registro',
-    'esquema_version',  # Compatibilidad hasta R4; ya no se escribe.
 }
 ESTADO = {
     'progreso_actividad', 'resultado_caso', 'entrada_diario', 'check_in', 'entrevista',
@@ -55,7 +54,6 @@ def test_carga_conteos_recarga_rechazada_y_vaciado(tmp_path, conjunto):
     motor = crear_motor_bd(url)
     try:
         antes = filas(motor)
-        assert antes['esquema_version'] == []
         with pytest.raises(ValueError, match='--vaciar'):
             carga.preparar_base(url, conjunto)
         assert filas(motor) == antes
@@ -93,14 +91,29 @@ def test_conjunto_invalido_no_abre_base(tmp_path):
     assert not ruta.exists()
 
 
-def test_cli_sin_esquema_y_creacion_temporal(tmp_path, monkeypatch, capsys):
+def test_cli_rechaza_crear_tablas(tmp_path, monkeypatch, capsys):
+    ruta = tmp_path / 'no_creada.db'
+    monkeypatch.setenv('DATABASE_URL', f'sqlite:///{ruta.as_posix()}')
+    with pytest.raises(SystemExit) as error:
+        carga.main(['plataforma', '--crear-tablas'])
+    assert error.value.code == 2
+    assert '--crear-tablas' in capsys.readouterr().err
+    assert not ruta.exists()
+
+
+def test_cli_sin_esquema_y_carga_tras_migracion(tmp_path, monkeypatch, capsys):
+    from alembic import command
+    from alembic.config import Config
+    from pathlib import Path
+
     url = f'sqlite:///{(tmp_path / "cli.db").as_posix()}'
     monkeypatch.setenv('DATABASE_URL', url)
     with pytest.raises(SystemExit) as error:
         carga.main(['plataforma'])
     assert error.value.code == 1
-    assert '--crear-tablas' in capsys.readouterr().err
-    assert carga.main(['plataforma', '--crear-tablas']) == 0
+    assert 'uv run alembic upgrade head' in capsys.readouterr().err
+    command.upgrade(Config(str(Path(__file__).resolve().parents[1] / 'alembic.ini')), 'head')
+    assert carga.main(['plataforma']) == 0
     salida = capsys.readouterr().out
     assert 'cuenta: 3' in salida and 'ocupacion: 36' in salida
     with pytest.raises(SystemExit) as error:

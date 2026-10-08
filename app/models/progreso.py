@@ -21,7 +21,7 @@ class ProgresoActividad(Base):
 
 class ResultadoCaso(Base):
     __tablename__ = "resultado_caso"
-    __table_args__ = (CheckConstraint("puntaje BETWEEN 0 AND 100"),)
+    __table_args__ = (CheckConstraint("puntaje BETWEEN 0 AND 100", name="puntaje_valido"),)
     id: Mapped[int] = mapped_column(primary_key=True)
     progreso_id: Mapped[int] = mapped_column(ForeignKey("progreso_actividad.id"))
     puntaje: Mapped[float]
@@ -34,6 +34,7 @@ class EntradaDiario(Base):
         Index(
             "entrada_guiada_unica", "cuenta_id", "pregunta_id", unique=True,
             sqlite_where=text("origen = 'GUIADA'"),
+            postgresql_where=text("origen = 'GUIADA'"),
         ),
         CheckConstraint(
             "(origen = 'GUIADA' AND pregunta_id IS NOT NULL) OR "
@@ -53,7 +54,7 @@ class CheckIn(Base):
     __tablename__ = "check_in"
     __table_args__ = (
         UniqueConstraint("cuenta_id", "fecha"),
-        CheckConstraint("nivel_seguridad BETWEEN 1 AND 5"),
+        CheckConstraint("nivel_seguridad BETWEEN 1 AND 5", name="nivel_seguridad_valido"),
     )
     id: Mapped[int] = mapped_column(primary_key=True)
     cuenta_id: Mapped[int] = mapped_column(ForeignKey("cuenta.id"))

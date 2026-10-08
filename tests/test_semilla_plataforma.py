@@ -38,11 +38,10 @@ def test_catalogo_estructura_y_estado_vacio(sesion, aplicacion):
         'instrumento': 1, 'escala_respuesta': 1, 'opcion_escala': 5, 'dimension': 6,
         'item_instrumento': 60, 'actividad_item': 60, 'aplicacion': 1, 'aplicacion_actividad': 14,
         'ocupacion': 36, 'puntaje_ocupacion': 216, 'familia_carrera': 6, 'carrera': 6,
-        'carrera_ocupacion': 23, 'esquema_version': 0}
-    assert len(Base.metadata.tables) == 45
+        'carrera_ocupacion': 23}
+    assert len(Base.metadata.tables) == 44
     for tabla in Base.metadata.sorted_tables:
         assert sesion.scalar(select(func.count()).select_from(tabla)) == esperados.get(tabla.name, 0), tabla.name
-    assert sesion.execute(select(modelos.EsquemaVersion.version, modelos.EsquemaVersion.semilla)).all() == []
     assert set(sesion.scalars(select(modelos.Bloque.codigo))) == {'CAMINO', 'CIUDAD'}
     assert sesion.scalars(select(modelos.Instrumento.codigo)).all() == ['TEST-RIASEC']
     assert sesion.execute(text('PRAGMA foreign_key_check')).all() == []

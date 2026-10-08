@@ -41,7 +41,7 @@ def test_metadatos_semilla_catalogo_y_columnas(sesion, cliente, aplicacion):
     }
     assert all('parametro_evaluador' not in regla for regla in cliente.get('/reglas').json())
     inspector = inspect(aplicacion.state.motor_bd)
-    assert len(inspector.get_table_names()) == 45
+    assert len(inspector.get_table_names()) == 44
     for tabla, columna in [('instrumento', 'tipo_resultado'), ('aplicacion', 'momento'),
                            ('regla_desbloqueo', 'parametro_evaluador')]:
         assert columna in {c['name'] for c in inspector.get_columns(tabla)}

@@ -11,7 +11,7 @@ from app.models.enums import (
 
 _MODELOS_POR_MODULO = {
     'app.models.base': (
-        'Base', 'EsquemaVersion',
+        'Base',
     ),
     'app.models.cuentas': (
         'Cuenta', 'VinculoFamiliar',
@@ -52,7 +52,7 @@ def __getattr__(nombre):
 
 
 __all__ = [
-    'Base', 'EsquemaVersion', 'Rol', 'Espacio', 'Audiencia', 'TipoActividad', 'EstadoProgreso',
+    'Base', 'Rol', 'Espacio', 'Audiencia', 'TipoActividad', 'EstadoProgreso',
     'TipoEventoUso', 'NivelAjuste', 'TipoResultado', 'MomentoAplicacion', 'TipoObjetivo',
     'TipoConteo', 'OrigenEntrada', 'ClasificacionRespuesta', 'EstadoRespuestaRegistro',
     'OrigenEvaluacion', 'Cuenta', 'VinculoFamiliar', 'Bloque', 'Actividad', 'Ficha', 'Testimonio',

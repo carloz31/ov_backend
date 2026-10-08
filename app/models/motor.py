@@ -40,7 +40,7 @@ class ReglaDesbloqueo(Base):
 
 class CondicionDesbloqueo(Base):
     __tablename__ = "condicion_desbloqueo"
-    __table_args__ = (CheckConstraint("cantidad_minima >= 1"),)
+    __table_args__ = (CheckConstraint("cantidad_minima >= 1", name="cantidad_minima_valida"),)
     id: Mapped[int] = mapped_column(primary_key=True)
     regla_id: Mapped[int] = mapped_column(ForeignKey("regla_desbloqueo.id"))
     tipo_evento: Mapped[TipoEventoUso] = mapped_column(enumerado(TipoEventoUso))

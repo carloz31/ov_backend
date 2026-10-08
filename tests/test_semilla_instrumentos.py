@@ -41,7 +41,6 @@ def crear_excel(tmp_path, filas, encabezado=("code", "title", "R", "I", "A", "S"
 
 
 def test_catalogos_y_estado_inicial_de_instrumentos(sesion, cliente):
-    assert sesion.scalars(select(modelos.EsquemaVersion.version)).all() == []
     for modelo, cantidad in (
         (modelos.Instrumento, 4), (modelos.Dimension, 19), (modelos.EscalaRespuesta, 4),
         (modelos.OpcionEscala, 13), (modelos.ItemInstrumento, 137),
@@ -264,11 +263,7 @@ def test_catalogo_real_y_relaciones_exactas(sesion):
     }
 
 
-def test_version_unica_y_dos_resultados_vigentes_prohibidos(sesion):
-    with pytest.raises(IntegrityError):
-        with sesion.begin_nested():
-            sesion.add(modelos.EsquemaVersion(id=2, version=2, semilla='demo'))
-            sesion.flush()
+def test_dos_resultados_vigentes_prohibidos(sesion):
     ana = buscar(sesion, modelos.Cuenta, "est-ana")
     aplicacion = buscar(sesion, modelos.Aplicacion, "APL-RIASEC")
     resultado = modelos.ResultadoInstrumento(cuenta_id=ana.id, aplicacion_id=aplicacion.id, calculado_en=FECHA)
@@ -332,15 +327,14 @@ def test_coincidencias_rechazan_ajustes_y_posiciones_invalidas(sesion, correlaci
             sesion.flush()
 
 
-def test_reinicio_conserva_catalogo_completo_sin_escribir_version(cliente, aplicacion):
+def test_reinicio_conserva_catalogo_completo(cliente, aplicacion):
     for _ in range(2):
         assert cliente.post("/demo/reiniciar").json() == {"mensaje": "Demo reiniciada"}
         with aplicacion.state.fabrica_sesiones() as sesion:
-            assert sesion.scalars(select(modelos.EsquemaVersion.version)).all() == []
             assert sesion.scalar(select(func.count()).select_from(modelos.ItemInstrumento)) == 137
             assert sesion.scalar(select(func.count()).select_from(modelos.ReglaDesbloqueo)) == 47
             validar_distribucion_items(sesion)
-    assert len(inspect(aplicacion.state.motor_bd).get_table_names()) == 45
+    assert len(inspect(aplicacion.state.motor_bd).get_table_names()) == 44
 
 
 @pytest.mark.parametrize("fallo", ["ausente", "columnas", "codigo_requerido"])

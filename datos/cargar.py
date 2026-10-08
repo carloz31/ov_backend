@@ -18,7 +18,7 @@ TABLAS_PRINCIPALES = (
     'cuenta', 'actividad', 'regla_desbloqueo', 'item_instrumento', 'ocupacion', 'item_registro',
 )
 MENSAJE_SIN_ESQUEMA_CARGA = (
-    'La base no tiene el esquema. Durante R3, usa --crear-tablas para crearlo.'
+    'La base no tiene el esquema. Ejecuta `uv run alembic upgrade head`.'
 )
 
 
@@ -63,11 +63,10 @@ def main(argumentos=None) -> int:
     analizador = argparse.ArgumentParser(description=__doc__)
     analizador.add_argument('conjunto', choices=CONJUNTOS)
     analizador.add_argument('--vaciar', action='store_true')
-    analizador.add_argument('--crear-tablas', action='store_true', help='Opción temporal de R3; se retira en R4.')
     opciones = analizador.parse_args(argumentos)
     try:
         conteos = preparar_base(cargar_configuracion().url_bd, opciones.conjunto,
-                               crear_tablas=opciones.crear_tablas, vaciar=opciones.vaciar)
+                               vaciar=opciones.vaciar)
     except (OSError, ValueError, RuntimeError) as error:
         analizador.exit(1, f'No se pudieron cargar los datos: {error}\n')
     except SQLAlchemyError:

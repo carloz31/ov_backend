@@ -1,76 +1,35 @@
-import re
 import sqlite3
 from collections.abc import Iterator
-from pathlib import Path
 
 from fastapi import Request
-from sqlalchemy import Engine, create_engine, event, inspect, text
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import Engine, String, create_engine, event, inspect
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import Session
-
-from app.models.base import Base
-
-
-RUTA_BASE = Path(__file__).resolve().parents[1] / "demo.db"
-URL_BASE = f"sqlite:///{RUTA_BASE.as_posix()}"
-VERSION_ESQUEMA = 5
-MENSAJE_ESQUEMA_ANTERIOR = (
-    "La base {archivo} tiene un esquema anterior. Bórrala y vuelve a iniciar la aplicación."
-)
+from sqlalchemy.sql.functions import FunctionElement
 
 
-def validar_version_esquema(motor_bd: Engine, semilla: str = 'demo') -> None:
-    """Inspecciona antes de create_all; nunca repara una base existente."""
-    ruta = motor_bd.url.database
-    archivo = Path(ruta).name if ruta else ':memory:'
-    mensaje = MENSAJE_ESQUEMA_ANTERIOR.format(archivo=archivo)
-    if ruta and ruta != ":memory:" and not Path(ruta).exists():
-        return
-    try:
-        with motor_bd.connect() as conexion:
-            inspector = inspect(conexion)
-            tablas = set(inspector.get_table_names())
-            if ruta == ":memory:" and not tablas:
-                return
-            if tablas != set(Base.metadata.tables):
-                raise RuntimeError(mensaje)
-            # La estructura debe coincidir antes de leer la semilla, sembrar
-            # o abrir la caché; las versiones anteriores no se migran.
-            for tabla in Base.metadata.sorted_tables:
-                if {columna['name'] for columna in inspector.get_columns(tabla.name)} != set(tabla.columns.keys()):
-                    raise RuntimeError(mensaje)
-            versiones = conexion.execute(text("SELECT id, version, semilla FROM esquema_version")).all()
-            if len(versiones) != 1 or versiones[0][:2] != (1, VERSION_ESQUEMA):
-                raise RuntimeError(mensaje)
-            from app.models import TipoEventoUso
+class TipoJSON(FunctionElement):
+    """Tipo del valor JSON exterior; compartido por modelos y migraciones."""
 
-            restricciones = inspector.get_multi_check_constraints(
-                filter_names=['evento_uso', 'condicion_desbloqueo'],
-            )
-            esperados = {tipo.value for tipo in TipoEventoUso}
-            for tabla, columna in (('evento_uso', 'tipo'), ('condicion_desbloqueo', 'tipo_evento')):
-                comprobaciones = [restriccion['sqltext'] for restriccion in restricciones[None, tabla]
-                                  if restriccion['name'] == 'tipoeventouso']
-                if len(comprobaciones) != 1:
-                    raise RuntimeError(mensaje)
-                expresion = re.fullmatch(rf'"?{columna}"?\s+IN\s*\((.*?)\)',
-                                         comprobaciones[0].strip(), re.IGNORECASE)
-                if expresion is None or not re.fullmatch(r"\s*'\w+'(?:\s*,\s*'\w+')*\s*", expresion[1]):
-                    raise RuntimeError(mensaje)
-                if set(re.findall(r"'(\w+)'", expresion[1])) != esperados:
-                    raise RuntimeError(mensaje)
-            semilla_base = versiones[0].semilla
-            if semilla_base != semilla:
-                raise RuntimeError(
-                    f'La base {archivo} fue creada con la semilla {semilla_base}; '
-                    f'la aplicación está configurada con {semilla}. '
-                    'Usa otra RUTA_BD o borra el archivo.'
-                )
-    except SQLAlchemyError as error:
-        raise RuntimeError(mensaje) from error
+    type = String()
+    inherit_cache = True
+
+
+@compiles(TipoJSON, 'sqlite')
+def compilar_tipo_json_sqlite(elemento, compilador, **opciones):
+    return f'json_type({compilador.process(elemento.clauses, **opciones)})'
+
+
+@compiles(TipoJSON, 'postgresql')
+def compilar_tipo_json_postgresql(elemento, compilador, **opciones):
+    return f'json_typeof({compilador.process(elemento.clauses, **opciones)})'
 
 
 def crear_motor_bd(url: str) -> Engine:
+    if make_url(url).get_backend_name() != 'sqlite':
+        return create_engine(url, pool_pre_ping=True)
     motor_bd = create_engine(url, connect_args={"check_same_thread": False})
 
     @event.listens_for(motor_bd, "connect")
@@ -97,7 +56,7 @@ MENSAJE_SIN_ESQUEMA = (
 
 
 def comprobar_tablas(motor_bd: Engine) -> None:
-    """Comprueba presencia; las migraciones gestionarán la estructura en R4."""
+    """Comprueba presencia; Alembic gestiona la estructura."""
     from app.models import Base
 
     if not set(Base.metadata.tables).issubset(inspect(motor_bd).get_table_names()):
@@ -108,7 +67,8 @@ def es_sqlite_en_memoria(motor_bd: Engine) -> bool:
     return motor_bd.url.get_backend_name() == 'sqlite' and motor_bd.url.database == ':memory:'
 
 
-def es_bloqueo_temporal(error) -> bool:
+def es_bloqueo_temporal(error: OperationalError) -> bool:
     return getattr(error.orig, 'sqlite_errorname', '') in (
         'SQLITE_BUSY', 'SQLITE_BUSY_SNAPSHOT', 'SQLITE_LOCKED',
-    )
+    ) or any(getattr(error.orig, atributo, None) in ('40001', '55P03')
+             for atributo in ('pgcode', 'sqlstate'))

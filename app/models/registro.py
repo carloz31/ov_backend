@@ -1,8 +1,9 @@
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, JSON, Text, UniqueConstraint, false
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, JSON, Text, UniqueConstraint, column, false
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.database import TipoJSON
 from app.models.base import Base, enumerado
 from app.models.enums import ClasificacionRespuesta, EstadoRespuestaRegistro, OrigenEvaluacion
 
@@ -54,7 +55,7 @@ class TurnoSeguimiento(Base):
     __table_args__ = (
         UniqueConstraint("respuesta_id", "orden"),
         CheckConstraint("orden IN (1, 2)", name="orden_seguimiento_valido"),
-        CheckConstraint("json_type(criterios_objetivo) = 'array'", name="criterios_objetivo_lista"),
+        CheckConstraint(TipoJSON(column("criterios_objetivo")) == 'array', name="criterios_objetivo_lista"),
     )
     id: Mapped[int] = mapped_column(primary_key=True)
     respuesta_id: Mapped[int] = mapped_column(ForeignKey("respuesta_registro.id"))
@@ -70,7 +71,7 @@ class EvaluacionRespuesta(Base):
     __tablename__ = "evaluacion_respuesta"
     __table_args__ = (
         CheckConstraint("numero >= 1 AND numero = CAST(numero AS INTEGER)", name="numero_evaluacion_valido"),
-        CheckConstraint("json_type(criterios_faltantes) = 'array'", name="criterios_faltantes_lista"),
+        CheckConstraint(TipoJSON(column("criterios_faltantes")) == 'array', name="criterios_faltantes_lista"),
     )
     id: Mapped[int] = mapped_column(primary_key=True)
     respuesta_id: Mapped[int] = mapped_column(ForeignKey("respuesta_registro.id"))

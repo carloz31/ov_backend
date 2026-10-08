@@ -1,11 +1,17 @@
 from enum import StrEnum
 
-from sqlalchemy import CheckConstraint, Enum
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import Enum, MetaData
+from sqlalchemy.orm import DeclarativeBase
 
 
 class Base(DeclarativeBase):
-    pass
+    metadata = MetaData(naming_convention={
+        'ix': 'ix_%(column_0_label)s',
+        'uq': 'uq_%(table_name)s_%(column_0_name)s',
+        'ck': 'ck_%(table_name)s_%(constraint_name)s',
+        'fk': 'fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s',
+        'pk': 'pk_%(table_name)s',
+    })
 
 
 def enumerado(clase: type[StrEnum]) -> Enum:
@@ -13,11 +19,3 @@ def enumerado(clase: type[StrEnum]) -> Enum:
         clase, native_enum=False, create_constraint=True, validate_strings=True,
         values_callable=lambda valores: [valor.value for valor in valores],
     )
-
-
-class EsquemaVersion(Base):
-    __tablename__ = "esquema_version"
-    __table_args__ = (CheckConstraint("id = 1"),)
-    id: Mapped[int] = mapped_column(primary_key=True, default=1)
-    version: Mapped[int]
-    semilla: Mapped[str]

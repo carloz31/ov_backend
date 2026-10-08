@@ -306,6 +306,98 @@ de `app/` y la ausencia de `create_all`/`drop_all` en la aplicación. No cambian
 modelos ni dependencias. No se llama a Gemini, no se toca el frontend ni se hace
 push. R4 (Alembic y portabilidad) y R5 quedan pendientes; la fase termina aquí.
 
+### 2026-10-08 · R4: migraciones y portabilidad
+
+Se implementa el plan aprobado desde `dbc2a32`, en `refactor-estructura`.
+La referencia de entrada es **1003 pruebas aprobadas** en R3.
+
+#### Esquema y dialectos
+
+- Alembic sustituye definitivamente a `EsquemaVersion` y al validador propio.
+  Se retiran el modelo, sus reexportaciones y las constantes del validador.
+  Quedan 44 tablas del modelo; Alembic agrega su tabla `alembic_version`.
+  La revisión `0001_esquema_inicial` prepara bases nuevas: no se convierte,
+  borra ni sella ninguna base previa del usuario.
+- Se incorporan las dependencias autorizadas mediante `uv add alembic` y
+  `uv add --optional postgres "psycopg[binary]"`, con aviso previo. La URL de
+  Alembic procede de `cargar_configuracion`, sin duplicarla en `alembic.ini`.
+  El entorno registra los modelos y usa `render_as_batch=True`.
+- La revisión se genera con autogenerate contra una SQLite temporal vacía y
+  se revisa completa: tablas, columnas, nulabilidad, tipos, valores
+  predeterminados, claves primarias, foráneas, unicidad, CHECK e índices.
+  El downgrade sigue el orden inverso de dependencias y no usa CASCADE.
+- `Base.metadata` incorpora la convención ix/uq/ck/fk/pk acordada, con
+  `ck_%(table_name)s_%(constraint_name)s`. Se conservan los nombres base de los
+  enumerados y de los CHECK existentes. Los cuatro CHECK antes anónimos se
+  nombran `cantidad_minima_valida`, `puntaje_valido`, `nivel_seguridad_valido`
+  y `posicion_valida`. Los índices parciales conservan sus nombres y añaden
+  `postgresql_where` con la misma condición que `sqlite_where`.
+- La revisión manual detecta dos detalles que autogenerate refleja desde
+  SQLite y requieren portabilidad: las funciones de tipo JSON y los seis
+  predeterminados booleanos emitidos como texto `0`. Se conservan las
+  restricciones de arrays mediante `TipoJSON`, expresión SQLAlchemy compilada
+  en `app/database.py` como `json_type` o `json_typeof`, y compartida con la
+  revisión. Este auxiliar debe conservar su compatibilidad para reproducir
+  la migración inicial. Los booleanos de la revisión usan `sa.false()`.
+- El motor solo aplica `check_same_thread=False` y PRAGMA en SQLite. En otros
+  dialectos aplica `pool_pre_ping=True`. La clasificación de bloqueos conserva
+  los tres nombres SQLite y reconoce 40001/55P03 por `pgcode` o `sqlstate`,
+  necesario para psycopg 3. No cambian `func.date`, RETURNING, las consultas,
+  los escenarios ni las traducciones HTTP existentes.
+- Desaparece `--crear-tablas` de la CLI; el mensaje de esquema ausente pide
+  `uv run alembic upgrade head`. El argumento `crear_tablas=True` de los
+  auxiliares sigue reservado a pruebas y scripts autorizados. Ni el arranque
+  ni el reinicio crean esquema o cargan datos.
+
+#### Adaptaciones autorizadas y cobertura
+
+No se elimina ninguna función de prueba completa ni se reducen escenarios.
+Se aplican únicamente las adaptaciones 3 y 5 pendientes y la retirada acordada
+de la opción temporal de R3:
+
+| Archivo | Adaptación | Cobertura que la sustituye o conserva |
+|---|---|---|
+| `test_configuracion_base.py` | Retirar columnas, nulabilidad e inserción inválida de `esquema_version`; contar 44 tablas. | Comparación completa del esquema migrado; conservar todas las pruebas de ocupaciones. |
+| `test_fase1.py`, `test_configuracion_metodos.py` | Retirar la tabla de versión de las listas y ajustar el total. | Lista exacta de las 44 tablas y verificación de Alembic. |
+| `test_semilla_instrumentos.py` | Retirar aserciones de versión y renombrar `test_version_unica_y_dos_resultados_vigentes_prohibidos` y `test_reinicio_conserva_catalogo_completo_sin_escribir_version`. | Conservar la prohibición de resultados vigentes duplicados, anulación, catálogo e índices; comprobar conservación de la revisión en cargas y reinicio. |
+| `test_semilla_plataforma.py`, `test_carga_datos.py` | Retirar fila/tabla de versión y su clasificación temporal como catálogo. | Clasificación independiente y exhaustiva de las 44 tablas como catálogo o estado. |
+| `test_carga_datos.py` | Sustituir `test_cli_sin_esquema_y_creacion_temporal` por `test_cli_sin_esquema_y_carga_tras_migracion`. | Migrar explícitamente antes de cargar; nuevo rechazo de `--crear-tablas` sin crear la base. |
+
+`test_migraciones.py` aporta **19 casos**: correspondencia completa con los
+modelos y `compare_metadata`, upgrade repetible, downgrade y nuevo upgrade,
+cargas y reinicios de ambos conjuntos sin alterar la revisión, catálogo vacío,
+rechazo de enumerados inválidos, compilación PostgreSQL de modelos y revisión,
+selección de opciones del motor y clasificación de bloqueos. La comprobación
+explícita de CHECK e índices complementa las limitaciones de autogenerate.
+La retirada de la opción CLI agrega **1 caso**. `test_postgres.py` agrega
+**4 casos opcionales**, que reutilizan sin cambios las aserciones P1, P2, P7 y
+P10, cada uno en un esquema PostgreSQL exclusivo y eliminado al terminar.
+Sin `TEST_POSTGRES_URL`, estos casos se omiten; no se inicia infraestructura.
+
+#### Validación de cierre
+
+- OpenAPI de desarrollo idéntico al capturado antes de modificar R3.
+- Ocho fixtures generados fuera del repositorio e idénticos byte a byte a
+  `ov_frontend/tests/fixtures/servidor`; frontend no se modifica.
+- Flujo CLI real sobre SQLite temporal: upgrade, carga `plataforma`, arranque
+  Uvicorn y `GET /cuentas`: HTTP 200 con las tres cuentas. Se cierra el árbol
+  del servidor temporal. No se utiliza Gemini real ni ninguna base del usuario.
+- Las pruebas dirigidas pasan: 127 aprobadas y 4 omitidas. La suite completa
+  `uv run pytest -q`, con evaluador falso y temporales externos, termina con
+  **1023 aprobadas, 4 omitidas y 2 avisos** en 623.90 segundos (10:23).
+  El conteo es 1003 de R3 + 19 de migraciones + 1 de CLI; no se elimina ningún
+  caso completo. Los cuatro casos PostgreSQL se omiten porque no existe
+  `TEST_POSTGRES_URL`; se comprueba su DDL por compilación, sin afirmar que
+  se haya ejecutado contra un servidor real. Los avisos son las deprecaciones
+  conocidas de Starlette/httpx y Google en Python 3.14.
+- `uv lock --check --offline` pasa con 50 paquetes. Se verifican las seis
+  ubicaciones Python de la raíz de `app/` y las dependencias entre capas:
+  sin imports de datos, scripts o pruebas desde la aplicación ni creación de
+  esquema o siembra. La revisión staged no contiene errores de espacios.
+
+R5 queda pendiente. Los cambios previos de `AGENTS.md` y la especificación no
+versionada permanecen fuera del commit de R4; no se hace push.
+
 ## Iteración 1 · F3
 
 ### 2026-10-07 · Exportación de fixtures de contrato
