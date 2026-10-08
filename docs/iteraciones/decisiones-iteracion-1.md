@@ -4,6 +4,33 @@ Registro de decisiones que afectan a ambos repos. Las internas de cada repo van 
 
 Formato de cada entrada: fecha, fase, decisión, motivo y archivos afectados.
 
+## Actividades por dominio · F3 · 2026-10-08
+
+El usuario resuelve expresamente la contradicción entre §7.4 (título del
+servidor) y §8 (conservar textos): autoriza únicamente `enc-mitos` →
+«La plaza de los rumores» y `act-06` → «Mi mapa de ruta». Se actualizan esos
+dos `title` en `ov_frontend/src/data/content/adventure.ts` para igualar
+ambos modos. Son los títulos existentes en actividades y avisos. §8
+registra esta única excepción; ningún otro texto se modifica.
+
+Los puntos en modo API se construyen en el orden de las actividades del
+servidor, usando `contenido` y `visible`. Las secuencias consecutivas se
+agrupan y conservan sus códigos individuales para reproducción y revisión.
+Los identificadores históricos de los marcadores se conservan como
+presentación; no determinan la lista ni el orden. El contenido ausente se
+omite con un aviso por actividad y sesión solo en desarrollo. El progreso
+usa las actividades visibles SIEMPRE con contenido y posición; conserva el
+peso de cada interacción de una secuencia, según D4, y excluye los extras.
+Los contenidos sin mapa se omiten sin inventar coordenadas.
+
+Validación F3: front **413 pruebas, 398 aprobadas y las mismas 15 fallas
+previas** de F2 (nombres, motivos y detalles iguales, excluyendo tiempos y
+ubicaciones de pila). Siete pruebas nuevas del mapa aprobadas. Build, lint
+y verificador correctos: 536 archivos, cero infracciones y excepciones.
+Backend: **1103 aprobadas, 4 omitidas y 2 avisos previos**, evaluador falso,
+734,36 segundos. No cambian contratos ni código del backend. Commit del
+front: `40e6f92`. Sin push. Se continúa con F4 por autorización del usuario.
+
 ## Actividades por dominio · F2 · 2026-10-08
 
 Se implementan únicamente los servicios, tipos, secciones y adaptadores de

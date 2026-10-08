@@ -280,6 +280,8 @@ En modo `local` no cambia nada (D8).
 
 ## 8. Interfaz: qué cambia y qué no
 
+**Única excepción de texto autorizada (2026-10-08, F3):** prevalecen los títulos del servidor (§7.4). Los puntos `enc-mitos` y `act-06` muestran «La plaza de los rumores» y «Mi mapa de ruta», respectivamente, tanto en modo `api` como en modo `local` (`src/data/content/adventure.ts`). Son los títulos que ya muestran la actividad y los avisos de desbloqueo. No se autoriza ningún otro cambio de texto, marcado, estilo ni estado visual.
+
 Esta spec **no autoriza** cambios de marcado, texto, estilo ni estados visuales. Con `plataforma`, el mapa, el panel y el menú se ven idénticos en `local` y en `api`. Las vistas las cambia el usuario aparte, con los datos que ya llegan; tu trabajo termina en el hook del dominio. El punto 7.4 no es un cambio de interfaz: arma los mismos puntos del mapa desde otra fuente.
 
 Lo que ya se sabe que no tiene vista o queda raro va a `docs/pendientes-interfaz.md`:
