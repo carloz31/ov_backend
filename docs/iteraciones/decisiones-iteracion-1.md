@@ -4,6 +4,69 @@ Registro de decisiones que afectan a ambos repos. Las internas de cada repo van 
 
 Formato de cada entrada: fecha, fase, decisión, motivo y archivos afectados.
 
+## Actividades por dominio · B0 · 2026-10-08
+
+Se ejecuta únicamente B0 de `spec-iteracion-1-actividades-por-dominio.md`,
+sobre `iteracion-1` en ambos repos (backend inicial `bf73ec4`, frontend
+inicial `db5c4c7`). Se leen completos los dos documentos de la iteración
+y los dos `AGENTS.md`.
+
+La sección «Reglas compartidas» del frontend ya estaba actualizada y se
+copia literalmente al backend. Se agrega en ambos la viñeta del Anexo A.2,
+y en el frontend la sección literal del Anexo A.1, antes de «Interfaz del
+estudiante». La comparación de las secciones compartidas queda vacía.
+Se crea `ov_frontend/docs/pendientes-interfaz.md` solo con el encabezado
+y la explicación del Anexo A.3, sin entradas ni plantilla de entrada.
+
+| Repo | Comprobación | Antes | Después |
+|---|---|---|---|
+| Backend | Línea base pytest | Referencia previa R7: 1023 pasan, 4 omitidas, 0 fallas. | B0: 1023 pasan, 4 omitidas, 0 fallas y 2 advertencias; 638,28 segundos. |
+| Frontend | `npm test` | 379: 364 pasan, 15 fallan, 0 omitidas. | 379: 364 pasan, las mismas 15 fallan, 0 omitidas. |
+| Frontend | `npm run build` y `npm run lint` | — | Pasan; build conserva el aviso de bundle mayor de 500 kB. |
+| Frontend | `npm run check:estructura` | — | 515 archivos, 0 infracciones y 0 excepciones. |
+
+Ejecución del backend: el comando solicitado `uv run pytest -q` no llega
+a iniciar pytest porque el lanzador informa «uv trampoline failed to
+canonicalize script path». Se usa `uv run python -m pytest -q -rs`, con
+las dependencias ya instaladas (`UV_NO_SYNC=true`, `UV_OFFLINE=true`) y
+`EVALUADOR=falso`. Se indican `cache_dir` y `--basetemp` fuera del repo.
+Los intentos dentro del sandbox se interrumpen: uno falla al crear los
+temporales y otro queda bloqueado en el `socketpair` interno del bucle
+asíncrono de `TestClient`, confirmado con la pila de faulthandler. La
+ejecución completa se realiza fuera de ese aislamiento, sin modificar
+pruebas ni código y sin llamadas a Gemini.
+Las cuatro omisiones corresponden a `tests/test_postgres.py`, por falta
+de `TEST_POSTGRES_URL`. Las dos advertencias son de dependencias. Se
+ejecuta una sola suite completa del backend para fijar la línea base
+de B0; el código y las pruebas permanecen idénticos durante esta fase.
+
+Las 15 fallas del frontend coinciden por nombre y ubicación antes y
+después. Todas están en `tests/adventure-rendering.test.mjs`; no se
+modifican implementación ni expectativas en esta fase:
+
+| Línea | Nombre de la prueba |
+|---|---|
+| 1500 | immersive submission preserves validation, drafts, versions and the keep action |
+| 1567 | immersive questions preserve attempts, hints, revelation, retry and fresh revision behavior |
+| 1696 | immersive finish shows saved sheets, narrative rewards and the prompted journal action |
+| 1773 | follow-up service waits 700ms, respects both text thresholds and never asks a third turn |
+| 1852 | first text submission saves version one before follow-up; edits and matrices use the normal form |
+| 1878 | follow-up accepts two replies, caps the field at available space and saves one condensed version |
+| 1912 | omitting all turns preserves version one, while a long reply ends follow-up after one turn |
+| 1929 | no question, failure, timeout or fewer than 40 free characters advances silently with the original |
+| 1948 | interrupted follow-up recovers only answered turns and loads the condensed form without duplicate versions |
+| 1997 | follow-up requires 40 free characters and stops before a second question that cannot fit |
+| 2030 | leaving during evaluation never stores a late question and recovery preserves the replied turn |
+| 2323 | every supplied mission node renders, including matrices, slides, questions and instrument items |
+| 2618 | phase 8 path sequence respects both completion records without changing catalog or real thresholds |
+| 2655 | phase 8 direct links open blocked details instead of starting unavailable players |
+| 3191 | discovery atlas covers existing IDs, symmetric relations and gated affinity |
+
+Los registros, la caché y los temporales de pytest se mantienen fuera
+de los repositorios. No cambian código, contratos, fixtures, datos,
+dependencias ni interfaz; no se llama a Gemini ni se hace push.
+Queda pendiente B1 y el resto de las fases; B0 no las inicia.
+
 ## Refactor de estructura · R5 · 2026-10-08
 
 La documentación de preparación de ambos repositorios pasa a los comandos de
