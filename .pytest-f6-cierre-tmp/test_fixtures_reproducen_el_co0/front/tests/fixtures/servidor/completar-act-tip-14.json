@@ -1,0 +1,35 @@
+{
+  "eventos_registrados": [
+    {
+      "fecha_hora": "2026-10-07T10:00:00",
+      "referencia": "act-tip-14",
+      "tipo": "COMPLETA_ACTIVIDAD"
+    }
+  ],
+  "nuevos_desbloqueos": [
+    {
+      "condiciones": [
+        {
+          "actual": 1,
+          "cumplida": true,
+          "referencia": "act-tip-14",
+          "requerido": 1,
+          "tipo_conteo": "EVENTOS",
+          "tipo_evento": "COMPLETA_ACTIVIDAD"
+        }
+      ],
+      "objetivo": {
+        "codigo": "act-tip-final",
+        "nombre": "Las pistas que hablan de ti"
+      },
+      "regla": "R-act-tip-final",
+      "tipo_objetivo": "ACTIVIDAD"
+    }
+  ],
+  "resultados_generados": [
+    {
+      "aplicacion": "APL-RIASEC",
+      "instrumento": "TEST-RIASEC"
+    }
+  ]
+}

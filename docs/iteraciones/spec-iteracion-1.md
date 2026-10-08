@@ -559,7 +559,9 @@ Las páginas de inteligencias y habilidades siguen con su contenido de demostrac
   - los `nuevos_desbloqueos` de cada acción;
   - los no vistos del servidor al ingresar.
 
-  Se mapean así: INSIGNIA → `badge`, FICHA → `ficha`, BLOQUE CIUDAD → `ciudad`, NIVEL → `nivel` (nuevo tipo, con el estilo del aviso de insignia). Los desbloqueos de ACTIVIDAD no generan aviso: se ven en el mapa y en el cierre. Al mostrarse la cola se llama a `marcarVistos`. En modo `api`, `seenUnlockIds` y `announcedBadgeCodes` no deciden qué mostrar.
+  Se mapean así: INSIGNIA → `badge`, FICHA → `ficha`, BLOQUE CIUDAD → `ciudad`, NIVEL → `nivel` (nuevo tipo, con el estilo del aviso de insignia). Los desbloqueos de ACTIVIDAD y los demás tipos quedan fuera de la cola y de su contador. La cola automática se muestra solo en Camino y Ciudad, después de cerrar el reproductor y respetando los overlays prioritarios; la campana abre el mismo lote por solicitud en los demás módulos. Elena permanece únicamente en `FinishScreen`, con su enlace al libro.
+
+  Se llama a `marcarVistos` **al terminar de mostrar todos los avisos del lote**. Antes del POST se vuelven a consultar los no vistos; cualquier aviso nuevo se incorpora y se muestra antes de marcar. Se utiliza el marcado global existente, incluidos los tipos sin presentación propia. Recargar antes del marcado conserva los pendientes en el servidor. Los errores mantienen el lote y permiten reintentar; si el POST quedó confirmado, se repiten solo las consultas pendientes. En modo `api`, `seenUnlockIds` y `announcedBadgeCodes` no deciden qué mostrar, contar o marcar.
 - **Pasaporte.** `getStudentAchievementGroups` en modo `api` toma `done` del servidor (OBTENIDA). Conserva la agrupación, íconos y textos del front por código. Las ocultas no obtenidas (`???`) no se listan una por una: se muestra cuántas quedan por descubrir. Las insignias de misiones adicionales, que aún no existen en el servidor, no se muestran.
 - **Nivel.** `getTravelerLevel` en modo `api` usa `nivel_actual` del servidor. La descripción y el «siguiente paso» siguen siendo los textos del front para ese número.
 

@@ -1,0 +1,192 @@
+[
+  {
+    "fecha_hora": "2026-10-07T10:00:00",
+    "objetivo": {
+      "codigo": "CIUDAD",
+      "nombre": "La ciudad"
+    },
+    "regla": "R-ciudad",
+    "tipo_objetivo": "BLOQUE",
+    "visto": false
+  },
+  {
+    "fecha_hora": "2026-10-07T10:00:00",
+    "objetivo": {
+      "codigo": "N3",
+      "nombre": "Cartógrafo de posibilidades"
+    },
+    "regla": "R-NIV-3",
+    "tipo_objetivo": "NIVEL",
+    "visto": false
+  },
+  {
+    "fecha_hora": "2026-10-07T10:00:00",
+    "objetivo": {
+      "codigo": "I3",
+      "nombre": "La llave de la ciudad"
+    },
+    "regla": "R-I3",
+    "tipo_objetivo": "INSIGNIA",
+    "visto": false
+  },
+  {
+    "fecha_hora": "2026-10-07T10:00:00",
+    "objetivo": {
+      "codigo": "-",
+      "nombre": "Conversaciones"
+    },
+    "regla": "R-FAM-ESTUDIANTE",
+    "tipo_objetivo": "CONVERSACIONES",
+    "visto": false
+  },
+  {
+    "fecha_hora": "2026-10-07T10:00:00",
+    "objetivo": {
+      "codigo": "mission-next-step",
+      "nombre": "Elegir mi siguiente paso"
+    },
+    "regla": "R-mission-next-step",
+    "tipo_objetivo": "ACTIVIDAD",
+    "visto": false
+  },
+  {
+    "fecha_hora": "2026-10-07T10:00:00",
+    "objetivo": {
+      "codigo": "mission-expectations",
+      "nombre": "Preparar la mochila"
+    },
+    "regla": "R-mission-expectations",
+    "tipo_objetivo": "ACTIVIDAD",
+    "visto": false
+  },
+  {
+    "fecha_hora": "2026-10-07T10:00:00",
+    "objetivo": {
+      "codigo": "act-06",
+      "nombre": "Mi mapa de ruta"
+    },
+    "regla": "R-act-06",
+    "tipo_objetivo": "ACTIVIDAD",
+    "visto": false
+  },
+  {
+    "fecha_hora": "2026-10-07T10:00:00",
+    "objetivo": {
+      "codigo": "mission-compass",
+      "nombre": "Mi brújula personal"
+    },
+    "regla": "R-mission-compass",
+    "tipo_objetivo": "ACTIVIDAD",
+    "visto": false
+  },
+  {
+    "fecha_hora": "2026-10-07T10:00:00",
+    "objetivo": {
+      "codigo": "mission-future",
+      "nombre": "Mi horizonte"
+    },
+    "regla": "R-mission-future",
+    "tipo_objetivo": "ACTIVIDAD",
+    "visto": false
+  },
+  {
+    "fecha_hora": "2026-10-07T10:00:00",
+    "objetivo": {
+      "codigo": "N2",
+      "nombre": "Recolector de pistas"
+    },
+    "regla": "R-NIV-2",
+    "tipo_objetivo": "NIVEL",
+    "visto": false
+  },
+  {
+    "fecha_hora": "2026-10-07T10:00:00",
+    "objetivo": {
+      "codigo": "I2",
+      "nombre": "Coleccionista de pistas"
+    },
+    "regla": "R-I2",
+    "tipo_objetivo": "INSIGNIA",
+    "visto": false
+  },
+  {
+    "fecha_hora": "2026-10-07T10:00:00",
+    "objetivo": {
+      "codigo": "mission-story",
+      "nombre": "Las huellas que traigo"
+    },
+    "regla": "R-mission-story",
+    "tipo_objetivo": "ACTIVIDAD",
+    "visto": false
+  },
+  {
+    "fecha_hora": "2026-10-07T10:00:00",
+    "objetivo": {
+      "codigo": "rec-unesco-stem",
+      "nombre": "Ciencia sin etiquetas"
+    },
+    "regla": "R-rec-unesco-stem",
+    "tipo_objetivo": "FICHA",
+    "visto": false
+  },
+  {
+    "fecha_hora": "2026-10-07T10:00:00",
+    "objetivo": {
+      "codigo": "rec-ponteencarrera",
+      "nombre": "Ponte en Carrera: compara carreras e instituciones"
+    },
+    "regla": "R-rec-ponteencarrera",
+    "tipo_objetivo": "FICHA",
+    "visto": false
+  },
+  {
+    "fecha_hora": "2026-10-07T10:00:00",
+    "objetivo": {
+      "codigo": "ficha-mitos",
+      "nombre": "Ficha: Mitos y realidades del futuro profesional"
+    },
+    "regla": "R-ficha-mitos",
+    "tipo_objetivo": "FICHA",
+    "visto": false
+  },
+  {
+    "fecha_hora": "2026-10-07T10:00:00",
+    "objetivo": {
+      "codigo": "act-07",
+      "nombre": "Mis propios pregones"
+    },
+    "regla": "R-act-07",
+    "tipo_objetivo": "ACTIVIDAD",
+    "visto": false
+  },
+  {
+    "fecha_hora": "2026-10-07T10:00:00",
+    "objetivo": {
+      "codigo": "first-steps",
+      "nombre": "Tres pistas para comenzar el viaje"
+    },
+    "regla": "R-first-steps",
+    "tipo_objetivo": "FICHA",
+    "visto": false
+  },
+  {
+    "fecha_hora": "2026-10-07T10:00:00",
+    "objetivo": {
+      "codigo": "enc-mitos",
+      "nombre": "La plaza de los rumores"
+    },
+    "regla": "R-enc-mitos",
+    "tipo_objetivo": "ACTIVIDAD",
+    "visto": false
+  },
+  {
+    "fecha_hora": "2026-10-07T10:00:00",
+    "objetivo": {
+      "codigo": "I1",
+      "nombre": "La primera chispa"
+    },
+    "regla": "R-I1",
+    "tipo_objetivo": "INSIGNIA",
+    "visto": false
+  }
+]

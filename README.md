@@ -12,7 +12,7 @@ uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 En ov_frontend, configurar `.env.local` con `VITE_DATOS=api` y `VITE_API_URL=/api`, y ejecutar `npm run dev`. Su proxy de desarrollo quita `/api` y llama a 8000. Usar `est-ana` o `est-luis`; son cuentas de prueba. El backend decide estados, respuestas, resultado, fichas, insignias y nivel; el frontend conserva contenido narrativo y borradores locales. Las semillas demo y plataforma usan bases separadas. No versiones `.env` ni `*.db`.
 
-**F7 · 2026-10-07:** recorrido completo ejecutado y aceptación pendiente: 12 HU pasan, HU-073 parcial por pausa de avisos ante detalles y HU-074 falla por presentación de ocultas. F6 sigue sin cerrar. Backend: 1006 pruebas pasan, dos advertencias previas, con evaluador falso. Frontend: build/lint pasan; 335 de 354 pruebas pasan, con 16 fallas previas y tres de F6. Ver [decisiones F7](docs/iteraciones/decisiones-iteracion-1.md#f7) y el informe detallado `ov_frontend/docs/student-experience/informe-f7.md`.
+**Cierre F6 · 2026-10-07:** avisos, pasaporte, nivel y requisitos completos. HU-073 y HU-074 corregidas y revalidadas; las catorce HU del recorrido F7 pasan en el alcance comprobado. Backend: 1006 pruebas pasan, dos advertencias previas, con evaluador falso. Frontend: build/lint pasan; 340 de 356 pruebas pasan, con solo las 16 fallas previas. Ver [decisiones F6](docs/iteraciones/decisiones-iteracion-1.md#f6) y el informe `ov_frontend/docs/student-experience/informe-f7.md`. La aprobación formal de la iteración corresponde al usuario.
 
 El resto de este README documenta la demo y las ampliaciones anteriores, con sus cifras históricas de validación.
 

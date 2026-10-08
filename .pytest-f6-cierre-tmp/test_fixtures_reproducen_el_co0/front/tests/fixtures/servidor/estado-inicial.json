@@ -1,0 +1,275 @@
+{
+  "bloques": [
+    {
+      "actividades": [
+        {
+          "codigo": "mission-welcome",
+          "estado": "DISPONIBLE",
+          "titulo": "El inicio del viaje"
+        },
+        {
+          "codigo": "enc-mitos",
+          "estado": "BLOQUEADA",
+          "titulo": "La plaza de los rumores"
+        },
+        {
+          "codigo": "act-07",
+          "estado": "BLOQUEADA",
+          "titulo": "Mis propios pregones"
+        },
+        {
+          "codigo": "mission-story",
+          "estado": "BLOQUEADA",
+          "titulo": "Las huellas que traigo"
+        },
+        {
+          "codigo": "mission-future",
+          "estado": "BLOQUEADA",
+          "titulo": "Mi horizonte"
+        },
+        {
+          "codigo": "mission-compass",
+          "estado": "BLOQUEADA",
+          "titulo": "Mi brújula personal"
+        },
+        {
+          "codigo": "act-06",
+          "estado": "BLOQUEADA",
+          "titulo": "Mi mapa de ruta"
+        },
+        {
+          "codigo": "mission-expectations",
+          "estado": "BLOQUEADA",
+          "titulo": "Preparar la mochila"
+        },
+        {
+          "codigo": "mission-next-step",
+          "estado": "BLOQUEADA",
+          "titulo": "Elegir mi siguiente paso"
+        }
+      ],
+      "codigo": "CAMINO",
+      "espacio": "MISIONES_CAMPO",
+      "estado": "DISPONIBLE",
+      "nombre": "El camino"
+    },
+    {
+      "actividades": [
+        {
+          "codigo": "act-tip-01",
+          "estado": "BLOQUEADA",
+          "titulo": "Una vuelta por el molino"
+        },
+        {
+          "codigo": "act-tip-02",
+          "estado": "BLOQUEADA",
+          "titulo": "Mara: interacción 2 de 14"
+        },
+        {
+          "codigo": "act-tip-03",
+          "estado": "BLOQUEADA",
+          "titulo": "Mara: interacción 3 de 14"
+        },
+        {
+          "codigo": "act-tip-04",
+          "estado": "BLOQUEADA",
+          "titulo": "Mara: interacción 4 de 14"
+        },
+        {
+          "codigo": "act-tip-05",
+          "estado": "BLOQUEADA",
+          "titulo": "Mara: interacción 5 de 14"
+        },
+        {
+          "codigo": "act-tip-06",
+          "estado": "BLOQUEADA",
+          "titulo": "Mara: interacción 6 de 14"
+        },
+        {
+          "codigo": "act-tip-07",
+          "estado": "BLOQUEADA",
+          "titulo": "Mara: interacción 7 de 14"
+        },
+        {
+          "codigo": "act-tip-08",
+          "estado": "BLOQUEADA",
+          "titulo": "Mara: interacción 8 de 14"
+        },
+        {
+          "codigo": "act-tip-09",
+          "estado": "BLOQUEADA",
+          "titulo": "Mara: interacción 9 de 14"
+        },
+        {
+          "codigo": "act-tip-10",
+          "estado": "BLOQUEADA",
+          "titulo": "Mara: interacción 10 de 14"
+        },
+        {
+          "codigo": "act-tip-11",
+          "estado": "BLOQUEADA",
+          "titulo": "Mara: interacción 11 de 14"
+        },
+        {
+          "codigo": "act-tip-12",
+          "estado": "BLOQUEADA",
+          "titulo": "Mara: interacción 12 de 14"
+        },
+        {
+          "codigo": "act-tip-13",
+          "estado": "BLOQUEADA",
+          "titulo": "Mara: interacción 13 de 14"
+        },
+        {
+          "codigo": "act-tip-14",
+          "estado": "BLOQUEADA",
+          "titulo": "Mara: interacción 14 de 14"
+        },
+        {
+          "codigo": "act-tip-final",
+          "estado": "BLOQUEADA",
+          "titulo": "Las pistas que hablan de ti"
+        }
+      ],
+      "codigo": "CIUDAD",
+      "espacio": "CIUDAD",
+      "estado": "BLOQUEADA",
+      "nombre": "La ciudad"
+    }
+  ],
+  "conversaciones": {
+    "estado": "BLOQUEADA"
+  },
+  "cuenta": {
+    "codigo": "est-ana",
+    "nombre": "Ana",
+    "rol": "ESTUDIANTE"
+  },
+  "fichas": [
+    {
+      "codigo": "ficha-mitos",
+      "estado": "BLOQUEADA",
+      "titulo": "Ficha: Mitos y realidades del futuro profesional"
+    },
+    {
+      "codigo": "first-steps",
+      "estado": "BLOQUEADA",
+      "titulo": "Tres pistas para comenzar el viaje"
+    },
+    {
+      "codigo": "rec-ponteencarrera",
+      "estado": "BLOQUEADA",
+      "titulo": "Ponte en Carrera: compara carreras e instituciones"
+    },
+    {
+      "codigo": "rec-unesco-stem",
+      "estado": "BLOQUEADA",
+      "titulo": "Ciencia sin etiquetas"
+    }
+  ],
+  "insignias": [
+    {
+      "codigo": "I1",
+      "descripcion": "Te animaste a comenzar sin necesitar todas las respuestas.",
+      "estado": "BLOQUEADA",
+      "nombre": "La primera chispa",
+      "requisito": "Completa la introducción de tu viaje."
+    },
+    {
+      "codigo": "???",
+      "descripcion": null,
+      "estado": "BLOQUEADA",
+      "nombre": "Logro oculto",
+      "requisito": null
+    },
+    {
+      "codigo": "I2",
+      "descripcion": "Reuniste señales sobre tus gustos, fortalezas y preguntas.",
+      "estado": "BLOQUEADA",
+      "nombre": "Coleccionista de pistas",
+      "requisito": "Completa tres Misiones de Campo."
+    },
+    {
+      "codigo": "I3",
+      "descripcion": "Tus descubrimientos abrieron la puerta a nuevos escenarios.",
+      "estado": "BLOQUEADA",
+      "nombre": "La llave de la ciudad",
+      "requisito": "Completa todas las Misiones de Campo."
+    },
+    {
+      "codigo": "I4",
+      "descripcion": "Invitaste a alguien a mirar el camino contigo.",
+      "estado": "BLOQUEADA",
+      "nombre": "Una invitación abre caminos",
+      "requisito": "Invita a un compañero a tu Crew."
+    },
+    {
+      "codigo": "I5",
+      "descripcion": "Formaste un equipo para acompañar la exploración.",
+      "estado": "BLOQUEADA",
+      "nombre": "Nadie viaja solo",
+      "requisito": "Forma un Crew con un compañero que acepte tu invitación."
+    },
+    {
+      "codigo": "I6",
+      "descripcion": "Convertiste una conversación familiar en una nueva pista.",
+      "estado": "BLOQUEADA",
+      "nombre": "Una mesa para conversar",
+      "requisito": "Completen la primera conversación en familia."
+    },
+    {
+      "codigo": "I7",
+      "descripcion": "Usaste tus talentos para responder a un reto real.",
+      "estado": "BLOQUEADA",
+      "nombre": "Aquí para ayudar",
+      "requisito": "Resuelve tu primer caso."
+    },
+    {
+      "codigo": "I8",
+      "descripcion": "Investigaste una profesión y compartiste lo aprendido.",
+      "estado": "BLOQUEADA",
+      "nombre": "Historias que inspiran",
+      "requisito": "Publica una misión de investigación."
+    },
+    {
+      "codigo": "I9",
+      "descripcion": "Completaste todos los retos y construiste tu propia lectura de la ciudad.",
+      "estado": "BLOQUEADA",
+      "nombre": "Una ciudad que sonríe",
+      "requisito": "Resuelve todos los llamados de la Central de casos."
+    }
+  ],
+  "nivel_actual": {
+    "numero": 1,
+    "titulo": "Observador del horizonte"
+  },
+  "niveles": [
+    {
+      "estado": "OBTENIDO",
+      "numero": 1,
+      "titulo": "Observador del horizonte"
+    },
+    {
+      "estado": "BLOQUEADO",
+      "numero": 2,
+      "titulo": "Recolector de pistas"
+    },
+    {
+      "estado": "BLOQUEADO",
+      "numero": 3,
+      "titulo": "Cartógrafo de posibilidades"
+    },
+    {
+      "estado": "BLOQUEADO",
+      "numero": 4,
+      "titulo": "Explorador de la ciudad"
+    },
+    {
+      "estado": "BLOQUEADO",
+      "numero": 5,
+      "titulo": "Autor de su rumbo"
+    }
+  ],
+  "preguntas_diario": [],
+  "testimonios": []
+}

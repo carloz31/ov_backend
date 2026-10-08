@@ -236,9 +236,50 @@ En el backend solo cambia esta sección; no se agregan dependencias, no se llama
 
 Las pruebas nuevas cubren construcción y escala, reanudación, despedida, guardado y doble clic, desconexión, 409, revisión de solo lectura, reintento de consultas sin otro POST, concurrencia del resultado, respuestas tardías, bloqueo por URL, aislamiento local, IRA y porcentajes, perfil plano, coincidencias y códigos desconocidos, carreras y via, y sello separado por cuenta y fecha. Sin cambios de contratos, fixtures, dependencias ni áreas protegidas; sin llamadas a Gemini. Un commit en español por repo en iteracion-1, sin push. F6–F7 y las 16 fallas previas quedan pendientes; se detiene antes de F6.
 
+## F6
+
+**Completa · 2026-10-07.** Se implementan y verifican avisos, pasaporte, nivel y requisitos sobre F5. Tras la verificación inicial F7, el usuario solicita cerrar HU-073 y HU-074 y autoriza corregir la identificación de ocultas según §5.9.
+
+- **Apertura acordada:** la cola automática opera únicamente en Camino y Ciudad, después del reproductor y de los overlays prioritarios. La campana solicita el mismo lote en otros módulos. Los avisos duran siete segundos y admiten cierre manual; no hay una segunda cola.
+- **Marcado acordado:** se marca el lote después de mostrar todos sus avisos. Antes del POST global existente se consultan de nuevo los no vistos; los nuevos avisos deben mostrarse primero. El recibo de un POST confirmado permite reintentar solo GET si falla la consulta posterior. Recargar antes del marcado conserva los pendientes; cambiar de cuenta o reiniciar descarta el lote y las respuestas tardías.
+- **Elena acordada:** su mensaje permanece exclusivamente en FinishScreen. La cola presenta INSIGNIA, FICHA, BLOQUE CIUDAD y NIVEL; los demás tipos no tienen presentación ni contador, aunque el endpoint global los marca junto al lote.
+- Los nuevos desbloqueos de ingreso y finalización se conservan tras el POST aunque falle el refresco. Se deduplican por cuenta, regla, tipo y código. Los registros locales de avisos vistos no intervienen en API.
+- Pasaporte y perfil usan insignias del estado remoto, con OBTENIDA como única fuente de adquisición. Las preferencias de hasta tres insignias, incluida una selección vacía, se guardan por cuenta en el almacenamiento de descubrimiento. Los números, títulos y estados de niveles vienen del servidor; las descripciones y siguientes pasos conservan los textos del front. Sin nivel recibido no se calcula ni supone un nivel inicial.
+- Los requisitos se consultan al abrir detalles: ACTIVIDAD, BLOQUE CIUDAD, FICHA e INSIGNIA pública. Se añaden carga, error y reintento, con descarte por cuenta y detalle. No se consultan códigos de casos o desafíos ausentes ni se registran eventos por consultar.
+
+**Corrección autorizada.** El plan inicial decía `nombre === '???'`, pero el contrato y fixtures entregan `codigo: '???'`, `nombre: 'Logro oculto'`, sin descripción ni requisito. La solicitud de cierre autoriza usar el código anonimizado y el estado no OBTENIDA: solo se presenta el contador. Cuando el servidor revela una obtenida, su código, nombre, descripción y requisito se muestran normalmente. Se corrige la variante de prueba convirtiendo el registro anonimizado en I10 obtenida; se conservan y refuerzan las aserciones. Sin cambios de contrato ni fixtures.
+
+**Validación previa de F6 (antes del cierre).** Base SQLite desechable independiente, SEMILLA=plataforma y EVALUADOR=falso, backend 8002 y frontend 5177 con proxy temporal. El proxy versionado conserva 8000. La bienvenida se completa en el navegador; los demás hitos del Camino se preparan mediante API para comprobar los avisos, sin repetir la aceptación de F4. Se observa I1 y ficha inicial; I2 y nivel 2; Ciudad, I3 y nivel 3. En catálogo no aparece cola automática y la campana abre siete pendientes. Recargar antes de marcar mantiene los siete; completar el Camino mientras están cargados incorpora el aviso de Ciudad en la consulta previa. Otra recarga mantiene los diez avisos sin marcar; recorrerlos deja la campana vacía y GET de no vistos devuelve `[]`. Perfil y panel de Ciudad muestran Cartógrafo de posibilidades, nivel 3; el diálogo de I4 consulta y muestra «Invita a un compañero a tu Crew». La exclusión visual de ocultas en los pasos 11–12 sigue pendiente.
+
+| Repo | Validación previa | Resultado |
+|---|---|---|
+| Frontend | npm run build y npm run lint | Pasan; permanece el aviso previo de bundle mayor de 500 kB. |
+| Frontend | npm test | 354 pruebas: 335 pasan, las mismas 16 fallas previas por nombre y línea, y 3 fallas nuevas vinculadas a la discrepancia de ocultas. No se cambian expectativas anteriores. |
+| Backend | uv run pytest -q, SEMILLA=demo, EVALUADOR=falso, temporales y caché propios | 1006 pasan, cero fallas, dos advertencias previas de deprecación; 1241,26 segundos. |
+
+Los casos nuevos cubren cola, marcado, avisos nuevos, recarga, reintento sin otro POST, ingreso y finalización con refresco fallido, respuestas tardías, pausa y apertura manual, selección por cuenta, niveles remotos, requisitos y aislamiento local. Solo se actualizan estos registros y §5.9 en el backend; no cambian endpoints, contratos, fixtures ni dependencias. Sin acceso a áreas protegidas, llamadas a Gemini ni push. El cierre actual se documenta a continuación.
+
+### Cierre de HU-073 y HU-074
+
+El bloqueo de anuncios API incluye diálogos, drawers y menús montados en portales, actividad y overlays prioritarios. Se comparte announcementBlocked con el criterio de getNextBadge; al ocultar el aviso se desmonta y cancela su temporizador. No se registra como mostrado durante la pausa. La campana solicita el lote sin bloquearse por su propio menú; la cola espera a que se cierre. El efecto de marcado también permanece pausado mientras haya un overlay.
+
+Base desechable nueva, SEMILLA=plataforma y EVALUADOR=falso, backend 8002/frontend 5178. Para repetir exclusivamente los pasos 11–12, el Camino se prepara por API; no se atribuye esa preparación a un nuevo recorrido completo. La verificación completa F7 anterior permanece descrita arriba.
+
+Se abre Mi horizonte mientras hay avisos: quedan siete en la campana, el aviso desaparece y sigue pausado más de siete segundos. No se registra POST de marcado y los 19 no vistos del servidor permanecen. Al cerrar se retoma el aviso con el mismo contador. Actividad y diálogo de salida no presentan la cola; en pasaporte no aparece automáticamente. La campana solicita diez pendientes, y el diálogo de I4 los pausa sin consumirlos. Recargar antes del marcado devuelve los diez.
+
+DATO DE PRUEBA: un evento crudo VENCE_DESAFIO_INTACTO, sin referencia, exclusivamente en esta base desechable obtiene I10 «Luz sin fisuras» mientras el lote está abierto. No se implementa ni se recorre un desafío fuera del alcance. La consulta previa incorpora su aviso después de los diez anteriores: se muestran once en total y solo entonces ocurre un POST global. GET de no vistos queda vacío, incluido tras recargar. I10 se muestra completa, con descripción y requisito del servidor; contador de ocultas desaparece y pasaporte pasa de 3/10 a 4/10. Nivel permanece en 3.
+
+Evidencias nuevas: f6-cierre-dom.json, f6-cierre-inicial.json, f6-cierre-pausa.json, f6-cierre-oculta-obtenida.json, f6-cierre-final.json; capturas f6-cierre-detalle-pausado.png, f6-cierre-pasaporte.png y f6-cierre-obtenida.png; logs f6-cierre-build.log, f6-cierre-lint.log, f6-cierre-tests.log y f6-cierre-pytest.log en visualizaciones de esta conversación.
+
+Validación de cierre frontend: build y lint pasan; npm test tiene 356 pruebas, 340 pasan y únicamente las 16 fallas previas por nombre y línea. Las tres pendientes de F6 pasan sin debilitar aserciones. Se agregan dos casos de pausa del marcado y campana; sin alterar expectativas anteriores.
+
+Validación de cierre backend: uv run pytest -q, con SEMILLA=demo, EVALUADOR=falso y temporales propios, termina con 1006 pruebas que pasan, cero fallas y dos advertencias previas en 1080.83 segundos.
+
+Un commit F6 por repo con el mensaje «Iteración 1 · F6: avisos, pasaporte, nivel y requisitos», en iteracion-1, sin push. Se detiene el trabajo al completar F6.
+
 ## F7
 
-**Verificación ejecutada · 2026-10-07; aceptación pendiente.** El usuario solicitó expresamente el recorrido completo y el informe F7 sobre el estado actual, con F6 aún sin cerrar. Se mantiene la discrepancia de ocultas registrada en F6; no se resuelve en código ni se consideran aprobadas las HU con defectos. El informe detallado está en `ov_frontend/docs/student-experience/informe-f7.md`.
+**Verificación inicial ejecutada · 2026-10-07.** El usuario solicitó el recorrido completo sobre F6 sin cerrar. Se detectaron los defectos HU-073/HU-074 y posteriormente el usuario autorizó corregirlos al cerrar F6. La tabla siguiente incorpora esa revalidación; el recorrido original se conserva. El informe detallado está en `ov_frontend/docs/student-experience/informe-f7.md`.
 
 **Recorrido (§6).** Navegador con SEMILLA=plataforma, EVALUADOR=falso, SQLite desechable, backend 8002 y frontend API 5178 mediante proxy temporal; el proxy versionado sigue en 8000. Reinicio y todas las acciones se hacen desde la interfaz; las consultas directas son GET de contraste. No se prepara el Camino por API. Se ejecutan las nueve actividades del Camino, la repetición completa de enc-mitos, las siete entregas necesarias de la matriz, los 60 ítems en catorce encuentros de Mara, la actividad de resultado, libro, afines/carreras, pasaporte y recargas. Tras tres respuestas de Mara se sale, recarga y retoma la cuarta. Resultado IRA: 100 %, 75 % y 50 %, con I=5, R=4, A=3, S/E/C=1 (DATO DE PRUEBA).
 
@@ -257,18 +298,18 @@ Balance: 24 actividades distintas completadas y 25 eventos COMPLETA_ACTIVIDAD; s
 | HU-025 · Requisitos | Pasa | Detalle de enc-mitos pide bienvenida; I4 consulta «Invita a un compañero a tu Crew». Suites cubren Ciudad, fichas, conteos, error/reintento y consulta por solicitud sin eventos. Inteligencias/habilidades indican próxima iteración. |
 | HU-026 · Afines y carreras | Pasa | Geólogo/a primero, Mejor ajuste y correlación 0.826325. Libro: Ingeniería Civil, Ingeniería Ambiental, Medicina Veterinaria y via; navegación a ocupación/carrera. Perfil plano y códigos desconocidos cubiertos en pruebas. |
 | HU-027 · Sello | Pasa | Cierre 14 muestra Elena y enlace. Sello listo con resultado vigente, revela IRA y persiste tras recarga. Aislamiento por cuenta/fecha cubierto en pruebas. |
-| HU-073 · Avisos | Parcial | Ficha, insignias, Ciudad y niveles observados; Elena solo en cierre. Al abrir detalle Mi horizonte con aviso de nivel 2 activo, aviso y temporizador siguen activos bajo el diálogo. Falta coordinar ese overlay con la pausa. Consulta previa, avisos nuevos y reintentos pasan en suites. |
-| HU-074 · Pasaporte | Falla | Obtenidas I1–I3, bloqueadas públicas y selección vacía persistente funcionan. Oculta pendiente aparece como botón individual «Logro oculto» y grupo, en lugar del contador aprobado. Tres pruebas F6 fallan. |
+| HU-073 · Avisos | Pasa | Revalidación de cierre F6: detalle/drawer, actividad, diálogo y menú pausan la cola. Se retoma al cerrar; la consulta previa incorpora I10 nueva y un único POST al terminar deja no vistos vacíos. |
+| HU-074 · Pasaporte | Pasa | Revalidación de cierre F6: oculta pendiente solo en contador, sin tarjeta ni nombre en HTML; al obtener I10 aparece completa. Requisitos, nivel y recargas correctos. Tres pruebas corregidas y reforzadas. |
 | HU-075 · Nivel | Pasa | Niveles 1, 2 y 3 en sus hitos; panel/perfil/pasaporte coinciden en nivel 3, Cartógrafo de posibilidades. Lista de títulos remota; pruebas cubren ausencia de nivel sin cálculo local. |
 
 **Invariantes (§7).** (1) Estados y recompensas remotos en las vistas auditadas; se omiten los cálculos locales en API. (2) Act-07 conserva estado remoto sin completar tras guardar entrega local; la única llamada de finalización desde vista sigue en move de StudentActivityPlayer. (3) Repetición confirmada en eventos; revisión no es nueva realización. (4) La única llamada fetch encontrada en áreas permitidas está en servidor/cliente.ts; no se leen portales protegidos. Adaptadores solo import type. (5) Suites de aislamiento pasan y las 16 fallas anteriores conservan exactamente nombres y líneas; mapa/reproductor local comprobados brevemente en 5179. No se certifica suite local enteramente verde. (6) Los escenarios demo e invariantes pasan dentro de las 1006 pruebas del backend, sin modificar expectativas.
 
-| Repo | Validación F7 | Resultado |
+| Repo | Validación F7 inicial | Resultado |
 |---|---|---|
 | Frontend | npm run build, npm run lint | Pasan; aviso previo de bundle grande. |
 | Frontend | npm test | 354: 335 pasan, 19 fallan. Las 16 previas coinciden por nombre y línea con F5/F0; tres de F6 relativas a ocultas, líneas 23, 38 y 63 de servidor-logros.test.mjs. |
 | Backend | uv run pytest -q, SEMILLA=demo, EVALUADOR=falso, temporales/caché propios | 1006 pasan, cero fallas, dos advertencias previas, 1234.34 segundos. |
 
-**Pendientes.** Resolver identificación de ocultas sin cambiar el contrato, adaptar la variante de prueba que busca I10 en el fixture anonimizado y verificar ausencia de tarjetas individuales; coordinar pausa del aviso con detalles de actividades. El paso 11 falla y el 12 conserva también ese defecto visual. Repetir esos puntos y cerrar F6 antes de aprobar la iteración. Las 16 fallas previas permanecen fuera de este alcance, sin cambiar expectativas.
+**Pendientes actuales.** HU-073 y HU-074 corregidas y revalidadas; pasos 11–12 pasan. Solo permanecen las 16 fallas previas del frontend fuera de esta fase, sin modificar sus expectativas. La aprobación formal de la iteración corresponde al usuario.
 
-**Cierre de trabajo.** README de ambos repos, este registro y el informe por HU actualizados. Evidencias DOM, GET, capturas y logs guardados fuera de Git en visualizaciones de la conversación. Commits F7 de documentación únicamente; cambios pendientes F6 conservados sin incorporarlos a esos commits. Se retiran servidores/base temporales. Sin dependencias, cambios de contratos, regeneración de fixtures, llamadas a Gemini, lectura de áreas protegidas ni push. F7 queda ejecutada como verificación, con aceptación pendiente.
+**Cierre de trabajo.** Los commits F7 iniciales fueron documentales. El cierre posterior F6 incorpora su implementación y registros con validación de HU-073/HU-074. Evidencias DOM, GET, capturas y logs fuera de Git; servidores y base temporales retirados al terminar. Sin dependencias, contratos/fixtures nuevos, Gemini, áreas protegidas ni push. Se detiene el trabajo al cerrar F6.
