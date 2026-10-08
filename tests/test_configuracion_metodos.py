@@ -2,16 +2,19 @@
 
 from datetime import datetime
 
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import inspect, select, text
+from test_consultas import CADENA_MEDICION, buscar, datos_medicion, preparar_peticion
 
 from app import models as modelos
-from app import motor, semilla_instrumentos
-from app.database import Base, crear_motor_bd
+from app.database import crear_motor_bd
 from app.main import crear_aplicacion
-from app.semilla_instrumentos import RUTA_OCUPACIONES, OcupacionArchivo
-from test_consultas import buscar, CADENA_MEDICION, preparar_peticion, datos_medicion
+from app.models.base import Base
+from app.services.motor import reglas as motor
+from datos import ocupaciones
+from datos.demo import instrumentos as semilla_instrumentos
+from datos.ocupaciones import OcupacionArchivo, RUTA_OCUPACIONES
 
 
 FECHA = datetime(2026, 10, 1, 10)
@@ -168,7 +171,7 @@ def test_excel_asocia_dimension_por_codigo_aunque_cambie_orden(sesion, monkeypat
     sesion.execute(delete(modelos.PuntajeOcupacion))
     sesion.execute(delete(modelos.Ocupacion))
     fila = OcupacionArchivo('DEMO-01', 'Perfil', (1, 2, 3, 4, 5, 6))
-    monkeypatch.setattr(semilla_instrumentos, 'leer_ocupaciones', lambda ruta: [fila])
+    monkeypatch.setattr(ocupaciones, 'leer_ocupaciones', lambda ruta: [fila])
     monkeypatch.setattr(semilla_instrumentos, 'relaciones_carreras', lambda filas: {'CAR-ENF': ('DEMO-01',)})
     semilla_instrumentos.cargar_catalogo_ocupaciones(sesion)
     assert dict(sesion.execute(select(modelos.Dimension.codigo, modelos.PuntajeOcupacion.valor).join(

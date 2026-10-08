@@ -1,18 +1,19 @@
 """Registro: estructura y escenarios de acciones/consultas con evaluador falso."""
 
-from datetime import datetime
 import json
 import re
+from datetime import datetime
 
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import event, func, inspect, select, text
 from sqlalchemy.exc import IntegrityError
 
-from app import contenido_registro, models as modelos
-from app.database import Base
+from app import models as modelos
 from app.main import crear_aplicacion
-from app.evaluador_respuestas import EvaluadorFalso, ResultadoEvaluacion
+from app.models.base import Base
+from app.services.registro import contenido as contenido_registro
+from app.services.registro.evaluacion import EvaluadorFalso, ResultadoEvaluacion
 
 
 FECHA = datetime(2026, 10, 1, 10)
@@ -955,7 +956,7 @@ def test_evaluacion_invalida_o_timeout_finaliza_con_error_saneado(
 
 def test_marca_concurrencia_monotonica_con_reloj_y_fecha_simulada_iguales(
         cliente, aplicacion, registro_demo, monkeypatch):
-    from app import acciones_registro
+    from app.services.registro import acciones as acciones_registro
     class RelojFijo(datetime):
         @classmethod
         def now(cls, tz=None):
@@ -977,7 +978,7 @@ def test_marca_concurrencia_monotonica_con_reloj_y_fecha_simulada_iguales(
 
 
 def test_comparacion_condicional_protege_relectura_hasta_escritura(cliente, aplicacion, registro_demo, monkeypatch):
-    from app import acciones_registro
+    from app.services.registro import acciones as acciones_registro
     assert accion_registro(cliente, 'guardar-borrador', texto='Borrador inicial').status_code == 200
     comprobar_original = acciones_registro.comprobar_cambio
     def modificar_despues_de_releer(sesion, respuesta, valores):
@@ -1015,8 +1016,8 @@ def test_error_sql_revierte_respuesta_evaluacion_eventos_y_desbloqueos(
 
 
 def test_envio_reconstruye_contexto_entre_transacciones(cliente, aplicacion, registro_demo, monkeypatch):
-    from app import acciones_registro
-    from app.contexto_consultas import contexto
+    from app.services.registro import acciones as acciones_registro
+    from app.core.contexto import contexto
     capturados = []
     validar_original = acciones_registro.validar_registro
     def capturar(sesion, *args, **opciones):

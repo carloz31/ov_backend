@@ -7,10 +7,10 @@ import pytest
 from sqlalchemy import func, select
 
 from app import models as modelos
-from app import acciones
-from app import resultados_instrumentos
-from app.calculo_instrumentos import calcular_codigo_interes, clasificar_ajuste
-from app.semilla_instrumentos import RUTA_OCUPACIONES
+from app.services import comun as acciones
+from app.services.instrumentos import resultados as resultados_instrumentos
+from app.services.instrumentos.calculo import calcular_codigo_interes, clasificar_ajuste
+from datos.ocupaciones import RUTA_OCUPACIONES
 
 
 FECHA = "2026-10-01T10:00:00"
@@ -654,7 +654,7 @@ def test_historial_conserva_dimensiones_coincidencias_y_ordena_fecha_y_desempate
     # Prepara resultados históricos en SQL; el reinicio público se implementa en fase 5.
     list(aplicar_cadena(cliente, CADENA_A))
     original = resultado_publico(cliente)
-    from app.database import Base
+    from app.models.base import Base
 
     with aplicacion.state.fabrica_sesiones.begin() as sesion:
         antiguo = sesion.scalar(select(modelos.ResultadoInstrumento))
@@ -692,7 +692,7 @@ def test_historial_conserva_dimensiones_coincidencias_y_ordena_fecha_y_desempate
 
 
 def test_todas_las_consultas_son_de_lectura_y_exponen_solo_codigos_publicos(cliente, aplicacion):
-    from app.database import Base
+    from app.models.base import Base
     list(aplicar_cadena(cliente, "3" * 60))
     guardar(cliente, "LAB-AUT-E", [{"item": "AUT-01", "opcion": 2}])
 
@@ -955,7 +955,7 @@ def test_reinicio_borra_solo_respuestas_del_instrumento_en_los_progresos_elegido
 
 @pytest.mark.parametrize("resultado_completo", [False, True])
 def test_fallo_al_registrar_reinicio_revierte_anulacion_respuestas_y_progresos(cliente, aplicacion, monkeypatch, resultado_completo):
-    from app.database import Base
+    from app.models.base import Base
     if resultado_completo:
         list(aplicar_cadena(cliente, "3" * 60))
     else:

@@ -4,14 +4,30 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import sessionmaker
 
-from app.database import Base, crear_motor_bd, validar_version_esquema
-from app.configuracion_base import cargar_configuracion_base
-from app.routers import acciones, consultas, demo, instrumentos, registro
-from app.seed import cargar_semilla_si_vacia, obtener_cargador_semilla
-from app.definiciones import CacheDefiniciones
-from app.contenido_registro import cargar_posiciones_registro
-from app.evaluador_respuestas import EvaluadorFalso
-from app.configuracion_registro import cargar_configuracion_registro, crear_evaluador_registro
+from app.api import demo
+from app.api.router import router
+from app.config import (
+    cargar_configuracion_base, cargar_configuracion_registro, crear_evaluador_registro,
+)
+from app.core.definiciones import CacheDefiniciones
+from app.database import crear_motor_bd, validar_version_esquema
+from app.models.base import Base
+from app.services.registro.contenido import cargar_posiciones_registro
+from app.services.registro.evaluacion import EvaluadorFalso
+
+
+def obtener_cargador_semilla(semilla: str):
+    """Puente temporal de R2; desaparece al separar el arranque en R3."""
+    from datos.cargar import obtener_cargador_semilla as obtener_cargador
+
+    return obtener_cargador(semilla)
+
+
+def cargar_semilla_si_vacia(sesion, semilla: str):
+    """Puente temporal de R2, con la misma política de carga existente."""
+    from datos.cargar import cargar_semilla_si_vacia as cargar
+
+    return cargar(sesion, semilla)
 
 
 def crear_aplicacion(url_bd: str | None = None, semilla: str | None = None) -> FastAPI:
@@ -45,13 +61,10 @@ def crear_aplicacion(url_bd: str | None = None, semilla: str | None = None) -> F
     aplicacion = FastAPI(title="Demo del motor de desbloqueos", lifespan=ciclo_vida)
     aplicacion.state.motor_bd = motor_bd
     aplicacion.state.semilla = configuracion_base.semilla
+    aplicacion.state.obtener_cargador_semilla = obtener_cargador_semilla
     aplicacion.state.fabrica_sesiones = fabrica_sesiones
     aplicacion.state.evaluador_respuestas = EvaluadorFalso()
-    aplicacion.include_router(consultas.router)
-    aplicacion.include_router(acciones.router)
-    aplicacion.include_router(instrumentos.router)
-    aplicacion.include_router(registro.router)
-    aplicacion.include_router(demo.router)
+    aplicacion.include_router(router)
     aplicacion.mount("/demo/recursos", StaticFiles(directory=demo.RUTA_ESTATICOS), name="recursos_demo")
     return aplicacion
 

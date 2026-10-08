@@ -14,17 +14,18 @@ if __package__ in (None, ''):
 
 from sqlalchemy.orm import Session
 
-from app.configuracion_metodos import PAUSA_CASOS_GEMINI_SEGUNDOS, VERSION_PROMPT_REGISTRO
-from app.configuracion_registro import cargar_configuracion_registro, ErrorConfiguracionRegistro
-from app.database import Base, crear_motor_bd
-from app.definiciones import Definiciones
-from app.evaluador_gemini import EvaluadorGemini, ErrorClienteGemini
-from app.evaluador_respuestas import (
+from app.core.parametros import PAUSA_CASOS_GEMINI_SEGUNDOS, VERSION_PROMPT_REGISTRO
+from app.config import cargar_configuracion_registro, ErrorConfiguracionRegistro
+from app.models.base import Base
+from app.database import crear_motor_bd
+from app.core.definiciones import Definiciones
+from app.services.registro.gemini import EvaluadorGemini, ErrorClienteGemini
+from app.services.registro.evaluacion import (
     ContextoEvaluacion, ConversacionEvaluacion, CriterioEvaluacion, EvaluacionProcesada,
     RespuestaAnterior, TurnoEvaluacion, evaluar_respuesta,
 )
 from app.models import Actividad, ItemRegistro
-from app.semilla_registro import cargar_definiciones_registro
+from datos.demo.registro import cargar_definiciones_registro
 
 
 RUTA_REPORTE = Path(__file__).resolve().parent.parent / 'docs' / 'evaluacion_gemini.md'

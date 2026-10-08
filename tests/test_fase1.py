@@ -1,16 +1,16 @@
+import re
 from datetime import date, datetime
 from pathlib import Path
-import re
 
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import func, inspect, select, text
 from sqlalchemy.exc import IntegrityError
 
-from app.database import Base
-from app.main import crear_aplicacion
 from app import models as modelos
-from app.seed import cargar_semilla
+from app.main import crear_aplicacion
+from app.models.base import Base
+from datos.demo import cargar_semilla
 
 
 ESPECIFICACION = (Path(__file__).resolve().parents[1] / "docs" /

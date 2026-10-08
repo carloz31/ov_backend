@@ -4,10 +4,10 @@ import pytest
 from sqlalchemy import func, select
 
 from app import models as modelos
-from app.evaluador_respuestas import EvaluadorFalso, ResultadoEvaluacion
-from app.motor import registrar_eventos
 from app.database import crear_motor_bd
-from app.semilla_instrumentos import RUTA_OCUPACIONES
+from app.services.motor.reglas import registrar_eventos
+from app.services.registro.evaluacion import EvaluadorFalso, ResultadoEvaluacion
+from datos.ocupaciones import RUTA_OCUPACIONES
 
 
 FECHA = datetime(2026, 10, 1, 10)
@@ -565,7 +565,7 @@ def test_consultas_no_crecen_con_100_reglas_y_500_eventos(
     from collections import Counter
     from fastapi.testclient import TestClient
     from app.main import crear_aplicacion
-    from app import motor
+    from app.services.motor import reglas as motor
 
     ampliada = crear_aplicacion(f"sqlite:///{(tmp_path / 'ampliada.db').as_posix()}")
     with TestClient(ampliada) as otro_cliente:
@@ -722,7 +722,7 @@ def test_cache_aislada_detecta_commit_y_conserva_rollback(cliente, aplicacion, t
 
 
 def test_reinicio_actualiza_cache_solo_si_tiene_exito(cliente, aplicacion, contador_consultas, monkeypatch):
-    from app import semilla_instrumentos
+    from datos.demo import instrumentos as semilla_instrumentos
 
     preparar_peticion(cliente, "/acciones/completar-actividad", datos_medicion("ACT-01"))
     antes = cliente.get("/cuentas/est-ana/estado").json()
@@ -1136,7 +1136,7 @@ def test_registro_sql_no_crece_con_100_reglas_reflexivas_y_500_eventos(
     from collections import Counter
     from fastapi.testclient import TestClient
     from app.main import crear_aplicacion
-    from app import motor
+    from app.services.motor import reglas as motor
 
     ampliada = crear_aplicacion(f"sqlite:///{(tmp_path / 'registro-ampliado.db').as_posix()}")
     with TestClient(ampliada) as otro_cliente:

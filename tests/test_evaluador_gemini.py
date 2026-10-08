@@ -1,31 +1,31 @@
 """Fase 6: exclusivamente clientes y transportes simulados; sin red."""
 
-from dataclasses import replace
 import json
 import logging
-from pathlib import Path
 import re
 import socket
+from dataclasses import replace
+from pathlib import Path
 from urllib.parse import quote
 
+import httpx
+import pytest
 from fastapi.testclient import TestClient
 from google import genai
 from google.genai import errors, types
-import httpx
-import pytest
+from scripts import evaluar_gemini as script
 from sqlalchemy import event
 
 from app import main as modulo_main
-from app.configuracion_registro import (
+from app.config import (
     ConfiguracionRegistro, cargar_configuracion_registro, crear_evaluador_registro,
 )
-from app.evaluador_gemini import EvaluadorGemini, razonamiento_minimo
-from app.evaluador_respuestas import (
-    ContextoEvaluacion, ConversacionEvaluacion, CriterioEvaluacion, EvaluadorFalso, TurnoEvaluacion,
-    RespuestaAnterior, evaluar_respuesta,
+from app.services.registro.evaluacion import (
+    ContextoEvaluacion, ConversacionEvaluacion, CriterioEvaluacion, EvaluadorFalso,
+    RespuestaAnterior, TurnoEvaluacion, evaluar_respuesta,
 )
-from app.prompt_registro import PROMPT_REGISTRO_V2
-from scripts import evaluar_gemini as script
+from app.services.registro.gemini import EvaluadorGemini, razonamiento_minimo
+from app.services.registro.prompt import PROMPT_REGISTRO_V2
 
 
 CLAVE_SIMULADA = 'clave-sintetica-solo-pruebas'

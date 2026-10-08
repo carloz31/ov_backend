@@ -3,8 +3,8 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from sqlalchemy import func, select
 
-from app import acciones
 from app import models as modelos
+from app.services import comun as acciones
 
 
 FECHA = "2026-10-01T10:00:00"

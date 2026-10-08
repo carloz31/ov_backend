@@ -1,17 +1,18 @@
 """Contrato, reproducibilidad y aislamiento del exportador de §4.5."""
 
 import json
-from pathlib import Path
 import subprocess
 import sys
+from pathlib import Path
 
-from pydantic import TypeAdapter
 import pytest
+from pydantic import TypeAdapter
+from scripts import exportar_fixtures_front as exportador
 
 from app import main as principal
-from app.esquemas_instrumentos import ItemPublico, ResultadoPublico
-from app.schemas import DesbloqueoLegible, EstadoCuenta, RespuestaCompletarActividad
-from scripts import exportar_fixtures_front as exportador
+from app.schemas.acciones import RespuestaCompletarActividad
+from app.schemas.cuentas import DesbloqueoLegible, EstadoCuenta
+from app.schemas.instrumentos import ItemPublico, ResultadoPublico
 
 
 SCRIPT = Path(exportador.__file__).resolve()

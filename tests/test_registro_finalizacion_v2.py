@@ -3,11 +3,9 @@
 import pytest
 from sqlalchemy import event
 from sqlalchemy.exc import IntegrityError
-
 from test_registro import (
-    CODIGOS_ITEMS, FECHA, accion_registro, comprobar_publico, completar_registro,
-    estado_registro, fila_respuesta, fotografia, historial_registro, registro_demo,
-    turnos_guardados,
+    CODIGOS_ITEMS, FECHA, accion_registro, completar_registro, comprobar_publico, estado_registro,
+    fila_respuesta, fotografia, historial_registro, registro_demo, turnos_guardados,
 )
 
 

@@ -1,12 +1,14 @@
-from collections.abc import Iterator
-from pathlib import Path
 import re
 import sqlite3
+from collections.abc import Iterator
+from pathlib import Path
 
 from fastapi import Request
 from sqlalchemy import Engine, create_engine, event, inspect, text
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import DeclarativeBase, Session
+from sqlalchemy.orm import Session
+
+from app.models.base import Base
 
 
 RUTA_BASE = Path(__file__).resolve().parents[1] / "demo.db"
@@ -15,10 +17,6 @@ VERSION_ESQUEMA = 5
 MENSAJE_ESQUEMA_ANTERIOR = (
     "La base {archivo} tiene un esquema anterior. Bórrala y vuelve a iniciar la aplicación."
 )
-
-
-class Base(DeclarativeBase):
-    pass
 
 
 def validar_version_esquema(motor_bd: Engine, semilla: str = 'demo') -> None:
@@ -85,8 +83,21 @@ def crear_motor_bd(url: str) -> Engine:
 
 
 def obtener_sesion(peticion: Request) -> Iterator[Session]:
-    from app.contexto_consultas import ContextoConsultas
+    from app.core.contexto import ContextoConsultas
 
     with peticion.app.state.fabrica_sesiones() as sesion:
         sesion.info['contexto_consultas'] = ContextoConsultas(sesion)
         yield sesion
+
+
+def recrear_esquema_demo(conexion) -> None:
+    """Compatibilidad de R2: mantiene atómico el reinicio con DDL en SQLite."""
+    conexion.exec_driver_sql("BEGIN")
+    Base.metadata.drop_all(conexion)
+    Base.metadata.create_all(conexion)
+
+
+def es_bloqueo_temporal(error) -> bool:
+    return getattr(error.orig, 'sqlite_errorname', '') in (
+        'SQLITE_BUSY', 'SQLITE_BUSY_SNAPSHOT', 'SQLITE_LOCKED',
+    )

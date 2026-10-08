@@ -2,16 +2,17 @@
 
 from pathlib import Path
 
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import inspect, select, text
 from sqlalchemy.exc import IntegrityError
+from test_instrumentos import CADENA_B, REQUIERE_OCUPACIONES, aplicar_cadena
 
 from app import models as modelos
-from app.configuracion_base import RAIZ_PROYECTO, cargar_configuracion_base
-from app.database import Base, crear_motor_bd
+from app.config import RAIZ_PROYECTO, cargar_configuracion_base
+from app.database import crear_motor_bd
 from app.main import crear_aplicacion
-from test_instrumentos import aplicar_cadena, CADENA_B, REQUIERE_OCUPACIONES
+from app.models.base import Base
 
 
 @pytest.mark.parametrize('semilla,archivo', [('demo', 'demo.db'), ('plataforma', 'plataforma.db')])

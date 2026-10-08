@@ -5,10 +5,11 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app import models as modelos
-from app import motor
-from app.database import Base, crear_motor_bd
-from app.evaluadores import EVALUADORES, carreras_de_3_familias
-from app.seed import cargar_semilla
+from app.database import crear_motor_bd
+from app.models.base import Base
+from app.services.motor import reglas as motor
+from app.services.motor.evaluadores import EVALUADORES, carreras_de_3_familias
+from datos.demo import cargar_semilla
 
 
 FECHA = datetime(2026, 10, 1, 10)

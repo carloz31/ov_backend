@@ -1,20 +1,21 @@
 """Registro v2, fase 2: evaluación pura sin sesiones, HTTP ni red."""
 
-from dataclasses import asdict, fields, replace
 import json
 import subprocess
 import sys
+from dataclasses import asdict, fields, replace
 
-from pydantic import ValidationError
 import pytest
+from pydantic import ValidationError
 
-from app import evaluador_respuestas as evaluacion
-from app.configuracion_metodos import MAXIMO_SEGUIMIENTOS_POR_ITEM, VERSION_PROMPT_REGISTRO
-from app.evaluador_respuestas import (
-    ContextoEvaluacion, ConversacionEvaluacion, TurnoEvaluacion, CriterioEvaluacion, ErrorResultadoEvaluacion, ErrorTextoVacio,
-    EvaluadorFalso, RespuestaAnterior, ResultadoEvaluacion, evaluar_respuesta, validar_resultado, serializar_conversacion,
+from app.core.parametros import MAXIMO_SEGUIMIENTOS_POR_ITEM, VERSION_PROMPT_REGISTRO
+from app.models.enums import ClasificacionRespuesta, OrigenEvaluacion
+from app.services.registro import evaluacion as evaluacion
+from app.services.registro.evaluacion import (
+    ContextoEvaluacion, ConversacionEvaluacion, CriterioEvaluacion, ErrorResultadoEvaluacion,
+    ErrorTextoVacio, EvaluadorFalso, RespuestaAnterior, ResultadoEvaluacion, TurnoEvaluacion,
+    evaluar_respuesta, serializar_conversacion, validar_resultado,
 )
-from app.tipos_registro import ClasificacionRespuesta, OrigenEvaluacion
 
 
 @pytest.fixture
@@ -62,10 +63,10 @@ class EvaluadorDePrueba(EvaluadorFalso):
 
 def test_interfaz_no_importa_sqlalchemy_fastapi_ni_modelos():
     codigo = (
-        "import sys; import app.evaluador_respuestas; "
+        "import sys; import app.services.registro.evaluacion; "
         "assert not any(nombre == raiz or nombre.startswith(raiz + '.') "
         "for nombre in sys.modules for raiz in ('sqlalchemy', 'fastapi')); "
-        "assert 'app.models' not in sys.modules"
+        "assert 'app.models.base' not in sys.modules"
     )
     resultado = subprocess.run([sys.executable, "-c", codigo], capture_output=True, text=True, check=False)
     assert resultado.returncode == 0, resultado.stderr

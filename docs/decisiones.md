@@ -46,6 +46,138 @@
   previos en `AGENTS.md` y la especificación siguen fuera del commit de R1.
   R2 y las fases siguientes quedan pendientes.
 
+### 2026-10-08 · R2: nueva estructura de app
+
+Se ejecuta el plan de R2 aprobado por el usuario sobre `refactor-estructura`.
+Los movimientos usan `git mv`; las divisiones conservan los cuerpos, decoradores
+y el orden de operaciones. No se adelantan los cambios funcionales de R3/R4.
+
+#### Mapa de archivos
+
+Rutas relativas a la raíz de `ov_backend`:
+
+| Archivo anterior | Archivo o archivos nuevos |
+|---|---|
+| `app/acciones.py` | `app/services/{comun,eventos,actividades,diario,carreras,comunidad}.py`, `app/exceptions.py` |
+| `app/schemas.py` | `app/schemas/{motor,cuentas,acciones,demo}.py` |
+| `app/models.py` | `app/models/{base,enums,cuentas,contenido,motor,progreso,instrumentos,registro}.py` y reexportaciones en `app/models/__init__.py` |
+| `app/tipos_registro.py` | `app/models/enums.py` |
+| `app/configuracion_base.py`, `app/configuracion_registro.py` | `app/config.py` |
+| `app/configuracion_metodos.py` | `app/core/parametros.py` |
+| `app/definiciones.py` | `app/core/definiciones.py` |
+| `app/contexto_consultas.py` | `app/core/contexto.py` |
+| `app/motor.py` | `app/services/motor/reglas.py` |
+| `app/evaluadores.py` | `app/services/motor/evaluadores.py` |
+| `app/referencias.py` | `app/services/motor/referencias.py` |
+| `app/consultas.py` | `app/services/cuentas.py` |
+| `app/calculo_instrumentos.py` | `app/services/instrumentos/calculo.py` |
+| `app/consultas_instrumentos.py` | `app/services/instrumentos/consultas.py`, con `ConsultaPendiente` en `app/exceptions.py` |
+| `app/resultados_instrumentos.py` | `app/services/instrumentos/resultados.py` |
+| `app/esquemas_instrumentos.py` | `app/schemas/instrumentos.py` |
+| `app/acciones_registro.py` | `app/services/registro/acciones.py` |
+| `app/consultas_registro.py` | `app/services/registro/consultas.py` |
+| `app/contenido_registro.py` | `app/services/registro/contenido.py` |
+| `app/evaluador_respuestas.py` | `app/services/registro/evaluacion.py` |
+| `app/evaluador_gemini.py` | `app/services/registro/gemini.py` |
+| `app/prompt_registro.py` | `app/services/registro/prompt.py` |
+| `app/schemas_registro.py` | `app/schemas/registro.py` |
+| `app/routers/consultas.py` | `app/api/cuentas.py`; búsqueda de cuenta en `app/services/cuentas.py` |
+| `app/routers/acciones.py` | `app/api/acciones.py`, `app/dependencies.py` y traducción de errores en `app/exceptions.py` |
+| `app/routers/instrumentos.py` | `app/api/instrumentos.py` y traducción de consultas en `app/exceptions.py` |
+| `app/routers/registro.py` | `app/api/registro.py` |
+| `app/routers/demo.py` | `app/api/demo.py`, `app/services/demo.py` y DDL de reinicio en `app/database.py` |
+| `app/routers/__init__.py` | `app/api/__init__.py`; agrupación de routers en `app/api/router.py` |
+| `app/seed.py` | `datos/demo/motor.py`, orquestación en `datos/demo/__init__.py` y auxiliares de carga en `datos/cargar.py` |
+| `app/semilla_instrumentos.py` | `datos/demo/instrumentos.py`, lector y validación de distribución en `datos/ocupaciones.py`; `DIMENSIONES_RIASEC` en `app/core/parametros.py` |
+| `app/semilla_registro.py` | `datos/demo/registro.py` |
+| `app/semilla_plataforma.py` | `datos/plataforma.py` |
+| `data/Career_Interest_RIASEC_Clean.xlsx` | `datos/archivos/Career_Interest_RIASEC_Clean.xlsx` |
+| `tests/soporte_consultas.py` | `tests/soporte/soporte_consultas.py` |
+| `tests/soporte_plataforma.py` | `tests/soporte/soporte_plataforma.py` |
+| `tests/servidor_registro_ui.py` | `tests/soporte/servidor_registro_ui.py` |
+| `tests/validar_registro_ui.cjs` | `tests/soporte/validar_registro_ui.cjs` |
+
+`main.py`, `database.py`, `__init__.py` y los estáticos conservan su ubicación.
+Los scripts manuales conservan sus argumentos; se actualizan sus imports.
+
+#### Cohesión de acciones y esquemas
+
+| Destino | Funciones de `acciones.py` |
+|---|---|
+| `services/comun.py` | `fecha_accion`, `buscar_por_codigo`, `exigir_estudiante`, `exigir_disponible`, `existe_evento`, `responder_con_eventos`, `responder_varias_cuentas` |
+| `services/eventos.py` | `ingresar`, `registrar_evento_crudo` |
+| `services/actividades.py` | `completar_progreso`, `items_de_actividad`, `progreso_de_actividad`, `responder_items`, `completar_actividad`, `reiniciar_instrumento`, `resolver_caso` |
+| `services/diario.py` | `responder_registro`, `escribir_entrada`, `registrar_check_in` |
+| `services/carreras.py` | `ver_carrera` |
+| `services/comunidad.py` | `publicar_entrevista`, `vinculo_de_cuenta`, `escribir_carta`, `completar_conversacion` |
+| `exceptions.py` | `ErrorAccion` |
+
+El progreso, las respuestas y la finalización de actividades permanecen juntos.
+La acción heredada `responder_registro` sigue en diario; el registro con
+seguimiento conserva su servicio propio. Los routers usan alias por dominio;
+no se agrega un módulo agregador que reproduzca el antiguo `acciones.py`.
+
+| Destino | Contenido de `schemas.py` |
+|---|---|
+| `schemas/motor.py` | Objetivos y reglas legibles, condiciones, resultados del motor y desbloqueos nuevos |
+| `schemas/cuentas.py` | Cuenta, disponibilidad, estados, niveles, progreso, eventos y desbloqueos consultados |
+| `schemas/acciones.py` | Fechas, entradas de comandos, respuestas de ítems, progreso de respuestas, respuestas de acciones y resultados generados/anulados |
+| `schemas/demo.py` | `ReinicioDemo` |
+
+Se conservan campos, herencia, validadores y serialización. Los consumidores
+importan desde los módulos concretos; solo `models/__init__.py` agrega las
+reexportaciones de modelos y enumerados.
+
+#### Compatibilidad temporal y adaptación autorizada
+
+- El usuario resuelve la contradicción entre «solo reexportar configuración»
+  y «seis archivos en la raíz»: ambas implementaciones se reúnen en `config.py`,
+  conservando sus dos clases, funciones, precedencias y mensajes. La unificación
+  en una sola configuración sigue pendiente para R3.
+- `main.py` es el único puente temporal que importa `datos`. El reinicio recibe
+  el resolvedor de cargadores mediante el estado de la aplicación. Tanto el
+  arranque como el reinicio siguen sembrando y conservan `SEMILLA`, `RUTA_BD`,
+  `app.state.semilla` y las validaciones de versión actuales.
+- La orquestación mantiene el orden motor, instrumentos, ocupaciones, registro
+  y fila de versión. `datos/cargar.py` todavía no tiene CLI ni `preparar_base`.
+- `Base`, `enumerado()` y `EsquemaVersion` se ubican en `models/base.py` sin
+  cambiar el esquema. No se agrega `naming_convention` ni una migración en R2:
+  el DDL se compara con el original y resulta idéntico. Alembic corresponde a R4.
+  Las reexportaciones ORM de `models/__init__.py` se resuelven al pedir un
+  modelo, registrando entonces todas las tablas. Los enumerados siguen siendo
+  importables sin cargar SQLAlchemy, como exige la interfaz pura del evaluador.
+- El `BEGIN` explícito del reinicio y el reconocimiento existente de bloqueos
+  SQLite pasan a `database.py`, sin incorporar comportamiento PostgreSQL.
+  Los traductores de errores conservan los cuerpos HTTP propios de cada ruta.
+- Se ajustan rutas de recursos y Excel, y `pythonpath = [".", "tests/soporte"]`.
+  Solo se adaptan imports y objetivos de `monkeypatch` (adaptación 1): eventos
+  compartidos en `services/comun.py`, lector en `datos/ocupaciones.py`, cargadores
+  de demo y plataforma en `datos/`, y módulos de registro/instrumentos en sus
+  servicios. **Pruebas eliminadas: ninguna. Pruebas de reemplazo: ninguna.**
+- También se actualiza el import que la prueba de aislamiento ejecuta dentro
+  de una cadena de código: `app.evaluador_respuestas` pasa a
+  `app.services.registro.evaluacion`. Su referencia al antiguo módulo ORM
+  `app.models` pasa a `app.models.base`; conserva la comprobación de que no
+  se cargue SQLAlchemy ni FastAPI. Es un cambio de destinos de la adaptación 1.
+- Se conserva la suite de 1006 casos y se comprueba por AST que las aserciones
+  de todos los `test_*.py` son iguales, normalizando únicamente el destino del
+  lector trasladado. La revisión estática no encuentra dependencias prohibidas.
+- El OpenAPI de las 37 rutas y el DDL de las 45 tablas se comparan con capturas
+  previas externas al repo: ambos son idénticos. La raíz de `app/` contiene solo
+  `__init__.py`, `main.py`, `config.py`, `database.py`, `dependencies.py` y
+  `exceptions.py`.
+
+Resultado final de R2: `uv run pytest -q`, **1006 passed, 2 warnings en
+728.45 s (12 min 8 s)**, con evaluador falso y temporales fuera del repo. Se
+conservan las 1006 pruebas de R0/R1, sin fallos ni omisiones, y los dos avisos
+conocidos de deprecación de Starlette/httpx y Google GenAI. La comparación AST
+confirma además los cuerpos originales de las 25 funciones de acciones y las
+48 clases de esquemas extraídas.
+
+El frontend queda intacto. Los cambios previos en `AGENTS.md` y la especificación
+quedan fuera del commit de esta fase. No se llama a Gemini ni se hace push;
+R3 y las fases siguientes quedan pendientes.
+
 ## Iteración 1 · F3
 
 ### 2026-10-07 · Exportación de fixtures de contrato

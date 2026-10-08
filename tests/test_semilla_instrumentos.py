@@ -1,30 +1,29 @@
 """Fase 1: definiciones, importación de O*NET, restricciones y esquema versión 2."""
 
+import sqlite3
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
-import sqlite3
 
+import pytest
 from fastapi.testclient import TestClient
 from openpyxl import Workbook
-import pytest
 from sqlalchemy import delete, func, inspect, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import models as modelos
-from app import semilla_instrumentos
-from app.database import Base, crear_motor_bd
+from app.database import crear_motor_bd
 from app.main import crear_aplicacion
-from app.seed import cargar_semilla
-from app.semilla_instrumentos import (
-    OcupacionArchivo, cargar_catalogo_ocupaciones, leer_ocupaciones, relaciones_carreras,
-    validar_distribucion_items,
-)
+from app.models.base import Base
+from datos import ocupaciones
+from datos.demo import cargar_semilla, instrumentos as semilla_instrumentos
+from datos.demo.instrumentos import cargar_catalogo_ocupaciones, relaciones_carreras
+from datos.ocupaciones import OcupacionArchivo, leer_ocupaciones, validar_distribucion_items
 
 
 FECHA = datetime(2026, 10, 1, 10)
-RUTA_REAL = semilla_instrumentos.RUTA_OCUPACIONES
+RUTA_REAL = ocupaciones.RUTA_OCUPACIONES
 REQUIERE_EXCEL = pytest.mark.skipif(not RUTA_REAL.is_file(), reason=f"Falta el catálogo O*NET: {RUTA_REAL}")
 
 
@@ -398,7 +397,7 @@ def test_error_de_catalogo_revierte_toda_la_semilla(tmp_path, monkeypatch, fallo
     else:
         ruta = crear_excel(tmp_path, [("19-1031.02", "Range Managers", 1, 2, 3, 4, 5, 6)])
         mensaje = "29-1141.00"
-    monkeypatch.setattr(semilla_instrumentos, "RUTA_OCUPACIONES", ruta)
+    monkeypatch.setattr(ocupaciones, "RUTA_OCUPACIONES", ruta)
     monkeypatch.setattr(semilla_instrumentos, "cargar_catalogo_ocupaciones", cargar_catalogo_ocupaciones)
     motor = crear_motor_bd(f"sqlite:///{(tmp_path / 'semilla.db').as_posix()}")
     try:
@@ -421,7 +420,7 @@ def test_reinicio_con_excel_invalido_conserva_estado_y_muestra_error(cliente, ap
     estado = cliente.get("/cuentas/est-ana/estado").json()
     eventos = cliente.get("/cuentas/est-ana/eventos").json()
     desbloqueos = cliente.get("/cuentas/est-ana/desbloqueos").json()
-    monkeypatch.setattr(semilla_instrumentos, "RUTA_OCUPACIONES", tmp_path / "ausente.xlsx")
+    monkeypatch.setattr(ocupaciones, "RUTA_OCUPACIONES", tmp_path / "ausente.xlsx")
     monkeypatch.setattr(semilla_instrumentos, "cargar_catalogo_ocupaciones", cargar_catalogo_ocupaciones)
     respuesta = cliente.post("/demo/reiniciar")
     assert respuesta.status_code == 422

@@ -2,10 +2,11 @@
 
 import pytest
 
-from app.calculo_instrumentos import (
+from app.services.instrumentos.calculo import (
     CodigoInteresCalculado, DimensionCalculada, ItemParaCalculo, PerfilOcupacion,
-    calcular_codigo_interes, calcular_coincidencias, calcular_dimension, calcular_dimensiones_destacadas, calcular_pearson,
-    calcular_porcentaje, calcular_puntaje_item, clasificar_ajuste,
+    calcular_codigo_interes, calcular_coincidencias, calcular_dimension,
+    calcular_dimensiones_destacadas, calcular_pearson, calcular_porcentaje, calcular_puntaje_item,
+    clasificar_ajuste,
 )
 
 

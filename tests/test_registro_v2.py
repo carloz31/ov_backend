@@ -5,12 +5,12 @@ import json
 import pytest
 from sqlalchemy import event
 from sqlalchemy.exc import IntegrityError
-
-from app import acciones_registro
 from test_registro import (
-    FECHA, EvaluadorInterviene, accion_registro, comprobar_publico,
-    estado_registro, fila_respuesta, fotografia, historial_registro, registro_demo, turnos_guardados,
+    EvaluadorInterviene, FECHA, accion_registro, comprobar_publico, estado_registro,
+    fila_respuesta, fotografia, historial_registro, registro_demo, turnos_guardados,
 )
+
+from app.services.registro import acciones as acciones_registro
 
 
 @pytest.mark.parametrize('estado', ['ausente', 'borrador', 'final_sin_turnos', 'final_sin_responder'])

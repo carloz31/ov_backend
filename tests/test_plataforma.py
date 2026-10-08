@@ -2,16 +2,16 @@
 
 from pathlib import Path
 
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
+from soporte_plataforma import (
+    CAMINO, FECHA, MARA, actividades, aplicacion, avanzar_camino, cliente, completar, estado,
+    eventos, filas_base, pedir, progreso, reglas, responder,
+)
 from sqlalchemy import func, select
 
 from app import models as modelos
 from app.main import crear_aplicacion
-from soporte_plataforma import (
-    aplicacion, cliente, CAMINO, MARA, FECHA, pedir, completar, avanzar_camino,
-    responder, estado, actividades, progreso, eventos, reglas, filas_base,
-)
 
 
 def test_p01_estado_inicial(cliente):

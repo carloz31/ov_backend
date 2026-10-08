@@ -1,27 +1,32 @@
 """Semilla, evaluador, compatibilidad e invariantes complementarios de F2."""
 
 import ast
+import re
 from datetime import datetime
 from pathlib import Path
-import re
 from types import SimpleNamespace
 
-from fastapi.testclient import TestClient
 import pytest
-from sqlalchemy import func, inspect, insert, select, text
-
-from app import models as modelos, seed, semilla_instrumentos, semilla_plataforma
-from app.contexto_consultas import ContextoConsultas
-from app.database import Base, crear_motor_bd
-from app.evaluadores import misiones_camino_sin_inicio
-from app.main import crear_aplicacion
-from app.motor import evaluar_regla, registrar_eventos
-from app.semilla_instrumentos import leer_ocupaciones, validar_distribucion_items
+from fastapi.testclient import TestClient
 from soporte_consultas import ContadorConsultas
 from soporte_plataforma import (
-    aplicacion, cliente, sesion, CAMINO, MARA, FECHA, avanzar_camino, completar,
-    pedir, estado, actividades, eventos, filas_base,
+    CAMINO, FECHA, MARA, actividades, aplicacion, avanzar_camino, cliente, completar, estado,
+    eventos, filas_base, pedir, sesion,
 )
+from sqlalchemy import func, insert, inspect, select, text
+
+from app import models as modelos
+from app.core.contexto import ContextoConsultas
+from app.database import crear_motor_bd
+from app.main import crear_aplicacion
+from app.models.base import Base
+from app.services.motor.evaluadores import misiones_camino_sin_inicio
+from app.services.motor.reglas import evaluar_regla, registrar_eventos
+from datos import demo as seed
+from datos import ocupaciones as datos_ocupaciones
+from datos import plataforma as semilla_plataforma
+from datos.demo import instrumentos as semilla_instrumentos
+from datos.ocupaciones import leer_ocupaciones, validar_distribucion_items
 
 
 SPEC = (Path(__file__).resolve().parents[1] / 'docs/iteraciones/spec-iteracion-1.md').read_text(encoding='utf-8')
@@ -46,7 +51,7 @@ def test_catalogo_estructura_y_estado_vacio(sesion, aplicacion):
     ocupaciones = {(c, t.split(' (DATO DE PRUEBA:')[0], o) for c, t, o in ocupaciones}
     # El título de nurse no incluye la anotación documental entre paréntesis.
     assert set(sesion.execute(select(modelos.Ocupacion.codigo, modelos.Ocupacion.titulo, modelos.Ocupacion.codigo_onet))) == ocupaciones
-    excel = {fila.codigo_onet: fila.valores for fila in leer_ocupaciones(semilla_instrumentos.RUTA_OCUPACIONES)}
+    excel = {fila.codigo_onet: fila.valores for fila in leer_ocupaciones(datos_ocupaciones.RUTA_OCUPACIONES)}
     puntajes = list(sesion.execute(select(modelos.Ocupacion.codigo_onet, modelos.Dimension.codigo, modelos.PuntajeOcupacion.valor)
         .join(modelos.PuntajeOcupacion, modelos.PuntajeOcupacion.ocupacion_id == modelos.Ocupacion.id)
         .join(modelos.Dimension, modelos.Dimension.id == modelos.PuntajeOcupacion.dimension_id)))
@@ -111,7 +116,7 @@ def test_excel_erroneo_revierte_arranque_y_reinicio(cliente, aplicacion, tmp_pat
     cache = aplicacion.state.motor_bd.cache_definiciones.actual
     posiciones = aplicacion.state.posiciones_registro
     if fallo == 'referencia_ausente':
-        filas = leer_ocupaciones(semilla_instrumentos.RUTA_OCUPACIONES)
+        filas = leer_ocupaciones(datos_ocupaciones.RUTA_OCUPACIONES)
         monkeypatch.setattr(semilla_plataforma, 'leer_ocupaciones', lambda ruta: [f for f in filas if f.codigo_onet != '19-2042.00'])
         mensaje = 'Falta la ocupación O*NET 19-2042.00, requerida por geologist'
     else:

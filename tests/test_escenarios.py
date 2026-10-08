@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy import func, select
 
 from app import models as modelos
-from app.motor import evaluar_regla
+from app.services.motor.reglas import evaluar_regla
 
 
 FECHA = "2026-10-01T10:00:00"
