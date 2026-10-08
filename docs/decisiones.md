@@ -1,5 +1,31 @@
 # Decisiones de implementación
 
+## Refactor de estructura
+
+### 2026-10-08 · R0: línea base
+
+- Se leen completos `AGENTS.md` y `docs/spec-refactor-estructura.md` y se crea
+  `refactor-estructura` desde `iteracion-1`, según §0 de la especificación.
+- `uv sync` completa correctamente: 44 paquetes resueltos y 43 comprobados.
+  El lanzador local de pytest falla al resolver su ruta bajo el aislamiento de
+  Windows; se reinstala la misma versión fijada (`pytest==9.1.1`) con
+  `uv sync --reinstall-package pytest` y se ejecuta la suite fuera de esa
+  restricción. No cambian `pyproject.toml` ni `uv.lock`.
+- La suite se ejecuta con `EVALUADOR=falso`. Las rutas de `PYTEST_ADDOPTS`
+  pierden las barras de Windows al interpretarse y los temporales y la caché
+  quedan dentro del repo; al terminar se verifican y eliminan ambos directorios
+  generados. No se llama a Gemini ni quedan nuevos logs o bases en el repo.
+- Resultado de `uv run pytest -q`: **1006 passed, 2 warnings en 1095.20 s
+  (18 min 15 s)**. La línea base coincide con las 1006 pruebas indicadas en §9;
+  no hay pruebas fallidas ni omitidas. Los avisos corresponden a las
+  deprecaciones de Starlette/httpx y de Google GenAI en Python 3.14.
+  Antes y después de R0 se conserva la misma suite, sin cambios de aserciones.
+- Los ocho fixtures de `ov_frontend/tests/fixtures/servidor/` están disponibles
+  para la comparación de R3; no hace falta generar una copia alternativa en R0.
+- No se mueve ni modifica código, datos, pruebas o archivos del frontend.
+  Los cambios previos en `AGENTS.md` y el archivo de especificación se conservan
+  fuera del commit de esta fase. R1 y las fases siguientes quedan pendientes.
+
 ## Iteración 1 · F3
 
 ### 2026-10-07 · Exportación de fixtures de contrato
