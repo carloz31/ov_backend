@@ -4,6 +4,54 @@ Registro de decisiones que afectan a ambos repos. Las internas de cada repo van 
 
 Formato de cada entrada: fecha, fase, decisión, motivo y archivos afectados.
 
+## Actividades por dominio · F4 · 2026-10-08
+
+Recorrido manual de §12 sobre dos SQLite desechables independientes, creadas
+con Alembic y `datos.cargar`, evaluador falso y frontend en modo API. No se
+modifican archivos de entorno ni la base del usuario. El registro de acceso
+del servidor confirma al ingresar únicamente cuentas, ingreso, resumen,
+actividades y no vistos; fichas y logros esperan su vista. Perfil y pasaporte
+comparten la carga de logros; mochila pide fichas una vez.
+
+Con `piloto`: cinco actividades y Ciudad cerrada al inicio. Bienvenida y
+los 24 nodos de enc-mitos se completan desde el navegador: progreso 20 % y
+40 %, Ciudad disponible y Mara 1/14. Elena y la actividad sin contenido
+están ausentes; esta última emite un aviso por sesión en desarrollo.
+Mochila presenta las cuatro fichas obtenidas. Las catorce interacciones de
+Mara se aceleran mediante responder-items y completar-actividad sobre la
+base temporal: Elena aparece disponible. No se atribuye esa preparación a
+un recorrido de catorce reproductores en la interfaz.
+
+Con `plataforma`: nueve actividades, Ciudad cerrada y solo bienvenida
+disponible. Tras dos finalizaciones por API sigue cerrada; al completar
+las nueve se abre. Mapa y panel reflejan completadas, nivel 3 y siguiente
+paso Mara. Mochila muestra cuatro fichas; perfil y pasaporte, I1–I3 y
+Cartógrafo de posibilidades. Después de responder y completar las catorce
+interacciones por API, Elena pasa de bloqueada a disponible. No hay avisos
+de contenido faltante en esta sesión. Menú, panel y presentación conservan
+su estructura y textos, salvo las dos excepciones autorizadas en F3.
+
+La revisión detectó una proyección incorrecta: `AL_DESBLOQUEAR` activaba el
+indicador local `additional` y mostraba «Misión adicional» en Elena. Se
+retira esa proyección en `puntosServidor.ts` y se refuerza el caso existente
+de piloto de `servidor-mapa.test.mjs`; no cambian sus expectativas anteriores
+ni el número de pruebas. La visibilidad remota no activa la animación local.
+
+`docs/pendientes-interfaz.md` registra los pendientes de §8: texto de la
+llave anticipada, ausencia de animación, testimonios, preguntas del diario,
+conversaciones y señal de hoy local. Conserva también el contenido ausente
+del piloto. No se implementa interfaz para resolverlos. Evidencias y logs
+quedan fuera de Git, en visualizaciones de esta conversación.
+
+Front: **413 pruebas, 398 aprobadas y las mismas 15 fallas previas**, con
+nombres y detalles idénticos a F3 excluyendo tiempos y ubicaciones de pila.
+Build y lint pasan; estructura: **536 archivos, cero infracciones y
+excepciones**. Persiste el aviso previo de tamaño del bundle.
+
+Backend: **1103 aprobadas, 4 omitidas y 2 advertencias previas**, evaluador
+falso, suite completa en **778,98 segundos**. F4 queda cerrada; se continúa
+con X por autorización del usuario. Sin dependencias, Gemini ni push.
+
 ## Actividades por dominio · F3 · 2026-10-08
 
 El usuario resuelve expresamente la contradicción entre §7.4 (título del
