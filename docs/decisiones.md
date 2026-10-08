@@ -26,6 +26,26 @@
   Los cambios previos en `AGENTS.md` y el archivo de especificación se conservan
   fuera del commit de esta fase. R1 y las fases siguientes quedan pendientes.
 
+### 2026-10-08 · R1: limpieza
+
+- Se eliminan con `git rm -r` `.f6-cierre-pytest.log`,
+  `.f6-cierre-servidor.log` y los 50 archivos versionados de
+  `.pytest-f6-cierre-tmp/`. Se borran también los restos locales de esa carpeta,
+  incluidas sus bases de pruebas, después de verificar su ruta y la ausencia
+  de enlaces. No se tocan bases persistentes del usuario.
+- `.gitignore` incorpora `*.log` y `.pytest-*/` para evitar que estos residuos
+  vuelvan a versionarse. Se comprueba que ambos patrones se aplican.
+- La validación usa `uv run pytest -q`, `EVALUADOR=falso` y temporales fuera
+  del repositorio. El primer intento se interrumpe por faltar el directorio
+  padre de `--basetemp`; se crea y se repite la suite completa. Las rutas de
+  `PYTEST_ADDOPTS` usan barras `/` para evitar el problema observado en R0.
+- Resultado final: **1006 passed, 2 warnings en 797.46 s (13 min 17 s)**,
+  sin fallos ni omisiones. Se conserva el conteo de R0 (1006 antes y después)
+  y los mismos avisos de deprecación de Starlette/httpx y Google GenAI.
+- No se modifica código, datos de catálogo, pruebas ni frontend. Los cambios
+  previos en `AGENTS.md` y la especificación siguen fuera del commit de R1.
+  R2 y las fases siguientes quedan pendientes.
+
 ## Iteración 1 · F3
 
 ### 2026-10-07 · Exportación de fixtures de contrato

@@ -12,6 +12,10 @@ wheels/
 # Caché local de uv y pytest
 .uv-cache/
 .pytest_cache/
+.pytest-*/
+
+# Logs locales
+*.log
 
 # Base SQLite de la demo y archivos auxiliares
 *.db
