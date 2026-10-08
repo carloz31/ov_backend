@@ -90,11 +90,22 @@ def obtener_sesion(peticion: Request) -> Iterator[Session]:
         yield sesion
 
 
-def recrear_esquema_demo(conexion) -> None:
-    """Compatibilidad de R2: mantiene atómico el reinicio con DDL en SQLite."""
-    conexion.exec_driver_sql("BEGIN")
-    Base.metadata.drop_all(conexion)
-    Base.metadata.create_all(conexion)
+MENSAJE_SIN_ESQUEMA = (
+    'La base no tiene el esquema. Ejecuta `uv run alembic upgrade head` '
+    'y carga datos con `uv run python -m datos.cargar plataforma`.'
+)
+
+
+def comprobar_tablas(motor_bd: Engine) -> None:
+    """Comprueba presencia; las migraciones gestionarán la estructura en R4."""
+    from app.models import Base
+
+    if not set(Base.metadata.tables).issubset(inspect(motor_bd).get_table_names()):
+        raise RuntimeError(MENSAJE_SIN_ESQUEMA)
+
+
+def es_sqlite_en_memoria(motor_bd: Engine) -> bool:
+    return motor_bd.url.get_backend_name() == 'sqlite' and motor_bd.url.database == ':memory:'
 
 
 def es_bloqueo_temporal(error) -> bool:

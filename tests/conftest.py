@@ -4,6 +4,7 @@ from soporte_consultas import ContadorConsultas, MedidorPeticiones
 
 from app.main import crear_aplicacion
 from datos import ocupaciones
+from datos.cargar import preparar_base
 from datos.demo import instrumentos as semilla_instrumentos
 
 
@@ -22,7 +23,16 @@ def catalogo_opcional_solo_en_pruebas(monkeypatch):
 
 @pytest.fixture
 def aplicacion(tmp_path):
-    return crear_aplicacion(f"sqlite:///{(tmp_path / 'prueba.db').as_posix()}")
+    url = f"sqlite:///{(tmp_path / 'prueba.db').as_posix()}"
+    preparar_base(url, 'demo', crear_tablas=True)
+    return crear_aplicacion(url)
+
+
+@pytest.fixture
+def aplicacion_plataforma(tmp_path):
+    url = f"sqlite:///{(tmp_path / 'plataforma.db').as_posix()}"
+    preparar_base(url, 'plataforma', crear_tablas=True)
+    return crear_aplicacion(url)
 
 
 @pytest.fixture

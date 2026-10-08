@@ -4,7 +4,6 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from app.main import crear_aplicacion
 from app.models.base import Base
 
 
@@ -15,8 +14,8 @@ MARA = tuple(f'act-tip-{n:02}' for n in range(1, 15))
 
 
 @pytest.fixture
-def aplicacion(tmp_path):
-    return crear_aplicacion(f'sqlite:///{(tmp_path / "plataforma.db").as_posix()}', semilla='plataforma')
+def aplicacion(aplicacion_plataforma):
+    return aplicacion_plataforma
 
 
 @pytest.fixture

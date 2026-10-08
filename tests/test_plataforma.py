@@ -1,17 +1,11 @@
 """P1–P16 de §4.6; cada escenario usa una base independiente."""
 
-from pathlib import Path
 
-import pytest
-from fastapi.testclient import TestClient
 from soporte_plataforma import (
     CAMINO, FECHA, MARA, actividades, aplicacion, avanzar_camino, cliente, completar, estado,
     eventos, filas_base, pedir, progreso, reglas, responder,
 )
-from sqlalchemy import func, select
 
-from app import models as modelos
-from app.main import crear_aplicacion
 
 
 def test_p01_estado_inicial(cliente):
@@ -158,34 +152,6 @@ def test_p14_audiencia(cliente):
     rosa = estado(cliente, 'apo-rosa')
     assert rosa['bloques'] == rosa['fichas'] == rosa['insignias'] == []
     assert rosa['nivel_actual'] is None
-
-
-def test_p15_semillas_separadas(cliente, aplicacion, tmp_path):
-    ruta = tmp_path / 'demo.db'
-    with TestClient(crear_aplicacion(f'sqlite:///{ruta.as_posix()}', semilla='demo')):
-        pass
-    antes = ruta.read_bytes()
-    with pytest.raises(RuntimeError) as error:
-        with TestClient(crear_aplicacion(f'sqlite:///{ruta.as_posix()}', semilla='plataforma')):
-            pass
-    assert str(error.value) == ('La base demo.db fue creada con la semilla demo; la aplicación está configurada '
-                                'con plataforma. Usa otra RUTA_BD o borra el archivo.')
-    assert ruta.read_bytes() == antes
-    inicial = filas_base(aplicacion)
-    cache = aplicacion.state.motor_bd.cache_definiciones.actual
-    avanzar_camino(cliente)
-    pedir(cliente, 'POST', '/demo/reiniciar')
-    assert filas_base(aplicacion) == inicial
-    assert aplicacion.state.motor_bd.cache_definiciones.actual is not cache
-    assert aplicacion.state.posiciones_registro == {}
-    assert actividades(cliente)['mission-welcome'] == 'DISPONIBLE'
-    assert eventos(cliente) == []
-    with aplicacion.state.fabrica_sesiones() as sesion:
-        assert sesion.scalar(select(modelos.EsquemaVersion.semilla)) == 'plataforma'
-        assert sesion.scalar(select(func.count()).select_from(modelos.Ocupacion)) == 36
-    # Otro arranque conserva la semilla y valida sus CHECK vigentes.
-    with TestClient(crear_aplicacion(f'sqlite:///{Path(aplicacion.state.motor_bd.url.database).as_posix()}', semilla='plataforma')) as nuevo:
-        assert estado(nuevo) == estado(cliente)
 
 
 def test_p16_eventos_nuevos(cliente):

@@ -13,11 +13,10 @@ from soporte_plataforma import (
     CAMINO, FECHA, MARA, actividades, aplicacion, avanzar_camino, cliente, completar, estado,
     eventos, filas_base, pedir, sesion,
 )
-from sqlalchemy import func, insert, inspect, select, text
+from sqlalchemy import func, insert, select, text
 
 from app import models as modelos
 from app.core.contexto import ContextoConsultas
-from app.database import crear_motor_bd
 from app.main import crear_aplicacion
 from app.models.base import Base
 from app.services.motor.evaluadores import misiones_camino_sin_inicio
@@ -25,6 +24,7 @@ from app.services.motor.reglas import evaluar_regla, registrar_eventos
 from datos import demo as seed
 from datos import ocupaciones as datos_ocupaciones
 from datos import plataforma as semilla_plataforma
+from datos.cargar import preparar_base
 from datos.demo import instrumentos as semilla_instrumentos
 from datos.ocupaciones import leer_ocupaciones, validar_distribucion_items
 
@@ -38,11 +38,11 @@ def test_catalogo_estructura_y_estado_vacio(sesion, aplicacion):
         'instrumento': 1, 'escala_respuesta': 1, 'opcion_escala': 5, 'dimension': 6,
         'item_instrumento': 60, 'actividad_item': 60, 'aplicacion': 1, 'aplicacion_actividad': 14,
         'ocupacion': 36, 'puntaje_ocupacion': 216, 'familia_carrera': 6, 'carrera': 6,
-        'carrera_ocupacion': 23, 'esquema_version': 1}
+        'carrera_ocupacion': 23, 'esquema_version': 0}
     assert len(Base.metadata.tables) == 45
     for tabla in Base.metadata.sorted_tables:
         assert sesion.scalar(select(func.count()).select_from(tabla)) == esperados.get(tabla.name, 0), tabla.name
-    assert sesion.execute(select(modelos.EsquemaVersion.version, modelos.EsquemaVersion.semilla)).all() == [(5, 'plataforma')]
+    assert sesion.execute(select(modelos.EsquemaVersion.version, modelos.EsquemaVersion.semilla)).all() == []
     assert set(sesion.scalars(select(modelos.Bloque.codigo))) == {'CAMINO', 'CIUDAD'}
     assert sesion.scalars(select(modelos.Instrumento.codigo)).all() == ['TEST-RIASEC']
     assert sesion.execute(text('PRAGMA foreign_key_check')).all() == []
@@ -90,11 +90,12 @@ def test_cargador_independiente_en_arranque_y_reinicio(tmp_path, monkeypatch):
         pytest.fail('La plataforma no debe cargar definiciones ni catálogo de demo')
     monkeypatch.setattr(semilla_instrumentos, 'cargar_definiciones_instrumentos', prohibido)
     monkeypatch.setattr(semilla_instrumentos, 'cargar_catalogo_ocupaciones', prohibido)
-    monkeypatch.setattr(seed, 'cargar_semilla', prohibido)
+    monkeypatch.setattr(seed, 'cargar', prohibido)
     import app.main as principal
-    monkeypatch.setattr(principal, 'cargar_posiciones_registro', prohibido)
     ruta = tmp_path / 'independiente.db'
-    app = crear_aplicacion(f'sqlite:///{ruta.as_posix()}', semilla='plataforma')
+    url = f'sqlite:///{ruta.as_posix()}'
+    preparar_base(url, 'plataforma', crear_tablas=True)
+    app = crear_aplicacion(url)
     with TestClient(app) as abierto:
         assert app.state.posiciones_registro == {}
         pedir(abierto, 'POST', '/demo/reiniciar')
@@ -110,11 +111,10 @@ def test_cargador_independiente_en_arranque_y_reinicio(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize('fallo', ['ausente', 'invalido', 'referencia_ausente'])
-def test_excel_erroneo_revierte_arranque_y_reinicio(cliente, aplicacion, tmp_path, monkeypatch, fallo):
+def test_excel_erroneo_revierte_carga_explicita(cliente, aplicacion, tmp_path, monkeypatch, fallo):
     avanzar_camino(cliente, 'enc-mitos')
     antes = filas_base(aplicacion)
     cache = aplicacion.state.motor_bd.cache_definiciones.actual
-    posiciones = aplicacion.state.posiciones_registro
     if fallo == 'referencia_ausente':
         filas = leer_ocupaciones(datos_ocupaciones.RUTA_OCUPACIONES)
         monkeypatch.setattr(semilla_plataforma, 'leer_ocupaciones', lambda ruta: [f for f in filas if f.codigo_onet != '19-2042.00'])
@@ -125,60 +125,37 @@ def test_excel_erroneo_revierte_arranque_y_reinicio(cliente, aplicacion, tmp_pat
             ruta_excel.write_text('archivo inválido', encoding='utf-8')
         monkeypatch.setattr(semilla_plataforma, 'RUTA_OCUPACIONES', ruta_excel)
         mensaje = f'{"Falta" if fallo == "ausente" else "No se puede leer"} el archivo de ocupaciones: {ruta_excel}'
-    assert pedir(cliente, 'POST', '/demo/reiniciar', esperado=422) == {'detail': {'mensaje': mensaje}}
+    with pytest.raises(ValueError) as error:
+        preparar_base(str(aplicacion.state.motor_bd.url), 'plataforma', vaciar=True)
+    assert str(error.value) == mensaje
     assert filas_base(aplicacion) == antes
     assert aplicacion.state.motor_bd.cache_definiciones.actual is cache
-    assert aplicacion.state.posiciones_registro is posiciones
-    nueva = crear_aplicacion(f'sqlite:///{(tmp_path / "arranque_fallido.db").as_posix()}', semilla='plataforma')
+    url = f'sqlite:///{(tmp_path / "carga_fallida.db").as_posix()}'
     with pytest.raises(ValueError) as error:
-        with TestClient(nueva):
-            pass
+        preparar_base(url, 'plataforma', crear_tablas=True)
     assert str(error.value) == mensaje
+    nueva = crear_aplicacion(url)
     assert all(filas == [] for filas in filas_base(nueva).values())
     nueva.state.motor_bd.dispose()
 
 
-def test_fallo_tardio_revierte_datos_ddl_y_cache(cliente, aplicacion, monkeypatch, tmp_path):
+def test_fallo_tardio_revierte_carga_y_conserva_cache(cliente, aplicacion, monkeypatch, tmp_path):
     avanzar_camino(cliente, 'mission-story')
     antes = filas_base(aplicacion)
     cache = aplicacion.state.motor_bd.cache_definiciones.actual
     def fallar(sesion):
         raise ValueError('Fallo después de cargar los datos')
     monkeypatch.setattr(semilla_plataforma, 'validar_distribucion_items', fallar)
-    assert pedir(cliente, 'POST', '/demo/reiniciar', esperado=422)['detail']['mensaje'] == 'Fallo después de cargar los datos'
+    with pytest.raises(ValueError, match='Fallo después'):
+        preparar_base(str(aplicacion.state.motor_bd.url), 'plataforma', vaciar=True)
     assert filas_base(aplicacion) == antes
     assert aplicacion.state.motor_bd.cache_definiciones.actual is cache
-    nueva = crear_aplicacion(f'sqlite:///{(tmp_path / "fallo_tardio.db").as_posix()}', semilla='plataforma')
+    url = f'sqlite:///{(tmp_path / "fallo_tardio.db").as_posix()}'
     with pytest.raises(ValueError, match='Fallo después'):
-        with TestClient(nueva):
-            pass
+        preparar_base(url, 'plataforma', crear_tablas=True)
+    nueva = crear_aplicacion(url)
     assert all(f == [] for f in filas_base(nueva).values())
     nueva.state.motor_bd.dispose()
-
-
-@pytest.mark.parametrize('tabla,columna', [('evento_uso', 'tipo'), ('condicion_desbloqueo', 'tipo_evento')])
-@pytest.mark.parametrize('restriccion', ['antigua', 'ausente'])
-def test_base_f1_esquema_cinco_con_check_incompatible_no_se_modifica(tmp_path, tabla, columna, restriccion):
-    ruta = tmp_path / 'base_f1.db'
-    motor = crear_motor_bd(f'sqlite:///{ruta.as_posix()}')
-    Base.metadata.create_all(motor)
-    with motor.begin() as conexion:
-        conexion.execute(text("INSERT INTO esquema_version VALUES (1, 5, 'demo')"))
-        ddl = conexion.scalar(text("SELECT sql FROM sqlite_master WHERE type='table' AND name=:tabla"), {'tabla': tabla})
-        # DATO DE PRUEBA: reproduce únicamente el CHECK de F1, con versión y columnas actuales.
-        if restriccion == 'antigua':
-            ddl = re.sub(r", '(?:INVITA_A_CREW|FORMA_CREW|VENCE_DESAFIO_INTACTO)'", '', ddl)
-        else:
-            ddl = re.sub(r',?\s*CONSTRAINT tipoeventouso CHECK \([^\n]+\)', '', ddl)
-        conexion.exec_driver_sql(f'DROP TABLE {tabla}')
-        conexion.exec_driver_sql(ddl)
-    motor.dispose()
-    antes = ruta.read_bytes()
-    with pytest.raises(RuntimeError) as error:
-        with TestClient(crear_aplicacion(f'sqlite:///{ruta.as_posix()}', semilla='demo')):
-            pass
-    assert str(error.value) == 'La base base_f1.db tiene un esquema anterior. Bórrala y vuelve a iniciar la aplicación.'
-    assert ruta.read_bytes() == antes
 
 
 @pytest.mark.parametrize('minimo', [None, 0, -1, True, 1.5])

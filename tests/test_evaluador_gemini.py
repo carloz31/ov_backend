@@ -16,9 +16,10 @@ from google.genai import errors, types
 from scripts import evaluar_gemini as script
 from sqlalchemy import event
 
+from datos.cargar import preparar_base
 from app import main as modulo_main
 from app.config import (
-    ConfiguracionRegistro, cargar_configuracion_registro, crear_evaluador_registro,
+    Configuracion, cargar_configuracion, crear_evaluador_registro,
 )
 from app.services.registro.evaluacion import (
     ContextoEvaluacion, ConversacionEvaluacion, CriterioEvaluacion, EvaluadorFalso,
@@ -29,7 +30,7 @@ from app.services.registro.prompt import PROMPT_REGISTRO_V2
 
 
 CLAVE_SIMULADA = 'clave-sintetica-solo-pruebas'
-CONFIGURACION = ConfiguracionRegistro('gemini', clave=CLAVE_SIMULADA)
+CONFIGURACION = Configuracion(evaluador='gemini', clave=CLAVE_SIMULADA)
 CONTEXTO = ContextoEvaluacion(
     'Mi plan para fortalecer una habilidad', '¿Qué harás para practicarla?',
     (CriterioEvaluacion('C1', 'Acción concreta'), CriterioEvaluacion('C2', 'Situación concreta')),
@@ -120,8 +121,8 @@ def procesar(cliente, contexto=CONTEXTO, configuracion=CONFIGURACION):
 
 
 def test_configuracion_predeterminada_sin_clave(tmp_path):
-    configuracion = cargar_configuracion_registro(tmp_path / 'ausente', entorno={})
-    assert configuracion == ConfiguracionRegistro()
+    configuracion = cargar_configuracion(ruta_env=tmp_path / 'ausente', entorno={})
+    assert configuracion == Configuracion()
     assert isinstance(crear_evaluador_registro(configuracion), EvaluadorFalso)
 
 
@@ -130,12 +131,12 @@ def test_env_precedencia_sin_mutar_entorno_ni_interpolar(tmp_path, monkeypatch):
     ruta.write_text('EVALUADOR=gemini\nGEMINI_API_KEY=valor-${NO_INTERPOLAR}\n'
                     'GEMINI_MODELO=desde-archivo\nGEMINI_TIMEOUT_SEGUNDOS=3.5\n', encoding='utf-8')
     monkeypatch.setenv('GEMINI_MODELO', 'desde-proceso')
-    configuracion = cargar_configuracion_registro(ruta, entorno={'GEMINI_MODELO': 'desde-proceso'})
+    configuracion = cargar_configuracion(ruta_env=ruta, entorno={'GEMINI_MODELO': 'desde-proceso'})
     assert configuracion.modelo == 'desde-proceso'
     assert configuracion.timeout_segundos == 3.5
     assert configuracion.clave == 'valor-${NO_INTERPOLAR}'
     assert 'valor-' not in repr(configuracion)
-    assert cargar_configuracion_registro(ruta, entorno={'EVALUADOR': 'falso'}).clave is None
+    assert cargar_configuracion(ruta_env=ruta, entorno={'EVALUADOR': 'falso'}).clave is None
 
 
 @pytest.mark.parametrize('valores,mensaje', [
@@ -149,14 +150,14 @@ def test_env_precedencia_sin_mutar_entorno_ni_interpolar(tmp_path, monkeypatch):
 ])
 def test_configuracion_invalida_saneada(tmp_path, valores, mensaje):
     with pytest.raises(RuntimeError, match=mensaje) as error:
-        cargar_configuracion_registro(tmp_path / 'ausente', entorno=valores)
+        cargar_configuracion(ruta_env=tmp_path / 'ausente', entorno=valores)
     assert CLAVE_SIMULADA not in str(error.value)
 
 
 def test_clave_faltante_impide_arranque_sin_crear_bd(tmp_path, monkeypatch):
-    def cargar():
-        return cargar_configuracion_registro(tmp_path / 'ausente', entorno={'EVALUADOR': 'gemini'})
-    monkeypatch.setattr(modulo_main, 'cargar_configuracion_registro', cargar)
+    def cargar(**kwargs):
+        return cargar_configuracion(ruta_env=tmp_path / 'ausente', entorno={'EVALUADOR': 'gemini'})
+    monkeypatch.setattr(modulo_main, 'cargar_configuracion', cargar)
     ruta = tmp_path / 'no_creada.db'
     with pytest.raises(RuntimeError, match='Falta GEMINI_API_KEY'):
         with TestClient(modulo_main.crear_aplicacion(f'sqlite:///{ruta.as_posix()}')):
@@ -363,11 +364,13 @@ def test_cliente_propio_se_cierra_y_error_inicial_saneado(monkeypatch):
 
 @pytest.mark.parametrize('respuesta,error', [(respuesta_sdk(VAGA), None), (None, httpx.ReadTimeout(CLAVE_SIMULADA))])
 def test_integracion_aplicacion_cliente_simulado_sin_conexion_y_con_metadatos(tmp_path, monkeypatch, respuesta, error):
-    app = modulo_main.crear_aplicacion(f'sqlite:///{(tmp_path / "registro.db").as_posix()}')
     def observar():
         assert app.state.motor_bd.pool.checkedout() == 0
     cliente_simulado = ClienteSimulado(respuesta, error, observar)
-    monkeypatch.setattr(modulo_main, 'cargar_configuracion_registro', lambda: CONFIGURACION)
+    monkeypatch.setattr(modulo_main, 'cargar_configuracion', lambda **kwargs: replace(CONFIGURACION, url_bd=kwargs['entorno']['DATABASE_URL']))
+    url = f'sqlite:///{(tmp_path / "registro.db").as_posix()}'
+    preparar_base(url, 'demo', crear_tablas=True)
+    app = modulo_main.crear_aplicacion(url)
     monkeypatch.setattr(genai, 'Client', lambda **kwargs: cliente_simulado)
     with TestClient(app) as cliente:
         envio = cliente.post('/acciones/registro/enviar', json={
@@ -471,7 +474,7 @@ def test_cli_ayuda_no_inicializa_cliente(monkeypatch, capsys):
 def test_cli_fallo_externo_saneado_y_cliente_cerrado(monkeypatch, capsys):
     cliente = ClienteSimulado()
     # No escribir el reporte real; esta prueba solo verifica el límite del CLI.
-    monkeypatch.setattr(script, 'cargar_configuracion_registro', lambda **kwargs: CONFIGURACION)
+    monkeypatch.setattr(script, 'cargar_configuracion', lambda **kwargs: CONFIGURACION)
     monkeypatch.setattr(script, 'EvaluadorGemini', lambda _: cliente)
     cliente.cerrar = cliente.close
     def fallar(*args, **kwargs):
@@ -670,7 +673,7 @@ def test_cli_exito_simulado_cierra_cliente_y_conserva_el_proveedor_del_entorno(t
     def configurar(**argumentos):
         assert argumentos['entorno']['EVALUADOR'] == 'gemini'
         return CONFIGURACION
-    monkeypatch.setattr(script, 'cargar_configuracion_registro', configurar)
+    monkeypatch.setattr(script, 'cargar_configuracion', configurar)
     ejecutar_original = script.ejecutar_casos
     ruta = tmp_path / 'cli.md'
     monkeypatch.setattr(script, 'ejecutar_casos', lambda evaluador, configuracion, **opciones:

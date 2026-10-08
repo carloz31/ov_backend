@@ -1,23 +1,21 @@
 """Fase 1: definiciones, importación de O*NET, restricciones y esquema versión 2."""
 
-import sqlite3
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
 from openpyxl import Workbook
-from sqlalchemy import delete, func, inspect, select, text
+from sqlalchemy import delete, func, inspect, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import models as modelos
 from app.database import crear_motor_bd
-from app.main import crear_aplicacion
+from datos.cargar import preparar_base
 from app.models.base import Base
 from datos import ocupaciones
-from datos.demo import cargar_semilla, instrumentos as semilla_instrumentos
+from datos.demo import instrumentos as semilla_instrumentos
 from datos.demo.instrumentos import cargar_catalogo_ocupaciones, relaciones_carreras
 from datos.ocupaciones import OcupacionArchivo, leer_ocupaciones, validar_distribucion_items
 
@@ -43,7 +41,7 @@ def crear_excel(tmp_path, filas, encabezado=("code", "title", "R", "I", "A", "S"
 
 
 def test_catalogos_y_estado_inicial_de_instrumentos(sesion, cliente):
-    assert sesion.scalars(select(modelos.EsquemaVersion.version)).all() == [5]
+    assert sesion.scalars(select(modelos.EsquemaVersion.version)).all() == []
     for modelo, cantidad in (
         (modelos.Instrumento, 4), (modelos.Dimension, 19), (modelos.EscalaRespuesta, 4),
         (modelos.OpcionEscala, 13), (modelos.ItemInstrumento, 137),
@@ -334,52 +332,11 @@ def test_coincidencias_rechazan_ajustes_y_posiciones_invalidas(sesion, correlaci
             sesion.flush()
 
 
-@pytest.mark.parametrize("version", [None, 1, 3, 6, "sin_fila"])
-def test_arranque_rechaza_esquema_anterior_sin_modificar_base(tmp_path, version):
-    ruta = tmp_path / "prueba.db"
-    motor = crear_motor_bd(f"sqlite:///{ruta.as_posix()}")
-    if version is None:
-        with motor.begin() as conexion:
-            conexion.execute(text("CREATE TABLE cuenta (id INTEGER PRIMARY KEY, codigo TEXT)"))
-            conexion.execute(text("INSERT INTO cuenta VALUES (1, 'dato-anterior')"))
-    else:
-        Base.metadata.create_all(motor)
-        if version != "sin_fila":
-            with motor.begin() as conexion:
-                conexion.execute(text("INSERT INTO esquema_version (id, version, semilla) VALUES (1, :version, 'demo')"), {"version": version})
-    motor.dispose()
-    antes = ruta.read_bytes()
-    aplicacion = crear_aplicacion(f"sqlite:///{ruta.as_posix()}")
-    with pytest.raises(RuntimeError) as error:
-        with TestClient(aplicacion):
-            pass
-    assert str(error.value) == (
-        "La base prueba.db tiene un esquema anterior. Bórrala y vuelve a iniciar la aplicación."
-    )
-    assert ruta.read_bytes() == antes
-    with sqlite3.connect(ruta) as conexion:
-        if version is None:
-            assert conexion.execute("SELECT codigo FROM cuenta").fetchall() == [("dato-anterior",)]
-            assert conexion.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall() == [("cuenta",)]
-
-
-def test_arranque_no_repara_base_version_dos_con_tablas_faltantes(tmp_path):
-    ruta = tmp_path / "parcial.db"
-    with sqlite3.connect(ruta) as conexion:
-        conexion.execute("CREATE TABLE esquema_version (id INTEGER PRIMARY KEY, version INTEGER)")
-        conexion.execute("INSERT INTO esquema_version VALUES (1, 2)")
-    antes = ruta.read_bytes()
-    with pytest.raises(RuntimeError, match="esquema anterior"):
-        with TestClient(crear_aplicacion(f"sqlite:///{ruta.as_posix()}")):
-            pass
-    assert ruta.read_bytes() == antes
-
-
-def test_reinicio_escribe_version_dos_y_catalogo_completo(cliente, aplicacion):
+def test_reinicio_conserva_catalogo_completo_sin_escribir_version(cliente, aplicacion):
     for _ in range(2):
         assert cliente.post("/demo/reiniciar").json() == {"mensaje": "Demo reiniciada"}
         with aplicacion.state.fabrica_sesiones() as sesion:
-            assert sesion.scalars(select(modelos.EsquemaVersion.version)).all() == [5]
+            assert sesion.scalars(select(modelos.EsquemaVersion.version)).all() == []
             assert sesion.scalar(select(func.count()).select_from(modelos.ItemInstrumento)) == 137
             assert sesion.scalar(select(func.count()).select_from(modelos.ReglaDesbloqueo)) == 47
             validar_distribucion_items(sesion)
@@ -387,7 +344,7 @@ def test_reinicio_escribe_version_dos_y_catalogo_completo(cliente, aplicacion):
 
 
 @pytest.mark.parametrize("fallo", ["ausente", "columnas", "codigo_requerido"])
-def test_error_de_catalogo_revierte_toda_la_semilla(tmp_path, monkeypatch, fallo):
+def test_error_de_catalogo_revierte_preparar_base(tmp_path, monkeypatch, fallo):
     if fallo == "ausente":
         ruta = tmp_path / "ausente.xlsx"
         mensaje = "Falta el archivo"
@@ -399,13 +356,11 @@ def test_error_de_catalogo_revierte_toda_la_semilla(tmp_path, monkeypatch, fallo
         mensaje = "29-1141.00"
     monkeypatch.setattr(ocupaciones, "RUTA_OCUPACIONES", ruta)
     monkeypatch.setattr(semilla_instrumentos, "cargar_catalogo_ocupaciones", cargar_catalogo_ocupaciones)
-    motor = crear_motor_bd(f"sqlite:///{(tmp_path / 'semilla.db').as_posix()}")
+    url = f"sqlite:///{(tmp_path / 'semilla.db').as_posix()}"
+    with pytest.raises(ValueError, match=mensaje):
+        preparar_base(url, 'demo', crear_tablas=True)
+    motor = crear_motor_bd(url)
     try:
-        Base.metadata.create_all(motor)
-        with Session(motor) as sesion:
-            with pytest.raises(ValueError, match=mensaje):
-                with sesion.begin():
-                    cargar_semilla(sesion)
         with Session(motor) as sesion:
             for tabla in Base.metadata.sorted_tables:
                 assert sesion.scalar(select(func.count()).select_from(tabla)) == 0
@@ -413,20 +368,12 @@ def test_error_de_catalogo_revierte_toda_la_semilla(tmp_path, monkeypatch, fallo
         motor.dispose()
 
 
-def test_reinicio_con_excel_invalido_conserva_estado_y_muestra_error(cliente, aplicacion, tmp_path, monkeypatch):
-    assert cliente.post("/acciones/completar-actividad", json={
-        "cuenta": "est-ana", "actividad": "ACT-01",
+def test_reinicio_no_depende_del_excel(cliente, aplicacion, tmp_path, monkeypatch):
+    assert cliente.post('/acciones/completar-actividad', json={
+        'cuenta': 'est-ana', 'actividad': 'ACT-01',
     }).status_code == 200
-    estado = cliente.get("/cuentas/est-ana/estado").json()
-    eventos = cliente.get("/cuentas/est-ana/eventos").json()
-    desbloqueos = cliente.get("/cuentas/est-ana/desbloqueos").json()
-    monkeypatch.setattr(ocupaciones, "RUTA_OCUPACIONES", tmp_path / "ausente.xlsx")
-    monkeypatch.setattr(semilla_instrumentos, "cargar_catalogo_ocupaciones", cargar_catalogo_ocupaciones)
-    respuesta = cliente.post("/demo/reiniciar")
-    assert respuesta.status_code == 422
-    assert "Falta el archivo" in respuesta.json()["detail"]["mensaje"]
-    assert cliente.get("/cuentas/est-ana/estado").json() == estado
-    assert cliente.get("/cuentas/est-ana/eventos").json() == eventos
-    assert cliente.get("/cuentas/est-ana/desbloqueos").json() == desbloqueos
-    with aplicacion.state.fabrica_sesiones() as sesion:
-        assert sesion.scalars(select(modelos.EsquemaVersion.version)).all() == [5]
+    cache = aplicacion.state.motor_bd.cache_definiciones.actual
+    monkeypatch.setattr(ocupaciones, 'RUTA_OCUPACIONES', tmp_path / 'ausente.xlsx')
+    assert cliente.post('/demo/reiniciar').json() == {'mensaje': 'Demo reiniciada'}
+    assert cliente.get('/cuentas/est-ana/eventos').json() == []
+    assert aplicacion.state.motor_bd.cache_definiciones.actual is cache

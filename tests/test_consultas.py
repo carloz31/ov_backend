@@ -7,6 +7,7 @@ from app import models as modelos
 from app.database import crear_motor_bd
 from app.services.motor.reglas import registrar_eventos
 from app.services.registro.evaluacion import EvaluadorFalso, ResultadoEvaluacion
+from datos.cargar import preparar_base
 from datos.ocupaciones import RUTA_OCUPACIONES
 
 
@@ -567,6 +568,7 @@ def test_consultas_no_crecen_con_100_reglas_y_500_eventos(
     from app.main import crear_aplicacion
     from app.services.motor import reglas as motor
 
+    preparar_base(f"sqlite:///{(tmp_path / 'ampliada.db').as_posix()}", 'demo', crear_tablas=True)
     ampliada = crear_aplicacion(f"sqlite:///{(tmp_path / 'ampliada.db').as_posix()}")
     with TestClient(ampliada) as otro_cliente:
         actividad = "ACT-01" if etapa == "inicial" else "ACT-13"
@@ -693,6 +695,7 @@ def test_cache_aislada_detecta_commit_y_conserva_rollback(cliente, aplicacion, t
     from fastapi.testclient import TestClient
     from app.main import crear_aplicacion
 
+    preparar_base(f"sqlite:///{(tmp_path / 'aislada.db').as_posix()}", 'demo', crear_tablas=True)
     otra = crear_aplicacion(f"sqlite:///{(tmp_path / 'aislada.db').as_posix()}")
     with TestClient(otra) as otro_cliente:
         cache = aplicacion.state.motor_bd.cache_definiciones
@@ -721,23 +724,26 @@ def test_cache_aislada_detecta_commit_y_conserva_rollback(cliente, aplicacion, t
         assert actividades_por_codigo(otro_cliente.get("/cuentas/est-ana/estado").json())["ACT-01"]["estado"] == "DISPONIBLE"
 
 
-def test_reinicio_actualiza_cache_solo_si_tiene_exito(cliente, aplicacion, contador_consultas, monkeypatch):
-    from datos.demo import instrumentos as semilla_instrumentos
+def test_reinicio_conserva_cache_tras_exito_y_fallo(cliente, aplicacion, contador_consultas, monkeypatch):
+    from app.services import demo as servicio_demo
+    from sqlalchemy.exc import IntegrityError
 
     preparar_peticion(cliente, "/acciones/completar-actividad", datos_medicion("ACT-01"))
     antes = cliente.get("/cuentas/est-ana/estado").json()
     original = aplicacion.state.motor_bd.cache_definiciones.actual
 
     def fallar(sesion):
-        raise ValueError("Catálogo inválido de prueba")
+        servicio_demo_original(sesion)
+        raise IntegrityError('DELETE', {}, RuntimeError('Fallo de prueba'))
 
+    servicio_demo_original = servicio_demo.reiniciar_demo
     with monkeypatch.context() as parche:
-        parche.setattr(semilla_instrumentos, "cargar_catalogo_ocupaciones", fallar)
-        assert cliente.post("/demo/reiniciar").status_code == 422
+        parche.setattr(servicio_demo, 'reiniciar_demo', fallar)
+        assert cliente.post("/demo/reiniciar").status_code == 409
     assert aplicacion.state.motor_bd.cache_definiciones.actual is original
     assert cliente.get("/cuentas/est-ana/estado").json() == antes
     assert cliente.post("/demo/reiniciar").status_code == 200
-    assert aplicacion.state.motor_bd.cache_definiciones.actual is not original
+    assert aplicacion.state.motor_bd.cache_definiciones.actual is original
     estado, contador = peticion_contada(cliente, aplicacion.state.motor_bd, contador_consultas,
                                         "GET", "/cuentas/est-ana/estado")
     assert contador.cantidad <= 10
@@ -758,6 +764,7 @@ def test_calculo_riasec_no_crece_con_100_ocupaciones(cliente, aplicacion, tmp_pa
     from fastapi.testclient import TestClient
     from app.main import crear_aplicacion
 
+    preparar_base(f"sqlite:///{(tmp_path / 'ocupaciones.db').as_posix()}", 'demo', crear_tablas=True)
     ampliada = crear_aplicacion(f"sqlite:///{(tmp_path / 'ocupaciones.db').as_posix()}")
     with TestClient(ampliada) as otro_cliente:
         with ampliada.state.fabrica_sesiones.begin() as sesion:
@@ -822,6 +829,7 @@ def test_completar_no_crece_con_mas_aplicaciones(cliente, aplicacion, tmp_path, 
     from fastapi.testclient import TestClient
     from app.main import crear_aplicacion
 
+    preparar_base(f"sqlite:///{(tmp_path / 'aplicaciones.db').as_posix()}", 'demo', crear_tablas=True)
     ampliada = crear_aplicacion(f"sqlite:///{(tmp_path / 'aplicaciones.db').as_posix()}")
     with TestClient(ampliada) as otro_cliente:
         with ampliada.state.fabrica_sesiones.begin() as sesion:
@@ -1138,6 +1146,7 @@ def test_registro_sql_no_crece_con_100_reglas_reflexivas_y_500_eventos(
     from app.main import crear_aplicacion
     from app.services.motor import reglas as motor
 
+    preparar_base(f"sqlite:///{(tmp_path / 'registro-ampliado.db').as_posix()}", 'demo', crear_tablas=True)
     ampliada = crear_aplicacion(f"sqlite:///{(tmp_path / 'registro-ampliado.db').as_posix()}")
     with TestClient(ampliada) as otro_cliente:
         for otro in (cliente, otro_cliente):

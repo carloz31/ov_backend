@@ -12,11 +12,8 @@ from urllib.parse import quote
 if __package__ in (None, ''):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from sqlalchemy.orm import Session
-
 from app.core.parametros import PAUSA_CASOS_GEMINI_SEGUNDOS, VERSION_PROMPT_REGISTRO
-from app.config import cargar_configuracion_registro, ErrorConfiguracionRegistro
-from app.models.base import Base
+from app.config import cargar_configuracion, ErrorConfiguracionRegistro
 from app.database import crear_motor_bd
 from app.core.definiciones import Definiciones
 from app.services.registro.gemini import EvaluadorGemini, ErrorClienteGemini
@@ -25,7 +22,7 @@ from app.services.registro.evaluacion import (
     RespuestaAnterior, TurnoEvaluacion, evaluar_respuesta,
 )
 from app.models import Actividad, ItemRegistro
-from datos.demo.registro import cargar_definiciones_registro
+from datos.cargar import preparar_base_registro_en_memoria
 
 
 RUTA_REPORTE = Path(__file__).resolve().parent.parent / 'docs' / 'evaluacion_gemini.md'
@@ -85,9 +82,7 @@ def preparar_casos():
     # Definiciones oficiales, sin catálogo Excel ni abrir/modificar demo.db.
     motor = crear_motor_bd('sqlite:///:memory:')
     try:
-        Base.metadata.create_all(motor)
-        with Session(motor) as sesion, sesion.begin():
-            cargar_definiciones_registro(sesion)
+        preparar_base_registro_en_memoria(motor)
         with motor.connect() as conexion:
             definiciones = Definiciones(conexion)
         actividad = definiciones.por_codigo(Actividad, 'REG-ACT08')
@@ -202,7 +197,7 @@ def main(argumentos=None):
     evaluador = None
     try:
         # Este comando manual siempre pide Gemini; no cambia el entorno de la aplicación.
-        configuracion = cargar_configuracion_registro(entorno={**os.environ, 'EVALUADOR': 'gemini'})
+        configuracion = cargar_configuracion(entorno={**os.environ, 'EVALUADOR': 'gemini'})
         evaluador = EvaluadorGemini(configuracion)
         ejecutar_casos(evaluador, configuracion, pausa=opciones.pausa)
         print('Reporte generado en docs/evaluacion_gemini.md')

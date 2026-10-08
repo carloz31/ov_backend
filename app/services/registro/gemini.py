@@ -13,7 +13,7 @@ from google import genai
 from google.genai import errors, types
 from pydantic import ValidationError
 
-from app.config import ConfiguracionRegistro, ErrorConfiguracionRegistro
+from app.config import Configuracion, ErrorConfiguracionRegistro
 from app.core.parametros import TEMPERATURA_REGISTRO
 from app.services.registro.evaluacion import (
     ContextoEvaluacion, ErrorResultadoEvaluacion, ResultadoEvaluacion, validar_resultado,
@@ -55,7 +55,7 @@ def razonamiento_minimo(modelo):
 
 
 class EvaluadorGemini:
-    def __init__(self, configuracion: ConfiguracionRegistro, *, cliente=None):
+    def __init__(self, configuracion: Configuracion, *, cliente=None):
         if not configuracion.clave:
             raise ErrorConfiguracionRegistro('Falta GEMINI_API_KEY para usar EVALUADOR=gemini')
         self.configuracion = configuracion

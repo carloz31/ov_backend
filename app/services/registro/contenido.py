@@ -12,7 +12,9 @@ from app.models import Actividad, ActividadItemRegistro, ItemRegistro
 RUTA_CONTENIDO_REGISTRO = Path(__file__).resolve().parents[2] / "static" / "contenido" / "REG-ACT08.json"
 
 
-def cargar_posiciones_registro(sesion: Session, ruta: Path | None = None) -> dict[str, tuple[str, ...]]:
+def cargar_posiciones_registro(
+    sesion: Session, ruta: Path | None = None, *, actividad_opcional: bool = False,
+) -> dict[str, tuple[str, ...]]:
     ruta = ruta if ruta is not None else RUTA_CONTENIDO_REGISTRO
 
     def invalido(mensaje):
@@ -24,6 +26,11 @@ def cargar_posiciones_registro(sesion: Session, ruta: Path | None = None) -> dic
         raise invalido("no se puede leer un JSON válido") from error
     if not isinstance(contenido, dict) or not isinstance(contenido.get("actividad"), str):
         raise invalido("se requiere el código de actividad")
+    actividad_id = sesion.scalar(select(Actividad.id).where(Actividad.codigo == contenido["actividad"]))
+    if actividad_id is None:
+        if actividad_opcional:
+            return {}
+        raise invalido(f"la actividad no existe: {contenido['actividad']}")
     momentos = contenido.get("momentos")
     if not isinstance(momentos, list) or not momentos:
         raise invalido("se requiere una lista de momentos no vacía")
@@ -40,9 +47,6 @@ def cargar_posiciones_registro(sesion: Session, ruta: Path | None = None) -> dic
                 raise invalido("los ítems de un momento de registro deben ser una lista de códigos")
             codigos.extend(items)
     # Lecturas agrupadas, sin consultas SQL dentro de bucles.
-    actividad_id = sesion.scalar(select(Actividad.id).where(Actividad.codigo == contenido["actividad"]))
-    if actividad_id is None:
-        raise invalido(f"la actividad no existe: {contenido['actividad']}")
     existentes = set(sesion.scalars(select(ItemRegistro.codigo)))
     for codigo in codigos:
         if codigo not in existentes:

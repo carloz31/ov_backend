@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from app import models as modelos
 from app.main import crear_aplicacion
 from app.models.base import Base
-from datos.demo import cargar_semilla
+from datos.cargar import preparar_base
 
 
 ESPECIFICACION = (Path(__file__).resolve().parents[1] / "docs" /
@@ -214,6 +214,7 @@ def test_reglas_completas_segun_especificacion(cliente, sesion):
 
 def test_arranque_no_repite_semilla_y_conserva_estado(tmp_path):
     url = f"sqlite:///{(tmp_path / 'persistencia.db').as_posix()}"
+    preparar_base(url, 'demo', crear_tablas=True)
     primera = crear_aplicacion(url)
     with TestClient(primera) as cliente:
         reglas_iniciales = cliente.get("/reglas").json()
@@ -232,7 +233,7 @@ def test_arranque_no_repite_semilla_y_conserva_estado(tmp_path):
                 modelos.Cuenta.codigo == "est-ana")) == "Ana con datos conservados"
 
 
-def test_reinicio_restaura_semilla_y_vacia_todo_el_estado(cliente, sesion, aplicacion):
+def test_reinicio_conserva_catalogo_y_vacia_todo_el_estado(cliente, sesion, aplicacion):
     reglas_iniciales = cliente.get("/reglas").json()
     cuentas = por_codigo(sesion, modelos.Cuenta)
     actividades = por_codigo(sesion, modelos.Actividad)
@@ -270,9 +271,9 @@ def test_reinicio_restaura_semilla_y_vacia_todo_el_estado(cliente, sesion, aplic
     with aplicacion.state.fabrica_sesiones() as nueva:
         for nombre in TABLAS_ESTADO:
             assert nueva.scalar(select(func.count()).select_from(Base.metadata.tables[nombre])) == 0
-        assert nueva.scalar(select(modelos.Cuenta.nombre).where(modelos.Cuenta.codigo == "est-ana")) == "Ana"
+        assert nueva.scalar(select(modelos.Cuenta.nombre).where(modelos.Cuenta.codigo == "est-ana")) == "Modificado"
         vinculo = nueva.scalar(select(modelos.VinculoFamiliar))
-        assert vinculo.carta_estudiante is None and vinculo.carta_apoderado is None
+        assert vinculo.carta_estudiante == "Una carta" and vinculo.carta_apoderado == "Otra carta"
 
 
 @pytest.mark.parametrize("modelo,datos", [
@@ -365,26 +366,28 @@ def test_defaults_falsos(sesion):
     assert conversacion.conversado_en is None
 
 
-def test_semilla_se_revierte_completa_si_falla(aplicacion, cliente, monkeypatch):
-    motor = aplicacion.state.motor_bd
-    Base.metadata.drop_all(motor)
-    Base.metadata.create_all(motor)
-    fabrica = aplicacion.state.fabrica_sesiones
-    with fabrica() as sesion:
-        original = sesion.flush
-        llamadas = 0
+def test_preparar_base_se_revierte_completa_si_falla(tmp_path, monkeypatch):
+    from sqlalchemy.orm import Session
+    from app.database import crear_motor_bd
 
-        def fallar_al_final(*args, **kwargs):
-            nonlocal llamadas
-            llamadas += 1
-            original(*args, **kwargs)
-            if llamadas == 4:
-                raise RuntimeError("Fallo simulado durante la carga")
+    url = f'sqlite:///{(tmp_path / "carga_atomica.db").as_posix()}'
+    original = Session.flush
+    llamadas = 0
 
-        monkeypatch.setattr(sesion, "flush", fallar_al_final)
-        with pytest.raises(RuntimeError, match="Fallo simulado"):
-            with sesion.begin():
-                cargar_semilla(sesion)
-    with fabrica() as sesion:
-        for tabla in Base.metadata.sorted_tables:
-            assert sesion.scalar(select(func.count()).select_from(tabla)) == 0
+    def fallar_al_final(sesion, *args, **kwargs):
+        nonlocal llamadas
+        llamadas += 1
+        original(sesion, *args, **kwargs)
+        if llamadas == 4:
+            raise RuntimeError("Fallo simulado durante la carga")
+
+    monkeypatch.setattr(Session, 'flush', fallar_al_final)
+    with pytest.raises(RuntimeError, match="Fallo simulado"):
+        preparar_base(url, 'demo', crear_tablas=True)
+    motor = crear_motor_bd(url)
+    try:
+        with Session(motor) as sesion:
+            for tabla in Base.metadata.sorted_tables:
+                assert sesion.scalar(select(func.count()).select_from(tabla)) == 0
+    finally:
+        motor.dispose()

@@ -1,9 +1,15 @@
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.database import recrear_esquema_demo
-from app.models import Actividad, Carrera, Conversacion, Cuenta, FamiliaCarrera, VinculoFamiliar
-from app.services.registro.contenido import cargar_posiciones_registro
+from app.models import Actividad, Base, Carrera, Conversacion, Cuenta, FamiliaCarrera, VinculoFamiliar
+
+
+TABLAS_DE_ESTADO = (
+    'progreso_actividad', 'resultado_caso', 'entrada_diario', 'check_in',
+    'entrevista', 'entrevista_autor', 'conversacion_vinculo', 'evento_uso',
+    'desbloqueo', 'respuesta_item', 'resultado_instrumento', 'resultado_dimension',
+    'coincidencia', 'respuesta_registro', 'turno_seguimiento', 'evaluacion_respuesta',
+)
 
 
 def consultar_catalogo(sesion: Session):
@@ -33,15 +39,9 @@ def consultar_catalogo(sesion: Session):
         ],
     }
 
-def reiniciar_demo(motor_bd, semilla, obtener_cargador_semilla):
-    cargar = obtener_cargador_semilla(semilla)
-    with motor_bd.begin() as conexion:
-        recrear_esquema_demo(conexion)
-        with Session(bind=conexion) as sesion:
-            cargar(sesion)
-            posiciones = cargar_posiciones_registro(sesion) if semilla == 'demo' else {}
-    return posiciones
 
-
-def recargar_cache_demo(motor_bd) -> None:
-    motor_bd.cache_definiciones.recargar()
+def reiniciar_demo(sesion: Session) -> None:
+    """El llamador delimita la transacción; el catálogo permanece intacto."""
+    for tabla in reversed(Base.metadata.sorted_tables):
+        if tabla.name in TABLAS_DE_ESTADO:
+            sesion.execute(delete(tabla))

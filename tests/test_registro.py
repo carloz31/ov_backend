@@ -10,6 +10,7 @@ from sqlalchemy import event, func, inspect, select, text
 from sqlalchemy.exc import IntegrityError
 
 from app import models as modelos
+from datos.cargar import preparar_base
 from app.main import crear_aplicacion
 from app.models.base import Base
 from app.services.registro import contenido as contenido_registro
@@ -261,32 +262,7 @@ def test_restricciones_sql_turno_seguimiento(sesion, respuesta_registro, columna
             sesion.execute(text(f'UPDATE turno_seguimiento SET {columna} = :valor'), {'valor': valor})
 
 
-@pytest.mark.parametrize('variante', ['sin_turnos', 'item_v1', 'respuesta_v1', 'evaluacion_v1'])
-def test_rechaza_estructura_registro_v1_con_version_cuatro_sin_modificar_base(tmp_path, variante):
-    from app.database import crear_motor_bd
-
-    ruta = tmp_path / 'version_cuatro_incompatible.db'
-    url = f'sqlite:///{ruta.as_posix()}'
-    motor = crear_motor_bd(url)
-    Base.metadata.create_all(motor)
-    cambios = {
-        'sin_turnos': 'DROP TABLE turno_seguimiento',
-        'item_v1': 'ALTER TABLE item_registro RENAME COLUMN repregunta_generica TO repregunta_minima',
-        'respuesta_v1': 'ALTER TABLE respuesta_registro RENAME COLUMN texto_inicial TO texto',
-        'evaluacion_v1': 'ALTER TABLE evaluacion_respuesta RENAME COLUMN numero TO intento',
-    }
-    with motor.begin() as conexion:
-        conexion.execute(text("INSERT INTO esquema_version (id, version, semilla) VALUES (1, 4, 'demo')"))
-        conexion.exec_driver_sql(cambios[variante])
-    motor.dispose()
-    antes = ruta.read_bytes()
-    with pytest.raises(RuntimeError, match='esquema anterior'):
-        with TestClient(crear_aplicacion(url)):
-            pass
-    assert ruta.read_bytes() == antes
-
-
-def test_reinicio_borra_turnos_y_reconstruye_cache(cliente, aplicacion):
+def test_reinicio_borra_turnos_y_conserva_cache(cliente, aplicacion):
     with aplicacion.state.fabrica_sesiones.begin() as sesion:
         cuenta = buscar(sesion, modelos.Cuenta, 'est-ana')
         actividad = buscar(sesion, modelos.Actividad, 'REG-ACT08')
@@ -303,7 +279,7 @@ def test_reinicio_borra_turnos_y_reconstruye_cache(cliente, aplicacion):
         sesion.add(crear_turno(respuesta, respuesta='Borrador'))
     cache = aplicacion.state.motor_bd.cache_definiciones.actual
     assert cliente.post('/demo/reiniciar').status_code == 200
-    assert aplicacion.state.motor_bd.cache_definiciones.actual is not cache
+    assert aplicacion.state.motor_bd.cache_definiciones.actual is cache
     with aplicacion.state.fabrica_sesiones() as sesion:
         assert sesion.scalar(select(func.count()).select_from(modelos.TurnoSeguimiento)) == 0
         assert sesion.scalar(select(func.count()).select_from(modelos.RespuestaRegistro)) == 0
@@ -364,24 +340,25 @@ def contenido_alterado(tmp_path, monkeypatch, variante):
     return mensaje
 
 
-@pytest.mark.parametrize("variante", ["actividad", "item", "faltante", "orden", "duplicado", "momentos_repetidos",
-                                     "sin_id", "items_invalidos", "momentos_invalidos", "json_invalido", "ausente"])
-def test_r17_contenido_invalido_impide_arranque_y_revierte_semilla(tmp_path, monkeypatch, variante):
+@pytest.mark.parametrize('variante', ['item', 'faltante', 'orden', 'duplicado', 'momentos_repetidos',
+                                     'sin_id', 'items_invalidos', 'momentos_invalidos', 'json_invalido', 'ausente'])
+def test_r17_contenido_invalido_impide_arranque_sin_modificar_datos(tmp_path, monkeypatch, variante):
+    url = f'sqlite:///{(tmp_path / "invalida.db").as_posix()}'
+    preparar_base(url, 'demo', crear_tablas=True)
     mensaje = contenido_alterado(tmp_path, monkeypatch, variante)
-    aplicacion = crear_aplicacion(f"sqlite:///{(tmp_path / 'invalida.db').as_posix()}")
+    aplicacion = crear_aplicacion(url)
+    antes = fotografia(aplicacion)
     with pytest.raises(ValueError, match=mensaje):
         with TestClient(aplicacion):
             pass
-    with aplicacion.state.motor_bd.connect() as conexion:
-        assert inspect(conexion).get_table_names()
-        for tabla in Base.metadata.sorted_tables:
-            assert conexion.scalar(select(func.count()).select_from(tabla)) == 0
+    assert fotografia(aplicacion) == antes
     aplicacion.state.motor_bd.dispose()
 
 
 def test_arranque_valida_json_tambien_con_base_existente(tmp_path, monkeypatch):
     ruta = tmp_path / "persistencia.db"
     url = f"sqlite:///{ruta.as_posix()}"
+    preparar_base(url, 'demo', crear_tablas=True)
     with TestClient(crear_aplicacion(url)) as cliente:
         assert cliente.post("/acciones/completar-actividad", json={"cuenta": "est-ana", "actividad": "ACT-01"}).status_code == 200
     antes = ruta.read_bytes()
@@ -392,16 +369,15 @@ def test_arranque_valida_json_tambien_con_base_existente(tmp_path, monkeypatch):
     assert ruta.read_bytes() == antes
 
 
-def test_reinicio_con_json_invalido_conserva_base_y_cache(cliente, aplicacion, tmp_path, monkeypatch):
-    assert cliente.post("/acciones/completar-actividad", json={"cuenta": "est-ana", "actividad": "ACT-01"}).status_code == 200
-    antes = fotografia(aplicacion)
+def test_reinicio_no_relee_json_y_conserva_cache(cliente, aplicacion, tmp_path, monkeypatch):
+    assert cliente.post('/acciones/completar-actividad', json={'cuenta': 'est-ana', 'actividad': 'ACT-01'}).status_code == 200
     cache = aplicacion.state.motor_bd.cache_definiciones.actual
-    contenido_alterado(tmp_path, monkeypatch, "faltante")
-    respuesta = cliente.post("/demo/reiniciar")
-    assert respuesta.status_code == 422
-    assert "los ítems no coinciden" in respuesta.json()["detail"]["mensaje"]
-    assert fotografia(aplicacion) == antes
+    posiciones = aplicacion.state.posiciones_registro
+    contenido_alterado(tmp_path, monkeypatch, 'faltante')
+    assert cliente.post('/demo/reiniciar').json() == {'mensaje': 'Demo reiniciada'}
+    assert cliente.get('/cuentas/est-ana/eventos').json() == []
     assert aplicacion.state.motor_bd.cache_definiciones.actual is cache
+    assert aplicacion.state.posiciones_registro is posiciones
 
 
 def test_cache_registro_orden_criterios_por_item_y_reinicio(cliente, aplicacion, contador_consultas):
@@ -437,7 +413,7 @@ def test_cache_registro_reconstruye_tras_commit_y_conserva_tras_rollback(cliente
     assert cache.actual.por_codigo(modelos.ItemRegistro, "REG-HAB-1").min_caracteres == 45
     assert inicial.por_codigo(modelos.ItemRegistro, "REG-HAB-1").min_caracteres == 40
     assert cliente.post("/demo/reiniciar").status_code == 200
-    assert cache.actual.por_codigo(modelos.ItemRegistro, "REG-HAB-1").min_caracteres == 40
+    assert cache.actual.por_codigo(modelos.ItemRegistro, "REG-HAB-1").min_caracteres == 45
 
 
 def test_accion_registro_anterior_sigue_rechazando_no_evaluada(cliente, aplicacion):
@@ -1036,10 +1012,10 @@ def test_envio_reconstruye_contexto_entre_transacciones(cliente, aplicacion, reg
     assert any(d['objetivo']['codigo'] == 'LOG-PENSADOR' for d in resultado.json()['nuevos_desbloqueos'])
 
 
-def test_posicion_cache_se_actualiza_solo_tras_reinicio_valido(cliente, aplicacion, registro_demo, tmp_path, monkeypatch):
+def test_posiciones_permanecen_tras_reinicio(cliente, aplicacion, registro_demo, tmp_path, monkeypatch):
     posiciones = aplicacion.state.posiciones_registro
     contenido_alterado(tmp_path, monkeypatch, 'faltante')
-    assert cliente.post('/demo/reiniciar').status_code == 422
+    assert cliente.post('/demo/reiniciar').status_code == 200
     assert aplicacion.state.posiciones_registro is posiciones
     ruta = contenido_registro.RUTA_CONTENIDO_REGISTRO
     documento = json.loads(ruta.read_text(encoding='utf-8'))
@@ -1047,10 +1023,10 @@ def test_posicion_cache_se_actualiza_solo_tras_reinicio_valido(cliente, aplicaci
     documento['momentos'][1]['id'] = 'nuevo-plan'
     ruta.write_text(json.dumps(documento, ensure_ascii=False), encoding='utf-8')
     assert cliente.post('/demo/reiniciar').status_code == 200
-    assert aplicacion.state.posiciones_registro == {'REG-ACT08': ('explicacion', 'nuevo-plan')}
+    assert aplicacion.state.posiciones_registro is posiciones
     datos = dict(cuenta='est-ana', actividad='REG-ACT08', posicion='plan')
-    assert cliente.post('/acciones/guardar-posicion', json=datos).status_code == 422
-    assert cliente.post('/acciones/guardar-posicion', json={**datos, 'posicion': 'nuevo-plan'}).status_code == 200
+    assert cliente.post('/acciones/guardar-posicion', json=datos).status_code == 200
+    assert cliente.post('/acciones/guardar-posicion', json={**datos, 'posicion': 'nuevo-plan'}).status_code == 422
 
 
 def test_orden_de_respuestas_por_item_y_evaluaciones_por_insercion(cliente, registro_demo):

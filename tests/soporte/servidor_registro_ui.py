@@ -24,8 +24,11 @@ def main():
     os.environ['GEMINI_TIMEOUT_SEGUNDOS'] = str(TIEMPO_MAXIMO_EVALUACION_SEGUNDOS)
     import uvicorn
     from app.main import crear_aplicacion
+    from datos.cargar import preparar_base
     with TemporaryDirectory(prefix='ov-registro-ui-') as carpeta:
-        aplicacion = crear_aplicacion(f'sqlite:///{(Path(carpeta) / "registro.db").as_posix()}')
+        url = f'sqlite:///{(Path(carpeta) / "registro.db").as_posix()}'
+        preparar_base(url, 'demo', crear_tablas=True)
+        aplicacion = crear_aplicacion(url)
         uvicorn.run(aplicacion, host='127.0.0.1', port=opciones.puerto, log_level='warning')
 
 

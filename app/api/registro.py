@@ -13,6 +13,7 @@ from app.services.registro import acciones as acciones_registro, consultas as co
 
 
 router = APIRouter(tags=['Registro'])
+router_demo = APIRouter(tags=['Registro'])
 
 
 @router.post('/acciones/guardar-posicion', response_model=PosicionGuardada)
@@ -78,6 +79,6 @@ def consultar_registro(cuenta: str, actividad: str, sesion: SesionBD):
     return ejecutar_accion(sesion, lambda: consultas_registro.consultar_registro(sesion, cuenta, actividad))
 
 
-@router.get('/demo/registro/{cuenta}/{actividad}/evaluaciones', response_model=list[EvaluacionRegistroDemo])
+@router_demo.get('/demo/registro/{cuenta}/{actividad}/evaluaciones', response_model=list[EvaluacionRegistroDemo])
 def consultar_evaluaciones(cuenta: str, actividad: str, sesion: SesionBD):
     return ejecutar_accion(sesion, lambda: consultas_registro.consultar_evaluaciones(sesion, cuenta, actividad))

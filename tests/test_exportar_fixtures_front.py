@@ -34,22 +34,21 @@ def test_exportador_exige_destino_incluso_desde_otro_directorio(tmp_path):
 
 
 def test_fixtures_reproducen_el_contrato_y_se_regeneran_identicos(tmp_path, monkeypatch):
-    monkeypatch.setenv('SEMILLA', 'demo')
     monkeypatch.setenv('EVALUADOR', 'gemini')
     ruta_ajena = tmp_path / 'base-del-usuario.db'
     # DATO DE PRUEBA: un archivo que jamás debe abrir ni reiniciar el exportador.
     ruta_ajena.write_bytes(b'Base del usuario: conservar estos bytes')
-    monkeypatch.setenv('RUTA_BD', str(ruta_ajena))
+    monkeypatch.setenv('DATABASE_URL', f'sqlite:///{ruta_ajena.as_posix()}')
     bases = []
     crear = principal.crear_aplicacion
     crear_evaluador = principal.crear_evaluador_registro
 
-    def crear_temporal(url_bd, semilla):
+    def crear_temporal(url_bd):
         ruta = Path(url_bd.removeprefix('sqlite:///'))
         assert ruta.name == 'plataforma.db' and ruta.parent.is_dir()
-        assert ruta != ruta_ajena and semilla == 'plataforma'
+        assert ruta != ruta_ajena
         bases.append(ruta)
-        return crear(url_bd, semilla)
+        return crear(url_bd)
 
     def solo_falso(configuracion):
         assert configuracion.evaluador == 'falso'

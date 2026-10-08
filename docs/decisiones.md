@@ -178,6 +178,134 @@ El frontend queda intacto. Los cambios previos en `AGENTS.md` y la especificaci�
 quedan fuera del commit de esta fase. No se llama a Gemini ni se hace push;
 R3 y las fases siguientes quedan pendientes.
 
+### 2026-10-08 · R3: datos fuera de la aplicación
+
+Se implementa el plan aprobado desde `a8f2ced`, en `refactor-estructura`.
+La referencia de entrada es **1006 pruebas aprobadas** en R2.
+
+#### Precisiones autorizadas sobre el límite R3/R4
+
+- El usuario autoriza adelantar la comprobación de presencia de tablas y la
+  parte de la adaptación 3 ligada al validador de arranque. Ya no se llama a
+  `validar_version_esquema`; su código se conserva para borrarlo en R4. El
+  arranque falla con el mensaje exacto de §5.4 si falta alguna tabla, sin crear
+  tablas ni reparar estructuras. Con catálogo vacío sí arranca.
+- `EsquemaVersion` y sus restricciones siguen en el modelo y en las 45 tablas
+  hasta R4, pero ningún cargador escribe su fila. Las pruebas de listas exactas
+  de tablas, columnas e índices se conservan; solo los conteos de filas de
+  `esquema_version` pasan a cero y su prueba de nulabilidad intenta una inserción
+  inválida, porque ya no existe una fila sobre la cual hacer UPDATE.
+- Hasta incorporar Alembic en R4, la CLI acepta `--crear-tablas` y su error de
+  carga sin esquema explica esa opción. En R4 se retiran la opción y ese mensaje
+  temporal, y se indica `uv run alembic upgrade head`.
+- El usuario autoriza mantener la preparación del script manual Gemini en una
+  base efímera, sin Excel, mediante `datos.cargar.preparar_base_registro_en_memoria`.
+  Se actualiza la frase correspondiente del Anexo A para incluir
+  `scripts/evaluar_gemini.py` junto con pruebas y exportación de fixtures. Esta
+  excepción evita cambiar los casos o hacer que el script lea la base del
+  usuario. No se ejecuta Gemini real. El `AGENTS.md` vigente queda intacto para R5;
+  la especificación previa no versionada permanece fuera del commit.
+
+#### Implementación
+
+- `Configuracion` reúne URL, entorno y evaluador, con precedencia proceso,
+  `.env` y predeterminados, sin interpolación ni mutaciones del entorno.
+  `DATABASE_URL` reemplaza a `SEMILLA`/`RUTA_BD`; SQLite relativo se resuelve
+  desde la raíz. La URL explícita de la fábrica prevalece incluso si la variable
+  del proceso es inválida. Se conservan los mensajes de configuración Gemini.
+- La fábrica ya no conoce conjuntos, siembra ni crea tablas. Desaparecen los
+  puentes temporales y el estado que seleccionaba semillas. El ciclo de vida
+  administra evaluador, comprobación de tablas, posiciones y caché, con cierre
+  de recursos también ante fallos.
+- Los routers se componen por instancia. En producción no se incluyen recursos
+  ni rutas `/demo/*`, incluida la auditoría de registro, que tenía otro router.
+  En desarrollo se conserva exactamente el OpenAPI de R2.
+- Los cargadores públicos son `datos.demo.cargar` y `datos.plataforma.cargar`.
+  `preparar_base` carga y, opcionalmente, vacía en una transacción; rechaza la
+  recarga sin `--vaciar`, devuelve conteos y cierra su motor. La CLI publica
+  ambos conjuntos y las dos opciones, con salida no cero ante errores.
+- El reinicio borra las 16 tablas explícitas de estado en orden inverso de
+  dependencias. Conserva todas las filas de catálogo, cuentas y vínculos,
+  incluidas sus cartas; conserva las posiciones y la misma instancia de caché.
+  No hay DDL ni recarga de Excel, JSON o conjuntos durante el reinicio.
+- La validación opcional del contenido lee el código de actividad del JSON:
+  si no existe en la base, devuelve posiciones vacías; si existe, valida
+  momentos, ítems y orden. La función de validación estricta utilizada por
+  pruebas conserva el rechazo de una actividad inexistente.
+- Fixtures de demo/plataforma, aplicaciones ampliadas para presupuestos SQL,
+  servidor visual y exportador preparan explícitamente sus bases temporales.
+  El script Gemini delega solo su preparación a `datos/`; conserva argumentos,
+  casos, aislamiento de conexiones y clientes simulados en pruebas.
+
+#### Pruebas retiradas y sustituciones autorizadas
+
+Se retiran estas funciones; los casos parametrizados se contabilizan aparte:
+
+| Archivo | Funciones retiradas | Reemplazo |
+|---|---|---|
+| `test_configuracion_base.py` | `test_archivo_predeterminado_por_semilla`, `test_demo_por_defecto_y_ruta_relativa_desde_raiz`, `test_ruta_absoluta_y_argumentos_explicitos_prevalecen`, `test_configuracion_invalida_sin_abrir_base`, `test_fabrica_lee_entorno_y_conserva_url_explicita`, `test_demo_explicita_arranca_y_reinicia_con_entorno_plataforma` | Pruebas de configuración, precedencia, URL explícita, rutas y entornos en `test_configuracion.py` (adaptación 2). |
+| `test_configuracion_base.py` | `test_semilla_distinta_rechaza_base_sin_modificarla`, `test_esquema_anterior_o_incompatible_no_se_migra` | `test_arranque_sin_esquema_falla_sin_crear_tablas`, sobre base vacía y parcial. |
+| `test_configuracion_metodos.py` | `test_rechaza_version_dos_completa_sin_modificar_archivo` | Misma comprobación de presencia de tablas, sin versión. |
+| `test_semilla_instrumentos.py` | `test_arranque_rechaza_esquema_anterior_sin_modificar_base`, `test_arranque_no_repara_base_version_dos_con_tablas_faltantes` | Arranque sin esquema, conservación de datos parciales y arranque con catálogo vacío. |
+| `test_semilla_plataforma.py` | `test_base_f1_esquema_cinco_con_check_incompatible_no_se_modifica` | Comprobación de presencia, sin inspección CHECK por regex. |
+| `test_registro.py` | `test_rechaza_estructura_registro_v1_con_version_cuatro_sin_modificar_base` | Arranque sin esquema sin reparar tablas; Alembic y estructura quedan para R4. |
+| `test_plataforma.py` | `test_p15_semillas_separadas` | Preparación explícita de ambos conjuntos, persistencia y reinicio independiente del conjunto. |
+
+Las 14 funciones retiradas representan **32 casos**. Se conserva P1–P14/P16.
+En R17 se sustituye el caso «actividad inexistente impide arranque» por la
+comprobación de posiciones vacías cuando la actividad no existe (adaptación 6).
+Los otros diez casos de JSON inválido comprueban que el arranque conserve la
+base ya preparada, en lugar de revertir una siembra que ya no realiza.
+
+Las siguientes pruebas se adaptan o renombran, sin retirar sus coberturas:
+
+- `test_reinicio_restaura_semilla_y_vacia_todo_el_estado` pasa a
+  `test_reinicio_conserva_catalogo_y_vacia_todo_el_estado`; conserva nombre y
+  cartas modificados, y comprueba estado vacío.
+- `test_reinicio_actualiza_cache_solo_si_tiene_exito` pasa a
+  `test_reinicio_conserva_cache_tras_exito_y_fallo`; el fallo se inyecta durante
+  los borrados y comprueba reversión, caché intacta y presupuesto SQL.
+- `test_semilla_se_revierte_completa_si_falla` y
+  `test_error_de_catalogo_revierte_toda_la_semilla` pasan a probar
+  `preparar_base` con fallos de flush y Excel, conservando atomicidad.
+- Las dos pruebas de fallos de plataforma pasan del arranque/reinicio a la
+  carga explícita. Cubren una base vacía y `vaciar=True` sobre datos existentes:
+  ambas se revierten sin afectar los datos previos o la caché de la aplicación.
+- El reinicio con Excel inválido pasa a comprobar independencia del Excel.
+  La prueba de catálogo completo conserva sus conteos, sin escribir versión.
+- Registro comprueba borrado de turnos y conservación de caché; un cambio de
+  catálogo confirmado sigue vigente tras reiniciar. Las pruebas de JSON y
+  posiciones comprueban que el reinicio no los relea ni los sustituya.
+- Las pruebas Gemini cambian los nombres de configuración y su construcción
+  por argumentos nombrados; el parche de configuración se coloca antes de la
+  fábrica. Conservan los valores, errores, privacidad y llamadas simuladas.
+  El exportador prueba aislamiento frente a `DATABASE_URL` y la nueva firma
+  de fábrica, manteniendo las aserciones de los ocho contratos.
+
+Se agregan pruebas de clasificación completa de tablas, carga con conteos,
+rechazo de recarga, vaciado atómico, error de CLI, aislamiento de entornos,
+catálogo vacío, reinicio sin cargadores ni DDL y rollback. Una prueba inserta
+filas válidas en las 16 tablas de estado y exige que todas queden vacías y que
+el catálogo quede idéntico. No se cambian expectativas de escenarios E/I ni
+las funcionales de registro o plataforma fuera de estas adaptaciones.
+
+El OpenAPI de desarrollo resulta idéntico al de R2. Los ocho fixtures generados
+en una carpeta temporal externa son idénticos byte a byte a los disponibles en
+`ov_frontend/tests/fixtures/servidor/`. El frontend permanece intacto.
+
+Resultado final de R3: `uv run pytest -q`, **1003 passed, 2 warnings en
+633.65 s (10 min 33 s)**, con evaluador falso y temporales externos al repo.
+El balance es **1006 − 32 casos retirados − 1 caso de R17 sustituido + 30 casos
+nuevos = 1003**, sin fallos ni omisiones. Se conservan los avisos conocidos de
+Starlette/httpx y Google GenAI. También pasan 223 casos focalizados de registro
+y carga, y 17 de atomicidad y reinicio; la suite completa final incluye todos.
+
+La revisión AST confirma los escenarios E/I y las ampliaciones de registro
+intactos, y comprueba las dependencias entre capas, los seis archivos de la raíz
+de `app/` y la ausencia de `create_all`/`drop_all` en la aplicación. No cambian
+modelos ni dependencias. No se llama a Gemini, no se toca el frontend ni se hace
+push. R4 (Alembic y portabilidad) y R5 quedan pendientes; la fase termina aquí.
+
 ## Iteración 1 · F3
 
 ### 2026-10-07 · Exportación de fixtures de contrato

@@ -3,15 +3,10 @@
 from datetime import datetime
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import inspect, select, text
+from sqlalchemy import inspect, select
 from test_consultas import CADENA_MEDICION, buscar, datos_medicion, preparar_peticion
 
 from app import models as modelos
-from app.database import crear_motor_bd
-from app.main import crear_aplicacion
-from app.models.base import Base
-from app.services.motor import reglas as motor
 from datos import ocupaciones
 from datos.demo import instrumentos as semilla_instrumentos
 from datos.ocupaciones import OcupacionArchivo, RUTA_OCUPACIONES
@@ -50,23 +45,6 @@ def test_metadatos_semilla_catalogo_y_columnas(sesion, cliente, aplicacion):
     for tabla, columna in [('instrumento', 'tipo_resultado'), ('aplicacion', 'momento'),
                            ('regla_desbloqueo', 'parametro_evaluador')]:
         assert columna in {c['name'] for c in inspector.get_columns(tabla)}
-
-
-def test_rechaza_version_dos_completa_sin_modificar_archivo(tmp_path):
-    ruta = tmp_path / 'anterior.db'
-    bd = crear_motor_bd(f'sqlite:///{ruta.as_posix()}')
-    Base.metadata.create_all(bd)
-    with bd.begin() as conexion:
-        conexion.execute(text("INSERT INTO esquema_version (id, version, semilla) VALUES (1, 2, 'demo')"))
-    bd.dispose()
-    anterior = ruta.read_bytes()
-    with pytest.raises(RuntimeError) as error:
-        with TestClient(crear_aplicacion(f'sqlite:///{ruta.as_posix()}')):
-            pass
-    assert str(error.value) == (
-        'La base anterior.db tiene un esquema anterior. Bórrala y vuelve a iniciar la aplicación.'
-    )
-    assert ruta.read_bytes() == anterior
 
 
 @pytest.mark.parametrize('plano', [False, True])

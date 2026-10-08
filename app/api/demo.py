@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter
 from fastapi.responses import FileResponse
 
-from app.dependencies import SesionBD
+from app.dependencies import SesionBD, ejecutar_accion
 from app.schemas.demo import ReinicioDemo
 from app.services import demo as servicio_demo
 
@@ -34,14 +34,6 @@ def consultar_catalogo(sesion: SesionBD):
 
 
 @router.post("/reiniciar", response_model=ReinicioDemo)
-def reiniciar_demo(peticion: Request):
-    try:
-        posiciones = servicio_demo.reiniciar_demo(
-            peticion.app.state.motor_bd, peticion.app.state.semilla,
-            peticion.app.state.obtener_cargador_semilla,
-        )
-    except ValueError as error:
-        raise HTTPException(status_code=422, detail={"mensaje": str(error)}) from error
-    servicio_demo.recargar_cache_demo(peticion.app.state.motor_bd)
-    peticion.app.state.posiciones_registro = posiciones
+def reiniciar_demo(sesion: SesionBD):
+    ejecutar_accion(sesion, lambda: servicio_demo.reiniciar_demo(sesion))
     return ReinicioDemo(mensaje="Demo reiniciada")

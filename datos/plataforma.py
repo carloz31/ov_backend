@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 
 from app import models as modelos
 from app.core.parametros import DIMENSIONES_RIASEC, transformar_opcion_onet
-from app.database import VERSION_ESQUEMA
 from datos.ocupaciones import RUTA_OCUPACIONES, leer_ocupaciones, validar_distribucion_items
 
 
@@ -380,12 +379,11 @@ def _cargar_reglas(sesion, objetivos):
     sesion.add_all(reglas)
 
 
-def cargar_semilla_plataforma(sesion: Session) -> None:
+def cargar(sesion: Session) -> None:
     archivo = _leer_catalogo_seleccionado()
     objetivos = _cargar_estructura(sesion)
     dimensiones = _cargar_riasec(sesion, objetivos['ACTIVIDAD'])
     _cargar_catalogo(sesion, archivo, dimensiones)
     _cargar_reglas(sesion, objetivos)
-    sesion.add(modelos.EsquemaVersion(id=1, version=VERSION_ESQUEMA, semilla='plataforma'))
     sesion.flush()
     validar_distribucion_items(sesion)

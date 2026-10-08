@@ -70,10 +70,13 @@ def exportar_fixtures(destino: Path) -> list[Path]:
     try:
         from fastapi.testclient import TestClient
         from app.main import crear_aplicacion
+        from datos.cargar import preparar_base
 
         with TemporaryDirectory(prefix='ov-fixtures-front-') as temporal:
             ruta_bd = Path(temporal) / 'plataforma.db'
-            aplicacion = crear_aplicacion(f'sqlite:///{ruta_bd.as_posix()}', semilla='plataforma')
+            url = f'sqlite:///{ruta_bd.as_posix()}'
+            preparar_base(url, 'plataforma', crear_tablas=True)
+            aplicacion = crear_aplicacion(url)
             with TestClient(aplicacion) as cliente:
                 fixtures = _recorrer(cliente)
     finally:
