@@ -1,5 +1,49 @@
 # Decisiones de implementación
 
+## Actividades por dominio · B3 · 2026-10-08
+
+- `datos/piloto.py` reutiliza los cargadores de estructura, RIASEC, catálogo
+  y reglas de `plataforma`. Solo se parametrizan los dos cargadores privados
+  que necesitan recibir las variantes; sus valores predeterminados conservan
+  los datos anteriores. No se cambia ninguna constante de plataforma ni de demo.
+- El Camino contiene cinco actividades, en el orden de §5.5. Se reconstruye
+  únicamente su secuencia de reglas y se sustituye `R-ciudad` por el evento
+  de completar `enc-mitos`. Las demás reglas y umbrales se reutilizan intactos.
+  El evaluador de misiones ya cuenta las actividades reales del bloque,
+  excluyendo la primera: I2/NIV-2 se obtienen al cuarto paso; I3/NIV-3 al quinto.
+  No hay incompatibilidad nueva entre esas reglas y el Camino reducido.
+  Las reglas de casos, investigación y conversaciones mantienen su alcance
+  previo; no se adelantan sus funcionalidades.
+- Elena usa `AL_DESBLOQUEAR`; la actividad de prueba `cdd-sin-contenido`, de
+  orden 16, usa `SIEMPRE` y hereda la disponibilidad de la Ciudad sin regla
+  propia. La aplicación no comprueba si su contenido existe en el front.
+  Todo lo propio del conjunto está marcado como `DATO DE PRUEBA`.
+- El comando del exportador genera los 18 archivos de §5.4: ocho anteriores,
+  siete consultas de plataforma y tres momentos del piloto. Cada conjunto
+  tiene una base temporal independiente; todo el recorrido termina antes
+  de escribir archivos. Se fuerza el evaluador falso y se restaura el entorno.
+  Se conservan bytes reproducibles y se verifica que los ocho anteriores
+  exportados al frontend coinciden exactamente con HEAD.
+- Se conserva el contrato programático `exportar_fixtures(destino)` de ocho
+  archivos, porque sus pruebas existentes fijan esa lista y §5.6 no autoriza
+  cambiar esas aserciones. El parámetro explícito `por_dominio=True` activa
+  los 18 archivos y el CLI lo usa siempre. Se prueba la modalidad completa
+  y el CLI en un archivo nuevo, sin debilitar el contrato anterior.
+- Se agregan nueve pruebas de piloto y tres del exportador completo, y cuatro
+  casos al parametrizar la equivalencia con piloto. En su tercer momento se
+  completan también las 14 interacciones, para comparar Elena visible con
+  `/estado`. La comparación por AST confirma que ninguna aserción existente
+  cambia; en particular se conserva intacto `test_exportar_fixtures_front.py`.
+- Las pruebas dirigidas aprueban **42 casos**, con una advertencia de dependencia,
+  en 54,52 segundos. La suite completa termina con **1103 correctas, 4 omitidas,
+  cero fallas y 2 advertencias**, en 795,13 segundos, frente a las 1087 correctas
+  de B2. Las omisiones corresponden a PostgreSQL sin `TEST_POSTGRES_URL`;
+  las advertencias son las previas de dependencias. El frontend conserva sus
+  mismas 15 fallas (364 de 379 pasan), con build, lint y estructura correctos.
+  B3 queda cerrada con un commit por repo, sin push y sin iniciar F0. No cambian
+  modelos, migraciones, endpoints ni dependencias; los temporales, bases y
+  registros permanecen fuera de los repos.
+
 ## Actividades por dominio · B2 · 2026-10-08
 
 - Se extraen las lecturas de `estado_cuenta` a los servicios de cuentas,

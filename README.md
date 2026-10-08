@@ -123,6 +123,7 @@ la configuración. La aplicación desconoce el conjunto cargado.
 | Conjunto | Contenido |
 |---|---|
 | `plataforma` | Integración con el front: 3 cuentas, 2 bloques, 24 actividades, 4 fichas, 10 insignias, 5 niveles, 44 reglas y 53 condiciones. RIASEC con 60 ítems en 14 encuentros de Mara, 36 ocupaciones con códigos del front y 6 carreras. |
+| `piloto` | Variante de prueba de plataforma: 5 actividades en el Camino y 16 en la Ciudad. La Ciudad se abre tras `enc-mitos`; Elena usa `AL_DESBLOQUEAR` y `cdd-sin-contenido` prueba una clave ausente del front. Se carga con `uv run python -m datos.cargar piloto` (con `--vaciar` solo para reemplazar los datos existentes). |
 | `demo` | Escenarios originales: 3 cuentas, 11 bloques, 30 actividades, 8 carreras, 47 reglas y 58 condiciones; los cuatro instrumentos, registro con Lumi y catálogo O*NET. |
 
 Los datos de prueba están marcados en los cargadores. La carga de `demo`
@@ -183,12 +184,16 @@ Desde la raíz del backend, indicar explícitamente la carpeta del otro repo:
 uv run python scripts/exportar_fixtures_front.py --destino 'C:/ruta/a/ov_frontend/tests/fixtures/servidor'
 ```
 
-`--destino` es obligatorio y la carpeta se crea si falta. El script prepara una
-base temporal con `plataforma`, fuerza el evaluador falso y recorre P1, P2, P7,
-P12 y P10 con fechas y respuestas fijas. Guarda ocho respuestas JSON con bytes
-reproducibles. Los avisos no vistos corresponden al cierre de Camino, antes de
-Mara. No modifica bases existentes ni llama a Gemini. Si cambia el contrato,
-regenerar los fixtures en la misma tarea.
+`--destino` es obligatorio y la carpeta se crea si falta. El script prepara
+bases temporales separadas para `plataforma` y `piloto`, fuerza el evaluador
+falso y usa fechas y respuestas fijas. Guarda 18 respuestas JSON reproducibles:
+los ocho fixtures anteriores, siete consultas por dominio de plataforma y tres
+momentos del piloto (inicio, Ciudad abierta y Mara completa). Los avisos no
+vistos corresponden al cierre del Camino de plataforma, antes de Mara.
+No modifica bases existentes ni llama a Gemini. Si cambia el contrato,
+regenerar los fixtures en la misma tarea. El uso programático existente
+`exportar_fixtures(destino)` conserva sus ocho archivos; `por_dominio=True`
+activa los 18, como hace siempre el comando.
 
 ### Historial de validación de la iteración 1
 
@@ -273,6 +278,7 @@ ov_backend/
 │   ├── __init__.py
 │   ├── cargar.py
 │   ├── plataforma.py
+│   ├── piloto.py
 │   ├── ocupaciones.py
 │   ├── demo/
 │   │   ├── __init__.py

@@ -1,4 +1,4 @@
-"""Exporta §4.5 desde la API, con datos de prueba y sin servicios externos."""
+"""Exporta los fixtures de plataforma y piloto (§5.4), sin servicios externos."""
 
 import argparse
 import json
@@ -31,19 +31,34 @@ def _completar(cliente, actividad):
     })
 
 
-def _recorrer(cliente):
+def _recorrer(cliente, *, por_dominio=False):
     fixtures = {'estado-inicial.json': _pedir(cliente, 'GET', '/cuentas/est-ana/estado')}
+    if por_dominio:
+        fixtures.update(_consultas_dominio(cliente, 'inicial'))
     for actividad in CAMINO:
         respuesta = _completar(cliente, actividad)
         if actividad in ('mission-welcome', 'mission-next-step'):
             fixtures[f'completar-{actividad}.json'] = respuesta
     fixtures['estado-ciudad.json'] = _pedir(cliente, 'GET', '/cuentas/est-ana/estado')
+    if por_dominio:
+        fixtures.update(_consultas_dominio(cliente, 'ciudad'))
     ruta_avisos = '/cuentas/est-ana/desbloqueos?solo_no_vistos=true'
     avisos = _pedir(cliente, 'GET', ruta_avisos)
     fixtures['desbloqueos-no-vistos.json'] = avisos
     marcados = _pedir(cliente, 'POST', '/cuentas/est-ana/desbloqueos/marcar-vistos')
     if marcados['marcados'] != len(avisos) or _pedir(cliente, 'GET', ruta_avisos) != []:
         raise RuntimeError('P12: el marcado no vació los desbloqueos no vistos')
+    fixtures.update(_recorrer_mara(cliente))
+    return fixtures
+
+
+def _consultas_dominio(cliente, momento):
+    rutas = ('resumen', 'actividades', 'fichas', 'logros') if momento == 'inicial' else ('actividades', 'fichas', 'logros')
+    return {f'{ruta}-{momento}.json': _pedir(cliente, 'GET', f'/cuentas/est-ana/{ruta}') for ruta in rutas}
+
+
+def _recorrer_mara(cliente):
+    fixtures = {}
     for numero in range(1, 15):
         actividad = f'act-tip-{numero:02}'
         items = _pedir(cliente, 'GET', f'/actividades/{actividad}/items')
@@ -63,8 +78,23 @@ def _recorrer(cliente):
     return fixtures
 
 
-def exportar_fixtures(destino: Path) -> list[Path]:
-    """Genera respuestas en una base desechable y escribe solo los ocho fixtures."""
+def _recorrer_piloto(cliente):
+    ruta = '/cuentas/est-ana/actividades'
+    fixtures = {'piloto-actividades-inicial.json': _pedir(cliente, 'GET', ruta)}
+    for actividad in ('mission-welcome', 'enc-mitos'):
+        _completar(cliente, actividad)
+    fixtures['piloto-actividades-ciudad.json'] = _pedir(cliente, 'GET', ruta)
+    _recorrer_mara(cliente)
+    fixtures['piloto-actividades-final.json'] = _pedir(cliente, 'GET', ruta)
+    return fixtures
+
+
+def exportar_fixtures(destino: Path, *, por_dominio: bool = False) -> list[Path]:
+    """Conserva los ocho originales; el CLI activa los diez nuevos con por_dominio.
+
+    Cada conjunto usa su base temporal. Se termina todo el recorrido antes de
+    escribir archivos, y nunca se abre DATABASE_URL ni se usa el evaluador real.
+    """
     evaluador_anterior = os.environ.get('EVALUADOR')
     os.environ['EVALUADOR'] = 'falso'
     try:
@@ -73,12 +103,19 @@ def exportar_fixtures(destino: Path) -> list[Path]:
         from datos.cargar import preparar_base
 
         with TemporaryDirectory(prefix='ov-fixtures-front-') as temporal:
-            ruta_bd = Path(temporal) / 'plataforma.db'
-            url = f'sqlite:///{ruta_bd.as_posix()}'
-            preparar_base(url, 'plataforma', crear_tablas=True)
-            aplicacion = crear_aplicacion(url)
-            with TestClient(aplicacion) as cliente:
-                fixtures = _recorrer(cliente)
+            fixtures = {}
+            for conjunto in ('plataforma', 'piloto') if por_dominio else ('plataforma',):
+                ruta_bd = Path(temporal) / f'{conjunto}.db'
+                url = f'sqlite:///{ruta_bd.as_posix()}'
+                preparar_base(url, conjunto, crear_tablas=True)
+                aplicacion = crear_aplicacion(url)
+                with TestClient(aplicacion) as cliente:
+                    if conjunto == 'piloto':
+                        fixtures.update(_recorrer_piloto(cliente))
+                    elif por_dominio:
+                        fixtures.update(_recorrer(cliente, por_dominio=True))
+                    else:
+                        fixtures.update(_recorrer(cliente))
     finally:
         if evaluador_anterior is None:
             os.environ.pop('EVALUADOR', None)
@@ -97,7 +134,7 @@ def exportar_fixtures(destino: Path) -> list[Path]:
 
 def main() -> None:
     argumentos = argparse.ArgumentParser(
-        description='Genera los ocho fixtures de contrato en tests/fixtures/servidor de ov_frontend.',
+        description='Genera los 18 fixtures de contrato en tests/fixtures/servidor de ov_frontend.',
     )
     argumentos.add_argument('--destino', type=Path,
                            help='Carpeta tests/fixtures/servidor de ov_frontend; se crea si no existe.')
@@ -105,7 +142,7 @@ def main() -> None:
     if opciones.destino is None:
         argumentos.error('Falta --destino: indica la carpeta tests/fixtures/servidor de ov_frontend.')
     try:
-        archivos = exportar_fixtures(opciones.destino)
+        archivos = exportar_fixtures(opciones.destino, por_dominio=True)
     except (OSError, ValueError, RuntimeError) as error:
         argumentos.exit(1, f'No se pudieron exportar los fixtures: {error}\n')
     print(f'Exportados {len(archivos)} fixtures en {opciones.destino.resolve()}')

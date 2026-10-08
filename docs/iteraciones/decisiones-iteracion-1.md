@@ -4,6 +4,77 @@ Registro de decisiones que afectan a ambos repos. Las internas de cada repo van 
 
 Formato de cada entrada: fecha, fase, decisión, motivo y archivos afectados.
 
+## Actividades por dominio · B3 · 2026-10-08
+
+Se implementa únicamente B3: `datos/piloto.py`, su alta en `CONJUNTOS`,
+las pruebas del piloto y los diez fixtures nuevos de §5.4. Se reutilizan
+los datos y cargadores de plataforma sin modificar sus constantes ni las
+de demo. El Camino tiene cinco pasos secuenciales; la Ciudad abre al segundo.
+Elena usa `AL_DESBLOQUEAR` y el código `cdd-sin-contenido` conserva una clave
+deliberadamente ausente del front. Los logros y niveles del Camino funcionan
+con cinco actividades y conservan sus umbrales; no hay reglas adicionales
+que deban cambiarse por la reducción del Camino.
+
+El exportador CLI genera 18 archivos mediante bases temporales separadas:
+ocho anteriores, siete consultas de plataforma y tres momentos del piloto.
+Los momentos del piloto son inicio, `enc-mitos` completa y `act-tip-14`
+completa; en los dos últimos solo están completos los dos primeros pasos
+del Camino. Los ocho fixtures anteriores exportados se comparan byte por
+byte con HEAD del frontend y permanecen idénticos.
+
+La función programática `exportar_fixtures(destino)` conserva su contrato
+anterior de ocho archivos; la nueva opción `por_dominio=True`, usada siempre
+por el CLI, activa los 18. Así se cumple §5.4 sin adaptar las aserciones
+existentes que fijan los ocho nombres o una sola base de plataforma.
+El contrato completo, la reproducibilidad, la restauración del evaluador,
+el aislamiento de la base del usuario y el fallo previo a escribir se prueban
+en `tests/test_fixtures_dominio.py`.
+
+Se completa la equivalencia pendiente de B2 con piloto. En sus tres momentos
+se comparan todos los campos anteriores para Ana, Luis y Rosa; en el tercero
+se completan el Camino y Mara para incluir a Elena visible. Ninguna aserción
+existente cambia, comprobado por AST. B3 añade 16 casos: nueve de piloto,
+tres del exportador y cuatro de la parametrización de equivalencia.
+
+El front recibe únicamente los diez JSON nuevos y las entradas de
+`docs/pendientes-interfaz.md` sobre el contenido de prueba ausente, el texto
+de la llave cuando abre al segundo paso y la falta de animación de revelado.
+Son datos y documentación; no se modifican vistas, textos de la interfaz,
+estilos, código, tipos, servicios ni hooks. La integración corresponde a
+las fases F. También se actualiza el README del backend con la carga del
+piloto y las modalidades del exportador.
+
+Validación de B3:
+
+- Backend antes: **1087 pasan, 4 omitidas, cero fallas y 2 advertencias**
+  (cierre de B2). Las pruebas dirigidas de piloto, fixtures, equivalencia,
+  carga y exportador original aprueban **42 casos**, con una advertencia,
+  en 54,52 segundos.
+- Backend después, suite completa: **1103 pasan, 4 omitidas, cero fallas
+  y 2 advertencias**, en **795,13 segundos**. Pasan los escenarios y los
+  límites SQL existentes. Las cuatro omisiones son los casos opcionales de
+  PostgreSQL sin `TEST_POSTGRES_URL`; las advertencias son las deprecaciones
+  conocidas de Starlette/httpx y Google GenAI.
+- Frontend antes: **379 pruebas, 364 pasan, 15 fallas previas y cero omitidas**
+  (cierre de B2). La exportación produce los 18 JSON y conserva los ocho
+  anteriores exactamente.
+- Frontend después: **379 pruebas, 364 pasan, las mismas 15 fallan y cero
+  omitidas**. Se comparan exactamente los nombres y el orden con B2.
+  Build y lint pasan; estructura: **515 archivos, cero infracciones y cero
+  excepciones**. Se conserva el aviso previo de bundle mayor de 500 kB.
+  Solo cambian los diez fixtures nuevos y el documento de pendientes.
+- Se usa `EVALUADOR=falso`, sin llamadas reales a Gemini ni dependencias
+  nuevas. Las pruebas HTTP y el exportador se ejecutan fuera del sandbox
+  por el bloqueo de TestClient ya diagnosticado; `uv run python -m pytest`
+  evita el problema previo del lanzador. Las bases, caché y registros quedan
+  fuera de ambos repos.
+
+**Cierre de B3:** un commit por repo en `iteracion-1`, sin push. El frontend
+registra los diez fixtures nuevos y los pendientes en `90d76f6`; el backend
+guarda el conjunto piloto, el exportador, las pruebas y estas decisiones.
+Quedan pendientes la integración del frontend y las opciones de interfaz
+registradas en su documento de pendientes. Se detiene antes de F0.
+
 ## Actividades por dominio · B2 · 2026-10-08
 
 Se implementan únicamente las consultas por dominio de §4 y §5.3:

@@ -302,7 +302,8 @@ def _leer_catalogo_seleccionado():
     return {codigo: archivo[codigo_onet] for codigo, _, codigo_onet in OCUPACIONES}
 
 
-def _cargar_estructura(sesion):
+def _cargar_estructura(sesion, *, camino=ACTIVIDADES_CAMINO, ciudad=ACTIVIDADES_CIUDAD,
+                       contenidos=CONTENIDOS_ACTIVIDADES):
     cuentas = {c: modelos.Cuenta(codigo=c, nombre=n, rol=modelos.Rol(r)) for c, n, r in CUENTAS}
     bloques = {c: modelos.Bloque(codigo=c, numero=num, nombre=n, espacio=modelos.Espacio(e),
                                 audiencia=modelos.Audiencia(a)) for c, num, n, e, a in BLOQUES}
@@ -315,9 +316,9 @@ def _cargar_estructura(sesion):
     sesion.add(modelos.VinculoFamiliar(codigo='VIN-ANA', estudiante_id=cuentas['est-ana'].id,
                                       apoderado_id=cuentas['apo-rosa'].id))
     actividades = {}
-    for bloque, filas in (('CAMINO', ACTIVIDADES_CAMINO), ('CIUDAD', ACTIVIDADES_CIUDAD)):
+    for bloque, filas in (('CAMINO', camino), ('CIUDAD', ciudad)):
         actividades.update({c: modelos.Actividad(codigo=c, titulo=t, tipo=modelos.TipoActividad(tipo),
-                                                contenido=CONTENIDOS_ACTIVIDADES[c],
+                                                contenido=contenidos[c],
                                                 orden=orden, bloque_id=bloques[bloque].id)
                             for orden, (c, t, tipo) in enumerate(filas, start=1)})
     sesion.add_all(actividades.values())
@@ -377,10 +378,10 @@ def _cargar_catalogo(sesion, archivo, dimensiones):
     ])
 
 
-def _cargar_reglas(sesion, objetivos):
+def _cargar_reglas(sesion, objetivos, definiciones=REGLAS):
     referencias = {'COMPLETA_ACTIVIDAD': objetivos['ACTIVIDAD'], 'COMPLETA_BLOQUE': objetivos['BLOQUE']}
     reglas = []
-    for codigo, tipo, objetivo, condiciones, minimo in REGLAS:
+    for codigo, tipo, objetivo, condiciones, minimo in definiciones:
         regla = modelos.ReglaDesbloqueo(codigo=codigo, nombre=f'Desbloquear {objetivo or "conversaciones"}',
             tipo_objetivo=modelos.TipoObjetivo(tipo),
             id_objetivo=None if objetivo is None else objetivos[tipo][objetivo].id,

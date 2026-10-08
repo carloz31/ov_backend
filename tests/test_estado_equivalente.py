@@ -1,4 +1,4 @@
-"""Proyección temporal de /estado; piloto se agrega en B3 y el archivo se retira en X."""
+"""Proyección temporal de /estado para plataforma, demo y piloto; se retira en X."""
 
 from datetime import datetime
 
@@ -8,10 +8,10 @@ from sqlalchemy import select
 from app.main import crear_aplicacion
 from app.models import Bloque, Cuenta, EntradaDiario, OrigenEntrada, PreguntaDiario
 from datos.cargar import preparar_base
-from soporte_plataforma import avanzar_camino, completar
+from soporte_plataforma import avanzar_camino, completar, responder
 
 
-@pytest.fixture(params=['plataforma', 'demo'])
+@pytest.fixture(params=['plataforma', 'demo', 'piloto'])
 def aplicacion(request, tmp_path):
     url = f"sqlite:///{(tmp_path / 'equivalencia.db').as_posix()}"
     preparar_base(url, request.param, crear_tablas=True)
@@ -25,6 +25,15 @@ def test_estado_equivalente_por_dominio(cliente, aplicacion, momento):
     if momento != 'inicio':
         if aplicacion.state.conjunto_prueba == 'plataforma':
             avanzar_camino(cliente, hasta='enc-mitos' if momento == 'dos_actividades' else None)
+        elif aplicacion.state.conjunto_prueba == 'piloto':
+            camino = ('mission-welcome', 'enc-mitos', 'act-07', 'mission-story', 'mission-compass')
+            for codigo in camino[:2] if momento == 'dos_actividades' else camino:
+                completar(cliente, codigo)
+            if momento == 'camino_completo':
+                for numero in range(1, 15):
+                    codigo = f'act-tip-{numero:02}'
+                    responder(cliente, codigo)
+                    completar(cliente, codigo)
         else:
             for codigo in ('ACT-01', 'ACT-02') if momento == 'dos_actividades' else ('ACT-01', 'ACT-02', 'ACT-03'):
                 completar(cliente, codigo)
