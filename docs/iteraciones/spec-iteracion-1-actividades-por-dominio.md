@@ -229,6 +229,7 @@ Cada contenido que se dibuja como punto del mapa gana un campo `mapa`, con los v
 
 - `src/types/servidor.ts`: agrega `ResumenCuenta`, `ActividadCuenta` (con `contenido`, `visibilidad`, `visible`), `BloqueActividades` y `LogrosCuenta`, copiados de los esquemas Pydantic. `ContenidoEstado`, `InsigniaEstado` y `NivelEstado` ya existen.
 - `src/services/api/`: `cuentas.ts` agrega `obtenerResumen`; nuevos `actividades.ts` (`obtenerActividades`), `fichas.ts` (`obtenerFichas`) y `logros.ts` (`obtenerLogros`). Todos con `obtener(...)`.
+- En F2 se retira `obtenerEstado` y su caso de prueba se sustituye por las consultas nuevas (decisión autorizada por el usuario). `EstadoCuenta`, los fixtures `estado-*.json` y el endpoint del backend se conservan hasta X.
 - No se agregan servicios para testimonios, preguntas ni conversaciones (§4).
 
 ### 7.2 Estado en `store/servidor/`
@@ -329,10 +330,10 @@ Anótalas en `docs/refactor/decisiones.md`, con la lista de pruebas tocadas. Nin
 | B3 | backend | Conjunto `piloto` (§5.5), `test_piloto.py` y fixtures nuevos (§5.4), exportados a `ov_frontend/tests/fixtures/servidor/`. | Pruebas en verde; fixtures en el front (commit en el front: `Iteración 1 · B3: fixtures por dominio`). |
 | F0 | front | Línea base (§9.1). | Conteo registrado. |
 | F1 | front | Contenidos en JSON y registro (§6), sin cambiar el modo `local`. | Las mismas pruebas que en F0, más `contenidos.test.mjs`. |
-| F2 | front | Servicios, tipos, secciones y adaptadores (§7.1–7.3). El front deja de pedir `/estado`. | Pruebas en verde con las adaptaciones de §9.2; `servidor-secciones.test.mjs`. `grep -rn "/estado" src` vacío. |
+| F2 | front | Servicios, tipos, secciones y adaptadores (§7.1–7.3). El front deja de pedir `/estado` y retira `obtenerEstado` y su caso de prueba. | Pruebas en verde con las adaptaciones de §9.2; `servidor-secciones.test.mjs`. `grep -rn "/estado" src` vacío. |
 | F3 | front | Mapa desde el backend (§7.4). | `servidor-mapa.test.mjs` en verde; mismas pruebas que en F2. |
 | F4 | ambos | Prueba manual con `plataforma` y con `piloto` (§12); `docs/pendientes-interfaz.md` con lo de §8. | Recorrido de §12 hecho y anotado. |
-| X | ambos | **Backend:** borra `/estado`, `EstadoCuenta`, `estado_cuenta`, `test_estado_equivalente.py` y los fixtures `estado-*.json` del script. Las pruebas que consultaban `/estado` pasan a las rutas nuevas, con las mismas aserciones sobre los mismos datos (anótalo). **Front:** borra `EstadoCuenta` de `types/servidor.ts`, `obtenerEstado` y los fixtures `estado-*.json`. **Los dos:** agrega a los `AGENTS.md` lo de §13. | Pruebas en verde en los dos repos; `grep -rn "estado_cuenta\|EstadoCuenta\|/estado\b" app tests scripts src` vacío. |
+| X | ambos | **Backend:** borra `/estado`, `EstadoCuenta`, `estado_cuenta`, `test_estado_equivalente.py` y los fixtures `estado-*.json` del script. Las pruebas que consultaban `/estado` pasan a las rutas nuevas, con las mismas aserciones sobre los mismos datos (anótalo). **Front:** borra `EstadoCuenta` de `types/servidor.ts` y los fixtures `estado-*.json`; `obtenerEstado` ya se retiró en F2. **Los dos:** agrega a los `AGENTS.md` lo de §13. | Pruebas en verde en los dos repos; `grep -rn "estado_cuenta\|EstadoCuenta\|/estado\b" app tests scripts src` vacío. |
 
 ## 11. Fuera de alcance
 

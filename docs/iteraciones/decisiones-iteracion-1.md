@@ -4,6 +4,82 @@ Registro de decisiones que afectan a ambos repos. Las internas de cada repo van 
 
 Formato de cada entrada: fecha, fase, decisión, motivo y archivos afectados.
 
+## Actividades por dominio · F2 · 2026-10-08
+
+Se implementan únicamente los servicios, tipos, secciones y adaptadores de
+§7.1–7.3 en `ov_frontend`. La consulta global se sustituye por resumen y
+actividades al ingresar, fichas al abrir mochila o recursos y logros al
+abrir perfil, pasaporte o insignia. La construcción actual del mapa se
+conserva; el mapa dinámico corresponde a F3.
+
+**Secuencia autorizada:** el usuario aprueba retirar `obtenerEstado` y
+sustituir su caso de prueba en F2. Se corrigen §7.1 y la tabla de fases de
+la especificación de actividades por dominio: X retira `EstadoCuenta`,
+los fixtures antiguos y el endpoint del backend; el servicio del front
+ya se retiró en F2. El backend no cambia contratos, código ni pruebas.
+
+El almacén se divide en módulos concretos de sesión, secciones, avisos,
+resultado, consultas de detalle y coordinación de refrescos. Cada sección
+guarda datos, estado y error. La confirmación del ingreso habilita las
+consultas; resumen, actividades y no vistos se piden en paralelo. La
+consulta posterior de RIASEC conserva la condición de Elena disponible.
+Los recursos cerrados no mantienen un consumidor activo aunque sigan
+montados. Las promesas se comparten por cuenta, sesión y revisión y se
+registran antes de publicar la carga, evitando solicitudes duplicadas.
+
+Completar o responder actualiza actividades y no vistos. Los tipos de
+desbloqueo invalidan exactamente los dominios de §7.3; las secciones
+visibles recargan inmediatamente y las demás esperan su apertura.
+Se descartan respuestas de otra cuenta, otro ingreso y de consultas
+anteriores a una invalidación. Los errores esperan un reintento explícito;
+las acciones confirmadas conservan su recibo para no repetir escrituras.
+El reinicio vacía las secciones y conserva la secuencia de nuevo ingreso.
+
+Las pruebas existentes usan los fixtures por dominio de B3 y conservan
+sus resultados esperados. No cambian los 18 JSON ni el exportador, porque
+no cambia ninguna respuesta del backend. Los archivos de pruebas tocados
+y los detalles de adaptación quedan en
+`ov_frontend/docs/refactor/decisiones.md`. El cargador de
+`adventure-rendering.test.mjs` usa el mismo React simulado para el nuevo
+módulo de secciones; sus 1287 aserciones permanecen idénticas por AST.
+Se agregan 17 casos de secciones y tres de servicios; el caso del servicio
+global se sustituye por resumen conforme a la autorización.
+
+Validación de F2:
+
+- Frontend antes: **386 pruebas, 371 correctas y 15 fallas previas**.
+- Frontend después: **406 pruebas, 391 correctas y las mismas 15 fallas**,
+  cero omitidas y cero canceladas. Coinciden nombres, orden, mensajes y
+  detalles con F1, excluyendo duraciones y ubicaciones de pila. Pasan las
+  **111 pruebas `servidor-*`**.
+- Build y lint pasan; estructura: **532 archivos, cero infracciones y
+  cero excepciones**. Persiste el aviso previo del bundle mayor de 500 kB.
+  No queda `/estado` en `src`, ni importación del módulo retirado.
+  La auditoría no encuentra ciclos alcanzables desde el almacén remoto;
+  todos sus módulos cumplen el máximo de 400 líneas.
+- Backend antes: **1103 correctas, 4 omitidas y 2 advertencias**.
+  Backend después, suite completa con evaluador falso: **1103 correctas,
+  4 omitidas, cero fallas y 2 advertencias**, en **859,04 segundos**.
+  Se conservan las cuatro omisiones de PostgreSQL sin `TEST_POSTGRES_URL`
+  y las deprecaciones conocidas de Starlette/httpx y Google GenAI.
+  Se ejecuta `uv run --no-sync --offline python -m pytest -q`, fuera del
+  sandbox por el bloqueo previo de TestClient; bases y caché son temporales
+  externas. Pasan los escenarios y límites de consultas existentes.
+- No se modifican vistas, textos, estilos, datos narrativos, reglas,
+  claves de almacenamiento ni dependencias. Los registros, bases y caché
+  de pruebas permanecen fuera de los repos; no se llama a Gemini.
+
+Se actualiza el inventario del frontend. Siguen pendientes los datos sin
+vista registrados en `ov_frontend/docs/pendientes-interfaz.md`: testimonios,
+preguntas del diario, conversaciones y los casos del piloto. No se
+implementa ninguna opción de interfaz. Tipo, orden, contenido, visibilidad
+y visible quedan en las secciones para F3.
+
+**Cierre de F2:** un commit por repo tocado en `iteracion-1`, sin push.
+El frontend queda confirmado en `9662c16`, con el árbol limpio.
+El backend recibe únicamente este registro y la corrección de secuencia
+de la spec. El trabajo se detiene antes de F3.
+
 ## Actividades por dominio · F0 y F1 · 2026-10-08
 
 Se lee completo `ov_frontend/AGENTS.md` antes de ejecutar la primera fase F.
