@@ -65,6 +65,7 @@ def cargar_motor(sesion: Session) -> None:
         for orden, (codigo, titulo, tipo) in enumerate(filas, start=1):
             actividades[codigo] = Actividad(
                 codigo=codigo, titulo=titulo, tipo=TipoActividad(tipo), orden=orden,
+                contenido=codigo.lower().replace("-", "_"),
                 bloque_id=bloques[bloque].id, puntaje_minimo=70.0 if tipo == "CASO" else None,
             )
 

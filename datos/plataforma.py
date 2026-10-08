@@ -44,6 +44,20 @@ ACTIVIDADES_CIUDAD = (('act-tip-01', 'Una vuelta por el molino', 'CUESTIONARIO')
  ('act-tip-14', 'Mara: interacción 14 de 14', 'CUESTIONARIO'),
  ('act-tip-final', 'Las pistas que hablan de ti', 'INFORMATIVA'))
 
+CONTENIDOS_ACTIVIDADES = {
+    'mission-welcome': 'mision_bienvenida',
+    'enc-mitos': 'encuentro_mitos',
+    'act-07': 'registro_mis_pregones',
+    'mission-story': 'registro_huellas',
+    'mission-future': 'registro_horizonte',
+    'mission-compass': 'mision_brujula',
+    'act-06': 'registro_linea_tiempo',
+    'mission-expectations': 'registro_mochila',
+    'mission-next-step': 'registro_siguiente_paso',
+    **{f'act-tip-{numero:02}': 'instrumento_mara' for numero in range(1, 15)},
+    'act-tip-final': 'encuentro_resultado_elena',
+}
+
 FICHAS = (('first-steps', 'Tres pistas para comenzar el viaje', 'Observar, conversar y probar: tu primera brújula.'),
  ('ficha-mitos',
   'Ficha: Mitos y realidades del futuro profesional',
@@ -303,6 +317,7 @@ def _cargar_estructura(sesion):
     actividades = {}
     for bloque, filas in (('CAMINO', ACTIVIDADES_CAMINO), ('CIUDAD', ACTIVIDADES_CIUDAD)):
         actividades.update({c: modelos.Actividad(codigo=c, titulo=t, tipo=modelos.TipoActividad(tipo),
+                                                contenido=CONTENIDOS_ACTIVIDADES[c],
                                                 orden=orden, bloque_id=bloques[bloque].id)
                             for orden, (c, t, tipo) in enumerate(filas, start=1)})
     sesion.add_all(actividades.values())

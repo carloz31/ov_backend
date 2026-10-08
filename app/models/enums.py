@@ -23,6 +23,11 @@ class TipoActividad(StrEnum):
     CASO = "CASO"
 
 
+class Visibilidad(StrEnum):
+    SIEMPRE = "SIEMPRE"
+    AL_DESBLOQUEAR = "AL_DESBLOQUEAR"
+
+
 class EstadoProgreso(StrEnum):
     EN_CURSO = "EN_CURSO"
     COMPLETADA = "COMPLETADA"

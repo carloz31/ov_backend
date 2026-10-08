@@ -1,6 +1,7 @@
 """Carga explícita y transaccional de conjuntos de datos."""
 
 import argparse
+import re
 
 from sqlalchemy import Engine, delete, func, select
 from sqlalchemy.exc import SQLAlchemyError
@@ -8,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.config import cargar_configuracion
 from app.database import comprobar_tablas, crear_motor_bd, es_sqlite_en_memoria
-from app.models import Base
+from app.models import Actividad, Base
 from datos import demo, plataforma
 from datos.demo.registro import cargar_definiciones_registro
 
@@ -20,6 +21,13 @@ TABLAS_PRINCIPALES = (
 MENSAJE_SIN_ESQUEMA_CARGA = (
     'La base no tiene el esquema. Ejecuta `uv run alembic upgrade head`.'
 )
+
+
+def validar_contenidos_actividades(sesion: Session) -> None:
+    """Valida las claves sin depender de expresiones regulares del motor SQL."""
+    for codigo, contenido in sesion.execute(select(Actividad.codigo, Actividad.contenido)):
+        if re.fullmatch(r'[a-z0-9_]+', contenido) is None:
+            raise ValueError(f'Contenido inválido en la actividad {codigo}: usa minúsculas, dígitos y _.')
 
 
 def preparar_base(
@@ -44,6 +52,7 @@ def preparar_base(
                 raise ValueError('La base ya contiene datos. Usa --vaciar para volver a cargarla.')
             CONJUNTOS[conjunto](sesion)
             sesion.flush()
+            validar_contenidos_actividades(sesion)
             return {nombre: sesion.scalar(select(func.count()).select_from(Base.metadata.tables[nombre]))
                     for nombre in TABLAS_PRINCIPALES}
     finally:
@@ -57,6 +66,7 @@ def preparar_base_registro_en_memoria(motor: Engine) -> None:
     Base.metadata.create_all(motor)
     with Session(motor) as sesion, sesion.begin():
         cargar_definiciones_registro(sesion)
+        validar_contenidos_actividades(sesion)
 
 
 def main(argumentos=None) -> int:

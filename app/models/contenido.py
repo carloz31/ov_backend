@@ -1,8 +1,8 @@
-from sqlalchemy import CheckConstraint, ForeignKey, Text
+from sqlalchemy import CheckConstraint, ForeignKey, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, enumerado
-from app.models.enums import Audiencia, Espacio, TipoActividad
+from app.models.enums import Audiencia, Espacio, TipoActividad, Visibilidad
 
 
 class Bloque(Base):
@@ -29,6 +29,10 @@ class Actividad(Base):
     codigo: Mapped[str] = mapped_column(unique=True)
     titulo: Mapped[str]
     tipo: Mapped[TipoActividad] = mapped_column(enumerado(TipoActividad))
+    contenido: Mapped[str]
+    visibilidad: Mapped[Visibilidad] = mapped_column(
+        enumerado(Visibilidad), default=Visibilidad.SIEMPRE, server_default=text("'SIEMPRE'"),
+    )
     orden: Mapped[int]
     bloque_id: Mapped[int] = mapped_column(ForeignKey("bloque.id"))
     puntaje_minimo: Mapped[float | None]

@@ -4,6 +4,70 @@ Registro de decisiones que afectan a ambos repos. Las internas de cada repo van 
 
 Formato de cada entrada: fecha, fase, decisión, motivo y archivos afectados.
 
+## Actividades por dominio · B1 · 2026-10-08
+
+El usuario autoriza explícitamente `codigo.lower().replace("-", "_")`
+para `demo` y para las filas existentes de la migración. Se corrigen §5.1
+y §5.2 de `spec-iteracion-1-actividades-por-dominio.md`: esta regla resuelve
+la contradicción entre los códigos de demo en mayúsculas y el formato de
+`contenido`. Los códigos originales permanecen intactos. `plataforma`
+recibe las claves explícitas de la tabla de §5.2.
+
+El formato `[a-z0-9_]+` se valida en `datos/cargar.py`, dentro de la
+transacción de carga y después de insertar las definiciones. Es la
+alternativa del cargador permitida por §5.1, para evitar un CHECK de
+expresiones regulares dependiente del dialecto. Una clave inválida
+rechaza toda la carga. `contenido` sigue siendo no nula en la BD;
+`visibilidad` tiene CHECK de enumerado y valor predeterminado `SIEMPRE`.
+
+La migración `0002_contenido_y_visibilidad.py` se genera con Alembic
+`revision --autogenerate --rev-id 0002` y se revisa a mano. Agrega la
+clave temporalmente nullable, completa las filas con `lower` y `replace`
+portables y luego impone NOT NULL. Para reconstruir tablas referenciadas
+en SQLite se usa `conexion_migraciones` de `app/database.py`, que
+desactiva las FK solo en esa conexión de migración, comprueba su
+integridad y las restaura; las conexiones de la aplicación mantienen
+las FK activadas. PostgreSQL conserva su comportamiento habitual.
+
+Validación de B1 antes del cierre:
+
+- Línea base B0: 1023 pasan, 4 omitidas y cero fallas.
+- Pruebas dirigidas: 27 pasan y 5 casos excluidos; incluyen las 13 pruebas
+  nuevas y la compilación SQL para PostgreSQL. `alembic check` informa
+  que no hay diferencias entre modelos y esquema migrado.
+- Suite completa: **1032 pasan, 4 fallan, 4 omitidas y 2 advertencias**,
+  en 663,82 segundos. Las cuatro fallas son exclusivamente las expectativas
+  `0001` de `tests/test_migraciones.py`, líneas 52, 97 y 115 (esta última
+  parametrizada para `demo` y `plataforma`). La revisión efectiva es `0002`.
+  Las 13 pruebas nuevas pasan; no hay fallas de escenarios.
+- Se usa `uv run python -m alembic` y `uv run python -m pytest` porque los
+  lanzadores de este entorno fallan al resolver su ruta. La suite HTTP se
+  ejecuta fuera del sandbox, con `EVALUADOR=falso`, sin sincronizar ni
+  instalar dependencias y con bases, caché y registros externos al repo.
+  Las omisiones son PostgreSQL sin `TEST_POSTGRES_URL`; no se llama a Gemini.
+- El usuario autoriza adaptar las tres expectativas de revisión después de
+  confirmar que explican las cuatro fallas. Se comparan con
+  `ScriptDirectory.from_config(configuracion).get_current_head()`, en lugar
+  de otra revisión literal, y no cambia ninguna otra aserción. Se corrige
+  §5.6 y se registran las tres pruebas por nombre en `docs/decisiones.md`.
+  Se repite la suite completa antes del cierre. `ov_frontend` permanece
+  sin cambios en B1 y B2 no se inicia.
+
+**Cierre de B1:** la comparación por AST confirma que solo cambiaron las
+tres aserciones autorizadas. La suite completa termina con **1036 pasan,
+4 omitidas, cero fallas y 2 advertencias**, en 643,11 segundos. Frente a
+B0 (1023 pasan y 4 omitidas), se agregan 13 pruebas. Pasan la creación
+desde una base vacía, la migración desde `0001` con filas y referencias,
+el downgrade y un nuevo upgrade, así como las comprobaciones de esquema
+e integridad y la compilación para PostgreSQL. Las cuatro omisiones son
+los casos opcionales sin `TEST_POSTGRES_URL`.
+
+Se cierra únicamente B1 con un commit en `iteracion-1`, sin push.
+No cambian respuestas HTTP, fixtures, interfaz, dependencias ni archivos
+de `ov_frontend`; por eso no se repiten las pruebas del front en B1.
+Los registros y las bases temporales quedan fuera de los repositorios.
+B2 y las fases posteriores siguen pendientes.
+
 ## Actividades por dominio · B0 · 2026-10-08
 
 Se ejecuta únicamente B0 de `spec-iteracion-1-actividades-por-dominio.md`,

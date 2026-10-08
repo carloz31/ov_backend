@@ -112,7 +112,7 @@ En `app/models/contenido.py`, `Actividad` gana dos columnas:
 | `contenido` | `str`, no nula | Clave del contenido en el front: minúsculas, dígitos y `_` (`CHECK` con `^[a-z0-9_]+$`, implementado de forma portable o validado en el cargador si el `CHECK` no es portable; anótalo). |
 | `visibilidad` | `Visibilidad`, no nula, por defecto `SIEMPRE` | Nuevo `StrEnum` en `app/models/enums.py`: `SIEMPRE`, `AL_DESBLOQUEAR`. |
 
-- Migración `0002_contenido_y_visibilidad.py` generada con `--autogenerate` y revisada a mano. Para filas existentes: `contenido = codigo` con los `-` cambiados por `_`, y `visibilidad = 'SIEMPRE'`. Usa `render_as_batch` (SQLite).
+- Migración `0002_contenido_y_visibilidad.py` generada con `--autogenerate` y revisada a mano. Para filas existentes: `contenido = codigo.lower().replace("-", "_")`, y `visibilidad = 'SIEMPRE'`. El código original no cambia. Usa `render_as_batch` (SQLite).
 - `tests/test_migraciones.py` sigue en verde.
 
 ### 5.2 Datos
@@ -120,7 +120,7 @@ En `app/models/contenido.py`, `Actividad` gana dos columnas:
 | Conjunto | Cambio |
 |---|---|
 | `plataforma` | Cada actividad recibe su `contenido` según la tabla de abajo; todas `SIEMPRE`. No cambia nada más (actividades, reglas, títulos). |
-| `demo` | `contenido` = código con `-` → `_`; todas `SIEMPRE`. Los escenarios E1–E17, I1–I14 y de registro no cambian. |
+| `demo` | `contenido = codigo.lower().replace("-", "_")`; todas `SIEMPRE`. Los códigos originales y los escenarios E1–E17, I1–I14 y de registro no cambian. |
 | `piloto` (nuevo, `datos/piloto.py`) | Ver §5.5. |
 
 Contenidos de `plataforma` (los nombres de los JSON que se crean en F1 están marcados con *):
@@ -197,7 +197,7 @@ Las insignias y niveles que dependen de completar el Camino siguen funcionando c
   - `act-tip-final` llega con `visible: false` hasta completar `act-tip-14`, y con `visible: true` después.
   - `cdd-sin-contenido` llega con `visible: true`; el backend no sabe si el contenido existe.
 - `tests/test_estado_equivalente.py` (temporal, se borra en X): para `plataforma` y `piloto`, en tres momentos, `/estado` coincide campo por campo con lo que devuelven las rutas nuevas.
-- Ninguna prueba existente cambia sus aserciones en las fases B. Sí pueden cambiar las listas exactas de columnas que comprueban el esquema (agregan `contenido` y `visibilidad`); anótalo en `docs/decisiones.md`.
+- Ninguna prueba existente cambia sus aserciones en las fases B, salvo las adaptaciones siguientes: listas exactas de columnas que comprueban el esquema (agregan `contenido` y `visibilidad`) y pruebas que fijan la revisión de Alembic (comparan con `ScriptDirectory.from_config(...).get_current_head()` en lugar de una revisión literal). Anótalas en `docs/decisiones.md`; las demás aserciones no cambian.
 
 ## 6. Front: contenidos
 

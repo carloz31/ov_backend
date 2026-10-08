@@ -14,6 +14,7 @@ def cargar_definiciones_registro(sesion: Session) -> None:
     sesion.add(bloque)
     sesion.flush()
     actividad = Actividad(codigo="REG-ACT08", titulo="Mi plan para fortalecer una habilidad",
+                          contenido="reg_act08",
                           tipo=TipoActividad.REGISTRO, orden=1, bloque_id=bloque.id)
     sesion.add(actividad)
     sesion.flush()

@@ -35,6 +35,7 @@ def cargar_definiciones_instrumentos(sesion: Session) -> None:
         ("LAB-RIA3", "Mis intereses III"), ("LAB-RIA4", "Mis intereses IV"),
     ), start=1):
         actividades[codigo] = Actividad(codigo=codigo, titulo=titulo, tipo=TipoActividad.CUESTIONARIO,
+                                      contenido=codigo.lower().replace("-", "_"),
                                       orden=orden, bloque_id=bloque.id)
     sesion.add_all(actividades.values())
     escalas = {}

@@ -1,5 +1,6 @@
 import sqlite3
 from collections.abc import Iterator
+from contextlib import contextmanager
 
 from fastapi import Request
 from sqlalchemy import Engine, String, create_engine, event, inspect
@@ -39,6 +40,23 @@ def crear_motor_bd(url: str) -> Engine:
         cursor.close()
 
     return motor_bd
+
+
+@contextmanager
+def conexion_migraciones(motor_bd: Engine):
+    """Permite reconstruir tablas referenciadas en SQLite durante una migración."""
+    with motor_bd.connect() as conexion:
+        sqlite = motor_bd.url.get_backend_name() == 'sqlite'
+        if sqlite:
+            conexion.exec_driver_sql('PRAGMA foreign_keys=OFF')
+            conexion.commit()
+        try:
+            yield conexion
+            if sqlite and conexion.exec_driver_sql('PRAGMA foreign_key_check').first() is not None:
+                raise RuntimeError('La migración dejó referencias inválidas en la base de datos.')
+        finally:
+            if sqlite:
+                conexion.exec_driver_sql('PRAGMA foreign_keys=ON')
 
 
 def obtener_sesion(peticion: Request) -> Iterator[Session]:

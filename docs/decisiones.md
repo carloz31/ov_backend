@@ -1,5 +1,41 @@
 # Decisiones de implementación
 
+## Actividades por dominio · B1 · 2026-10-08
+
+- `contenido` se valida en `datos/cargar.py` con `re.fullmatch('[a-z0-9_]+', ...)`,
+  dentro de la transacción de carga. Se elige la alternativa del cargador que
+  permite §5.1 de la spec para no depender de CHECK con regex específicos de
+  SQLite o PostgreSQL. La base exige NOT NULL y restringe `visibilidad` a los
+  valores de su enumerado, con valor predeterminado `SIEMPRE`.
+- Las conexiones de migración SQLite desactivan las FK antes de iniciar la
+  transacción para permitir `batch_alter_table` sobre `actividad`, incluso
+  cuando otras tablas tienen referencias a sus filas. El código de dialecto
+  queda en `app/database.py`; al terminar se comprueba `foreign_key_check`
+  y se restaura `foreign_keys`. Las conexiones de la aplicación no cambian.
+- Se agregan pruebas de conservación de todas las columnas antiguas, catálogo
+  y progreso durante `0001 → 0002`, downgrade y nuevo upgrade; valores nulos,
+  enumerado, valor predeterminado y cargas inválidas con reversión completa.
+  Las expectativas de escenarios E, I, registro y plataforma permanecen intactas.
+- Se confirma en el informe completo que las únicas cuatro fallas son las
+  tres comparaciones contra `0001`, la última parametrizada para `demo` y
+  `plataforma`: la revisión efectiva es `0002`. Con autorización explícita
+  del usuario se sustituyen solo esas expectativas por
+  `ScriptDirectory.from_config(configuracion).get_current_head()`.
+  No se cambia ninguna otra aserción. Las pruebas tocadas son:
+  `test_migracion_inicial_coincide_completamente_con_modelos`,
+  `test_upgrade_repetible_downgrade_y_nuevo_upgrade` y
+  `test_carga_vaciado_y_reinicio_conservan_revision`, todas en
+  `tests/test_migraciones.py`. Se corrige §5.6 para autorizar esta adaptación
+  y conservar la comprobación frente a futuras migraciones.
+- Una comparación de AST antes y después confirma que solo cambian las tres
+  aserciones autorizadas; todas las demás se conservan. La suite completa de
+  cierre pasa: **1036 correctas, 4 omitidas, cero fallas y 2 advertencias**,
+  en 643,11 segundos. B0 tenía 1023 correctas y las mismas cuatro omisiones:
+  B1 agrega 13 casos. Las omisiones son PostgreSQL sin `TEST_POSTGRES_URL`;
+  los avisos son las deprecaciones conocidas de Starlette/httpx y Google GenAI.
+  Se usa el evaluador falso y temporales externos, sin instalaciones ni Gemini.
+  B1 queda cerrada en `iteracion-1`, con un commit y sin push. B2 queda pendiente.
+
 ## Refactor de estructura
 
 ### 2026-10-08 · R0: línea base

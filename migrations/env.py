@@ -3,7 +3,7 @@
 from alembic import context
 
 from app.config import cargar_configuracion
-from app.database import crear_motor_bd
+from app.database import conexion_migraciones, crear_motor_bd
 from app.models import Base
 
 
@@ -24,7 +24,7 @@ def ejecutar_migraciones_desconectadas() -> None:
 def ejecutar_migraciones_conectadas() -> None:
     motor = crear_motor_bd(cargar_configuracion().url_bd)
     try:
-        with motor.connect() as conexion:
+        with conexion_migraciones(motor) as conexion:
             context.configure(
                 connection=conexion,
                 target_metadata=target_metadata,
