@@ -4,6 +4,68 @@ Registro de decisiones que afectan a ambos repos. Las internas de cada repo van 
 
 Formato de cada entrada: fecha, fase, decisión, motivo y archivos afectados.
 
+## Actividades por dominio · F0 y F1 · 2026-10-08
+
+Se lee completo `ov_frontend/AGENTS.md` antes de ejecutar la primera fase F.
+La solicitud autoriza F0 y F1 en el mismo turno. F0 registra su línea base en
+`ov_frontend/docs/refactor/decisiones.md` y queda confirmada en `65cbc0b`:
+**379 pruebas, 364 correctas, las mismas 15 fallas previas y cero omitidas**,
+con nombres y orden comparados con B3. Build y lint pasan; estructura:
+**515 archivos, cero infracciones y cero excepciones**. F0 no modifica el
+backend ni repite su suite; conserva como referencia el cierre B3.
+
+F1 mueve seis JSON a `src/data/activities/contenidos/`, crea los siete de
+§5.2 y agrega el registro explícito `contenidos.ts`. `catalogo.json` y el
+catálogo `compassInstrument` permanecen separados. Los trece contenidos se
+comprueban mediante `deepEqual` antes de retirar sus definiciones TypeScript;
+solo se añade el campo opcional de presentación `mapa` donde corresponde.
+Las claves coinciden con las enviadas por el backend, sin cambiar los datos
+de plataforma ni de piloto. El contenido deliberadamente ausente del piloto
+sigue sin existir en el registro.
+
+El catálogo local se reconstruye con el mismo orden y los mismos ajustes
+del piloto de reflexión, omitiendo los metadatos `mapa`. Una comparación
+temporal conserva exactamente `activities`, `parentActivities`,
+`finalActivity`, `activityById`, `catalog` y `compassInstrument`. El registro
+ofrece los contenidos con metadatos para las fases siguientes, sin cambiar
+las fuentes de disponibilidad ni las consultas HTTP actuales. Los íconos
+se traducen en un único módulo del dominio de aventura; el selector actual
+del Camino conserva sus resultados.
+
+Las tres adaptaciones de pruebas existentes solo cambian rutas de JSON,
+conforme a §9.2.2. Se anotan archivos y pruebas por nombre en las decisiones
+del front y se comprueba que sus llamadas `assert.*` no cambian.
+`contenidos.test.mjs` añade siete pruebas de registro, claves de ambos
+conjuntos, presentación y compatibilidad local. No se modifican vistas,
+marcado, textos, estilos, claves de almacenamiento, servicios ni hooks.
+No aparecen datos sin vista nuevos; los pendientes registrados en B2/B3
+siguen pendientes y no se implementa ninguna de sus opciones.
+
+Validación de F1:
+
+- Frontend antes: **379 pruebas, 364 correctas, 15 fallas previas**.
+- Frontend después: **386 pruebas, 371 correctas, las mismas 15 fallas**,
+  cero omitidas y cero canceladas, en **17,71 segundos**. Los nombres,
+  el orden y los errores coinciden con F0, excluyendo duraciones y
+  ubicaciones de pila. Las siete pruebas nuevas pasan.
+- Build y lint pasan. Estructura: **524 archivos, cero infracciones y cero
+  excepciones**. Se conserva el aviso previo de bundle mayor de 500 kB.
+- Backend antes: **1103 correctas, 4 omitidas, cero fallas y 2 advertencias**
+  (cierre B3). Backend después, suite completa: **1103 correctas, 4 omitidas,
+  cero fallas y 2 advertencias**, en **726,48 segundos**. Las cuatro omisiones
+  corresponden a PostgreSQL sin `TEST_POSTGRES_URL`; las advertencias son
+  las deprecaciones conocidas de Starlette/httpx y Google GenAI. No cambian
+  código, pruebas, modelos, migraciones, contratos ni fixtures.
+- Evaluador falso, sin llamadas a Gemini ni dependencias nuevas. Se usa
+  `uv run python -m pytest` por el problema previo del lanzador, fuera del
+  sandbox por el bloqueo de TestClient ya diagnosticado. Los registros,
+  la comparación temporal, bases y caché quedan fuera de los repos.
+
+**Cierre de F1:** el frontend queda confirmado en `7725d81`, con el árbol
+de trabajo limpio. El backend guarda únicamente este registro en un commit
+F1 en `iteracion-1`. Sin push. La integración de consultas por dominio
+corresponde a F2 y no se inicia; el trabajo se detiene tras F0 y F1.
+
 ## Actividades por dominio · B3 · 2026-10-08
 
 Se implementa únicamente B3: `datos/piloto.py`, su alta en `CONJUNTOS`,
