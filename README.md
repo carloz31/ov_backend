@@ -2,15 +2,20 @@
 
 ## Integración con ov_frontend · iteración 1
 
-La [especificación vigente](docs/iteraciones/spec-iteracion-1.md) define la semilla `plataforma` y el contrato con el frontend. Arrancar desde este repo, en PowerShell:
+La [especificación vigente](docs/iteraciones/spec-iteracion-1.md) define los datos `plataforma` y el contrato con el frontend. Para una base nueva, preparar y arrancar desde este repo, en PowerShell:
 
 ```powershell
-$env:SEMILLA="plataforma"
+uv sync
 $env:EVALUADOR="falso"
+uv run alembic upgrade head
+uv run python -m datos.cargar plataforma
 uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-En ov_frontend, configurar `.env.local` con `VITE_DATOS=api` y `VITE_API_URL=/api`, y ejecutar `npm run dev`. Su proxy de desarrollo quita `/api` y llama a 8000. Usar `est-ana` o `est-luis`; son cuentas de prueba. El backend decide estados, respuestas, resultado, fichas, insignias y nivel; el frontend conserva contenido narrativo y borradores locales. Las semillas demo y plataforma usan bases separadas. No versiones `.env` ni `*.db`.
+La preparación de la base y la estructura actuales se definen en
+[la especificación del refactor](docs/spec-refactor-estructura.md).
+
+En ov_frontend, configurar `.env.local` con `VITE_DATOS=api` y `VITE_API_URL=/api`, y ejecutar `npm run dev`. Su proxy de desarrollo quita `/api` y llama a 8000. Usar `est-ana` o `est-luis`; son cuentas de prueba. El backend decide estados, respuestas, resultado, fichas, insignias y nivel; el frontend conserva contenido narrativo y borradores locales. La aplicación usa la base indicada por `DATABASE_URL`; cada conjunto se carga explícitamente. Después de prepararla, basta con volver a arrancar Uvicorn. No versiones `.env` ni `*.db`.
 
 **Cierre F6 · 2026-10-07:** avisos, pasaporte, nivel y requisitos completos. HU-073 y HU-074 corregidas y revalidadas; las catorce HU del recorrido F7 pasan en el alcance comprobado. Backend: 1006 pruebas pasan, dos advertencias previas, con evaluador falso. Frontend: build/lint pasan; 340 de 356 pruebas pasan, con solo las 16 fallas previas. Ver [decisiones F6](docs/iteraciones/decisiones-iteracion-1.md#f6) y el informe `ov_frontend/docs/student-experience/informe-f7.md`. La aprobación formal de la iteración corresponde al usuario.
 
@@ -22,7 +27,8 @@ Cada acción confirma su estado y sus eventos, evalúa reglas y devuelve los nue
 desbloqueos con su explicación en una transacción. El envío de registro primero
 lee su contexto y libera la conexión para evaluar, antes de confirmar los cambios.
 
-**Registro v2 tiene implementadas las fases 1–8.** Incluye las 45 tablas,
+**Registro v2 tiene implementadas las fases 1–8.** El esquema actual contiene
+44 tablas de aplicación y la tabla de revisión de Alembic; incluye
 la evaluación, las acciones/consultas de conversaciones y su
 finalización, con hasta dos seguimientos y respaldo por longitud solo después
 de un fallo. Rehacer conserva conversaciones y auditoría; los seguimientos
@@ -34,9 +40,9 @@ con clientes simulados. La ejecución real autorizada está en
 5 respaldos. La aceptación semántica es parcial: los casos 7 y 11 marcaron C1
 además de C2, y el seguimiento de 15 no se evaluó por fallo del inicial.
 La interfaz muestra conversaciones con hasta dos seguimientos, borradores y
-edición de respuestas finales. Una base v1, aunque
-tenga versión 4, se rechaza por su estructura. No se migra ni borra al arrancar:
-conservar un respaldo antes de recrearla. Las diferencias están en
+edición de respuestas finales. El esquema se prepara con Alembic antes del
+arranque; conservar las bases anteriores como respaldo y usar una base nueva
+para la revisión inicial. Las diferencias están en
 [Registro v2](docs/decisiones.md#registro-v2).
 
 Validación de cierre de fase 8 v2: **947 tests pasando, 2 avisos de deprecación** con
@@ -64,120 +70,241 @@ de esta página describen las conversaciones v2 y su script de 16 casos.
 
 ## Instalación y ejecución
 
-Requisitos: `uv` disponible en la terminal y Python 3.14, versión configurada
-en este proyecto. Las dependencias se gestionan con `pyproject.toml` y `uv.lock`.
-
-Desde la raíz del repositorio, ejecutar en PowerShell:
+Requisitos: `uv` y Python 3.14, como fijan `.python-version` y `pyproject.toml`.
+Las dependencias se gestionan con `uv.lock`. Desde la raíz del repositorio,
+preparar una base nueva y cargar los datos de integración:
 
 ```powershell
 uv sync
+$env:EVALUADOR = 'falso'
+uv run alembic upgrade head
+uv run python -m datos.cargar plataforma
 uv run uvicorn app.main:app --reload
 ```
 
-Abrir el [tablero de la demo](http://127.0.0.1:8000/demo) o
-[Swagger UI](http://127.0.0.1:8000/docs). El servidor permanece activo en
-esa terminal; `Ctrl+C` lo detiene. El esquema de la API está en
-[OpenAPI](http://127.0.0.1:8000/openapi.json).
+La preparación se ejecuta una vez. En los siguientes arranques basta con
+`uv run uvicorn app.main:app --reload`; conserva el estado guardado.
+Abrir [Swagger UI](http://127.0.0.1:8000/docs) o
+[OpenAPI](http://127.0.0.1:8000/openapi.json). `Ctrl+C` detiene el servidor.
 
-El primer arranque con la semilla `demo` crea las 45 tablas de SQLite y carga:
-3 cuentas, 11 bloques, 30 actividades, 8 carreras, 47 reglas y 58 condiciones. También
-carga los instrumentos y las 923 ocupaciones del Excel. La base se guarda en
-`demo.db` en la raíz. Los siguientes arranques conservan el estado. Cada
-conexión activa las claves foráneas de SQLite.
+La aplicación abre una base previamente preparada. Si falta alguna tabla,
+falla con el mensaje que pide ejecutar Alembic y cargar datos. Un esquema
+completo con catálogo vacío permite arrancar y responde listas vacías.
+Las migraciones crean 44 tablas de aplicación y `alembic_version`.
+La revisión inicial prepara bases nuevas; conservar las bases anteriores
+como respaldo y elegir otra URL para este esquema.
 
-El esquema actual es la versión 5. Una base anterior o incompatible impide el
-arranque con un mensaje que nombra el archivo real e indica borrarla y volver
-a iniciar. No se migra ni repara automáticamente. La semilla necesita
-`data/Career_Interest_RIASEC_Clean.xlsx`; un archivo ausente o inválido produce
-un error explícito. `openpyxl` se instala con las dependencias de `uv sync`.
+Con `ENTORNO=desarrollo`, también están disponibles
+[el tablero](http://127.0.0.1:8000/demo),
+[los instrumentos](http://127.0.0.1:8000/demo/instrumentos) y
+[el registro](http://127.0.0.1:8000/demo/registro).
+Los recorridos de laboratorio y registro de este README requieren el conjunto
+`demo`, cuya preparación se muestra abajo. Con `ENTORNO=produccion` no se
+incluye ningún endpoint `/demo/*`, su auditoría de registro ni sus estáticos.
 
-Antes de reemplazar una base anterior, conservar un respaldo de `demo.db` con
-el servidor detenido. El nuevo arranque recrea la base con la semilla completa.
-El JSON `app/static/contenido/REG-ACT08.json` se valida contra la base en cada
-arranque y reinicio; las referencias inválidas impiden completar esa operación.
+`uv.toml` configura la caché local `.uv-cache`. La caché, `.venv`, `.env` y
+las bases SQLite están ignoradas por Git. El evaluador predeterminado es
+`falso`; las comprobaciones automáticas no llaman a Gemini.
 
-`uv.toml` configura la caché local `.uv-cache`. La caché, el entorno `.venv`
-y los archivos de SQLite están ignorados por Git. El evaluador predeterminado
-es `falso` y no requiere servicios externos.
+## Base de datos y datos de prueba
 
-## Selección de semilla y base (Iteración 1)
-
-La configuración de la base se lee de las variables del proceso:
+`cargar_configuracion()` lee el proceso, después `.env` en la raíz y finalmente
+los valores predeterminados, sin interpolar ni modificar el entorno.
 
 | Variable | Valores | Por defecto |
 |---|---|---|
-| `SEMILLA` | `demo`, `plataforma` | `demo` |
-| `RUTA_BD` | Ruta de archivo SQLite, absoluta o relativa a la raíz del repo | `demo.db` para `demo`; `plataforma.db` para `plataforma` |
+| `DATABASE_URL` | URL SQLAlchemy; las rutas relativas SQLite se resuelven desde la raíz del repo | `sqlite:///ov.db` |
+| `ENTORNO` | `desarrollo`, `produccion` | `desarrollo` |
+| `EVALUADOR` | `falso`, `gemini` | `falso` |
 
-Para usar una base independiente con la demo en PowerShell:
+`crear_aplicacion(url_bd=None)` admite una URL explícita que prevalece sobre
+la configuración. La aplicación desconoce el conjunto cargado.
+
+| Conjunto | Contenido |
+|---|---|
+| `plataforma` | Integración con el front: 3 cuentas, 2 bloques, 24 actividades, 4 fichas, 10 insignias, 5 niveles, 44 reglas y 53 condiciones. RIASEC con 60 ítems en 14 encuentros de Mara, 36 ocupaciones con códigos del front y 6 carreras. |
+| `demo` | Escenarios originales: 3 cuentas, 11 bloques, 30 actividades, 8 carreras, 47 reglas y 58 condiciones; los cuatro instrumentos, registro con Lumi y catálogo O*NET. |
+
+Los datos de prueba están marcados en los cargadores. La carga de `demo`
+necesita `datos/archivos/Career_Interest_RIASEC_Clean.xlsx`; si falta o es
+inválido, falla explícitamente y revierte la carga. `openpyxl` se instala con
+`uv sync`. El arranque y el reinicio no vuelven a leer el Excel.
+
+Para preparar la demo original en otra base, desde PowerShell:
 
 ```powershell
-$env:SEMILLA = 'demo'
-$env:RUTA_BD = 'demo_pruebas.db'
+$env:DATABASE_URL = 'sqlite:///demo_pruebas.db'
+$env:EVALUADOR = 'falso'
+uv run alembic upgrade head
+uv run python -m datos.cargar demo
 uv run uvicorn app.main:app --reload
 ```
 
-`crear_aplicacion(url_bd=..., semilla=...)` permite valores explícitos, que
-prevalecen sobre las variables correspondientes. La creación y `/demo/reiniciar`
-usan la semilla configurada. El esquema guarda `semilla` en `esquema_version`;
-una base de otra semilla se rechaza sin modificarla, con un mensaje que indica
-el archivo y ambas semillas. Una base anterior a versión 5 también se rechaza
-sin migrarla. Las coincidencias de resultados, historial y recomendaciones
-incluyen `codigo`: es `null` en todas las ocupaciones de la demo.
+Para cambiar de base, definir `DATABASE_URL` antes de migrar, cargar o arrancar.
+La CLI rechaza cargar sobre una base poblada. Para reemplazar todo su contenido,
+detener el servidor, ejecutar `uv run python -m datos.cargar plataforma --vaciar`
+(o `demo --vaciar`) y volver a iniciarlo. El vaciado y la carga forman una
+transacción: un fallo conserva las filas anteriores. La CLI no crea tablas;
+siempre se preparan con Alembic.
 
-F2 incorpora la carga real de `plataforma`: 3 cuentas, 2 bloques, 24 actividades,
-4 fichas, 10 insignias y 5 niveles, con 44 reglas y 53 condiciones. Solo crea
-RIASEC: 60 ítems repartidos entre las 14 interacciones de Mara, 36 ocupaciones
-con códigos del front y 6 carreras. Los datos son de prueba; no carga LAB ni
-los otros instrumentos. El contenido y los escenarios de `demo` se conservan.
+`POST /demo/reiniciar` borra únicamente las 16 tablas de estado de las cuentas.
+Conserva catálogo, cuentas, vínculos y sus cartas, la revisión de Alembic,
+la caché y las posiciones de registro. Funciona con ambos conjuntos y no
+recarga archivos. El JSON `app/static/contenido/REG-ACT08.json` se valida al
+arrancar cuando existe su actividad en la base; si no existe, las posiciones
+quedan vacías. El reinicio conserva las posiciones ya cargadas.
 
-Para levantar esta semilla en PowerShell:
+Para PostgreSQL, instalar el extra y configurar la URL antes de usar los
+mismos comandos de migración, carga y arranque:
 
 ```powershell
-$env:SEMILLA = 'plataforma'
-$env:RUTA_BD = 'plataforma.db'
+uv sync --extra postgres
+$env:DATABASE_URL = 'postgresql+psycopg://ov:ov@localhost:5432/ov'
+uv run alembic upgrade head
+uv run python -m datos.cargar plataforma
 uv run uvicorn app.main:app --reload
 ```
 
-`POST /demo/reiniciar` vuelve a cargar la semilla seleccionada. En plataforma
-no se validan los nodos de `REG-ACT08` y las posiciones de registro quedan
-vacías. Los eventos `INVITA_A_CREW`, `FORMA_CREW` y `VENCE_DESAFIO_INTACTO`
-se pueden registrar con `POST /eventos`, sin referencia; ninguna acción los
-emite automáticamente. El evaluador `misiones_camino_sin_inicio` cuenta
-misiones distintas de CAMINO, excluyendo la bienvenida.
+El servidor PostgreSQL y la base indicada deben estar disponibles.
+`tests/test_postgres.py` usa `TEST_POSTGRES_URL` y se omite si no está definida.
+Los cambios de modelos incluyen una migración en el mismo commit:
 
-Una base de esquema 5 creada en F1 conserva los CHECK antiguos de eventos;
-F2 la rechaza al arrancar con el nombre real del archivo, sin modificarla ni
-migrarla. Conservar un respaldo antes de recrear una base anterior.
-Ver [la especificación de la iteración](docs/iteraciones/spec-iteracion-1.md)
-y [las decisiones de F2](docs/decisiones.md#iteración-1--f2).
+```powershell
+uv run alembic revision --autogenerate -m 'descripción del cambio'
+```
 
-Validación de F1: **969 tests pasando, 2 avisos de deprecación**, con
-`uv run pytest -q`, `SEMILLA=demo`, SQLite temporal y `EVALUADOR=falso`.
+Revisar a mano la revisión generada, incluidos CHECK, predeterminados e índices.
 
-Validación de F2: **1003 tests pasando, 2 avisos de deprecación**, en
-654,01 segundos, con la misma configuración. Se incluyen exactamente
-P1–P16 y las comprobaciones de semilla, evaluador, reversión y compatibilidad.
+### Fixtures del frontend
 
-F3 agrega el exportador de los ocho fixtures de contrato para el frontend.
 Desde la raíz del backend, indicar explícitamente la carpeta del otro repo:
 
 ```powershell
 uv run python scripts/exportar_fixtures_front.py --destino 'C:/ruta/a/ov_frontend/tests/fixtures/servidor'
 ```
 
-`--destino` es obligatorio; la carpeta se crea si falta. El script usa una
-base temporal nueva con `plataforma`, fuerza el evaluador falso y ejecuta
-P1, P2, P7, P12 y P10 con fechas y respuestas fijas. Guarda las respuestas
-JSON de la API sin modificar el contrato y las regenera con los mismos bytes.
-Los avisos no vistos corresponden al cierre del camino, antes de responder
-Mara. No modifica las bases existentes ni llama a Gemini. Si cambia el
-contrato, regenerar estos fixtures en la misma tarea. F4–F7 quedan pendientes.
+`--destino` es obligatorio y la carpeta se crea si falta. El script prepara una
+base temporal con `plataforma`, fuerza el evaluador falso y recorre P1, P2, P7,
+P12 y P10 con fechas y respuestas fijas. Guarda ocho respuestas JSON con bytes
+reproducibles. Los avisos no vistos corresponden al cierre de Camino, antes de
+Mara. No modifica bases existentes ni llama a Gemini. Si cambia el contrato,
+regenerar los fixtures en la misma tarea.
 
-Validación de F3: **1006 tests del backend pasando, 2 avisos de deprecación**,
-en 774,55 segundos, con `SEMILLA=demo` y `EVALUADOR=falso`. Build y lint del
-frontend pasan; su suite mantiene los 276 pases y las 16 fallas previas de F0,
-sin cambios en sus pruebas existentes.
+### Historial de validación de la iteración 1
+
+Las cifras F1–F6 conservan sus resultados históricos en
+[las decisiones de la iteración](docs/iteraciones/decisiones-iteracion-1.md).
+El cierre de R4 tiene **1023 pruebas aprobadas, 4 omitidas y 2 avisos**;
+las omisiones corresponden a PostgreSQL sin configurar. Los detalles del
+refactor están en [Decisiones](docs/decisiones.md#refactor-de-estructura).
+
+## Estructura del proyecto
+
+```text
+ov_backend/
+├── app/
+│   ├── __init__.py
+│   ├── main.py
+│   ├── config.py
+│   ├── database.py
+│   ├── dependencies.py
+│   ├── exceptions.py
+│   ├── api/
+│   │   ├── __init__.py
+│   │   ├── router.py
+│   │   ├── cuentas.py
+│   │   ├── acciones.py
+│   │   ├── instrumentos.py
+│   │   ├── registro.py
+│   │   └── demo.py
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── enums.py
+│   │   ├── cuentas.py
+│   │   ├── contenido.py
+│   │   ├── motor.py
+│   │   ├── progreso.py
+│   │   ├── instrumentos.py
+│   │   └── registro.py
+│   ├── schemas/
+│   │   ├── __init__.py
+│   │   ├── motor.py
+│   │   ├── cuentas.py
+│   │   ├── acciones.py
+│   │   ├── instrumentos.py
+│   │   ├── registro.py
+│   │   └── demo.py
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── comun.py
+│   │   ├── motor/
+│   │   │   ├── __init__.py
+│   │   │   ├── reglas.py
+│   │   │   ├── evaluadores.py
+│   │   │   └── referencias.py
+│   │   ├── cuentas.py
+│   │   ├── eventos.py
+│   │   ├── actividades.py
+│   │   ├── diario.py
+│   │   ├── carreras.py
+│   │   ├── comunidad.py
+│   │   ├── instrumentos/
+│   │   │   ├── __init__.py
+│   │   │   ├── calculo.py
+│   │   │   ├── consultas.py
+│   │   │   └── resultados.py
+│   │   ├── registro/
+│   │   │   ├── __init__.py
+│   │   │   ├── acciones.py
+│   │   │   ├── consultas.py
+│   │   │   ├── contenido.py
+│   │   │   ├── evaluacion.py
+│   │   │   ├── gemini.py
+│   │   │   └── prompt.py
+│   │   └── demo.py
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── parametros.py
+│   │   ├── definiciones.py
+│   │   └── contexto.py
+│   └── static/
+├── datos/
+│   ├── __init__.py
+│   ├── cargar.py
+│   ├── plataforma.py
+│   ├── ocupaciones.py
+│   ├── demo/
+│   │   ├── __init__.py
+│   │   ├── motor.py
+│   │   ├── instrumentos.py
+│   │   └── registro.py
+│   └── archivos/
+│       └── Career_Interest_RIASEC_Clean.xlsx
+├── migrations/
+│   ├── env.py
+│   ├── script.py.mako
+│   └── versions/
+│       └── 0001_esquema_inicial.py
+├── scripts/
+│   ├── evaluar_gemini.py
+│   └── exportar_fixtures_front.py
+├── tests/
+│   ├── conftest.py
+│   ├── soporte/
+│   └── test_*.py
+├── docs/
+├── alembic.ini
+├── pyproject.toml
+├── .env.example
+├── AGENTS.md
+└── README.md
+```
+
+`api/` valida y delega en servicios; `core/` reúne parámetros y lecturas
+compartidas; `models/` define tablas y `schemas/` los contratos HTTP.
+`app/` no importa cargadores. `datos/` contiene catálogos y conjuntos;
+Alembic administra el esquema. Los estáticos de demo se sirven solo en desarrollo.
 
 ## Configuración del registro y prueba Gemini
 
@@ -197,17 +324,19 @@ falso o clientes simulados, sin llamadas reales. Cada llamada usa prompt v2,
 salida JSON validada, temperatura 0.2 y un solo intento. La evaluación ocurre
 después de cerrar la primera transacción, sin conexión tomada.
 
-Para preparar un servidor con Gemini
-conservando una `demo.db` anterior, configurar `.env` con `EVALUADOR=gemini` y
-la clave local, y arrancar una base independiente compatible con v2:
+Para preparar un servidor con Gemini, configurar `.env` con `EVALUADOR=gemini`
+y la clave local, y preparar una base independiente. Este arranque se reserva
+a una petición explícita de uso de Gemini:
 
 ```powershell
-uv run python -c "from app.main import crear_aplicacion; import uvicorn; uvicorn.run(crear_aplicacion('sqlite:///demo_registro_gemini.db'), host='127.0.0.1', port=8788)"
+$env:DATABASE_URL = 'sqlite:///demo_registro_gemini.db'
+uv run alembic upgrade head
+uv run python -m datos.cargar demo
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8788
 ```
 
-La nueva base `demo_registro_gemini.db` usa esquema 5, conserva respuestas entre
-arranques y está ignorada por Git. Si ese archivo contiene la estructura v1,
-el arranque lo rechaza: conservar primero un respaldo antes de recrearlo.
+La base `demo_registro_gemini.db` conserva respuestas entre arranques y está
+ignorada por Git. Su esquema procede de Alembic y sus datos del conjunto `demo`.
 El servidor de comprobación del puerto 8787 siempre fuerza el falso, aunque
 se cambie `.env`; para Gemini usar este arranque. Las variables del proceso
 siguen teniendo prioridad sobre `.env`. El arranque no evalúa respuestas.
@@ -251,20 +380,20 @@ Con el servidor iniciado y `EVALUADOR=falso`, abrir
 [la actividad de registro](http://127.0.0.1:8000/demo/registro), también enlazada
 desde `/demo`.
 
-Para visualizarla desde cero sin reemplazar una `demo.db` anterior, se puede
+Para visualizarla desde cero sin modificar la base habitual, se puede
 iniciar una sesión independiente desde la raíz del proyecto:
 
 ```powershell
-uv run python tests/servidor_registro_ui.py
+uv run python tests/soporte/servidor_registro_ui.py
 ```
 
 Si el puerto está ocupado, elegir otro con `--puerto 8790` y abrir la misma ruta
 en ese puerto.
 
 Abrir [la demo independiente](http://127.0.0.1:8787/demo/registro). Este servidor
-fuerza el evaluador falso y crea una SQLite temporal con esquema 5 y la semilla
-completa. Conserva los cambios mientras permanece activo; al detenerlo con
-`Ctrl+C` se elimina esa base temporal. No modifica `demo.db` ni `.env`. Para
+fuerza el evaluador falso y prepara una SQLite temporal con el conjunto `demo`
+mediante los auxiliares de `datos.cargar`. Conserva los cambios mientras permanece activo; al detenerlo con
+`Ctrl+C` se elimina esa base temporal. No modifica la base habitual ni `.env`. Para
 conservar respuestas entre arranques, usar el servidor habitual con una base
 compatible; respaldar primero cualquier base anterior antes de recrearla.
 
@@ -429,8 +558,8 @@ La página `/demo/registro` permite realizar este mismo recorrido visualmente.
 5. Leer `eventos_registrados` y `nuevos_desbloqueos`, y volver a ejecutar la
    consulta de estado o progreso para observar el cambio.
 
-El reinicio **borra todos los datos y restaura la semilla**, incluidos eventos,
-progresos, entradas, cartas y desbloqueos. Ejecutarlo entre escenarios y sin
+El reinicio **borra el estado de las cuentas**, incluidos eventos, progresos,
+entradas, respuestas y desbloqueos. Conserva catálogo, cuentas, vínculos y cartas. Ejecutarlo entre escenarios y sin
 otras peticiones en curso. Reiniciar el servidor conserva los datos.
 
 | Cuenta | Rol | Vínculo |
@@ -663,8 +792,12 @@ referencias permanecen almacenadas internamente.
 
 ## Guion de los 17 escenarios
 
-Cada escenario empieza con `POST /demo/reiniciar`. Repetir desde cero su
-preparación: los prerrequisitos de la tabla se ejecutan después de ese reinicio,
+Estos escenarios requieren el conjunto `demo`. Cada escenario empieza con
+`POST /demo/reiniciar`. El reinicio conserva las cartas; para reproducir también
+su estado inicial, detener el servidor, ejecutar
+`uv run python -m datos.cargar demo --vaciar` y volver a arrancarlo antes del
+escenario. Repetir la preparación desde cero: los
+prerrequisitos de la tabla se ejecutan después de ese reinicio,
 sin reiniciar entre la preparación y la acción demostrada. Todas las acciones
 son de Ana salvo que se indique otra cuenta.
 
@@ -742,7 +875,8 @@ uv run pytest -q tests/test_escenarios.py
 uv run pytest -q tests/test_invariantes.py
 ```
 
-Los tests usan bases temporales independientes de `demo.db`. La suite cubre
+Los tests preparan explícitamente bases temporales independientes de la base
+configurada para el servidor. La suite cubre
 E1–E17 del motor, I1–I14 de instrumentos y R1–R17 de registro, los nueve
 invariantes, la semilla, restricciones, conteos, consultas y reversión de
 transacciones. La fixture general fuerza `EVALUADOR=falso`; el adaptador Gemini

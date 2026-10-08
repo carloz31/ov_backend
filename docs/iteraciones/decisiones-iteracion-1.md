@@ -4,6 +4,27 @@ Registro de decisiones que afectan a ambos repos. Las internas de cada repo van 
 
 Formato de cada entrada: fecha, fase, decisión, motivo y archivos afectados.
 
+## Refactor de estructura · R5 · 2026-10-08
+
+La documentación de preparación de ambos repositorios pasa a los comandos de
+`docs/spec-refactor-estructura.md`: Alembic, carga explícita de `plataforma` y
+arranque sobre la base indicada por `DATABASE_URL`. Los siguientes arranques
+conservan los datos y solo requieren Uvicorn. El reinicio de desarrollo borra
+estado y conserva catálogo, cuentas, vínculos y cartas.
+
+En frontend solo cambian README y aclaraciones históricas de los informes del
+estudiante. No cambian código, contratos, fixtures ni modo local. Se conservan
+las configuraciones y resultados de ejecuciones anteriores como historial;
+el usuario autoriza expresamente esta revisión contextual en R5. El detalle
+de coincidencias conservadas y validación está en `docs/decisiones.md`.
+
+Validación: backend **1023 aprobadas, 4 omitidas y 2 avisos**, sin fallos,
+en 883.49 segundos; evaluador falso y temporales externos. Las omisiones son
+los casos PostgreSQL sin `TEST_POSTGRES_URL`. Frontend: build y lint pasan;
+**340 de 356 pruebas aprobadas**, con las mismas **16 fallas previas** de
+F0/F7, sin fallas nuevas. Solo se modifican documentos; no hay llamadas a
+Gemini ni push. Frontend queda en el commit `3f58c1e`.
+
 ## Decisiones tomadas antes de implementar
 
 Ver la sección 8 de `spec-iteracion-1.md`.

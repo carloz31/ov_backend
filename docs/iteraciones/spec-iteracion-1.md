@@ -106,6 +106,9 @@ Regla que no se negocia: **en modo `api`, el front nunca decide si algo está di
 
 ### 4.1 Selección de semilla y archivo de base
 
+> Sustituido por `docs/spec-refactor-estructura.md`. Esta sección conserva la
+> configuración histórica; la preparación vigente usa Alembic y `datos.cargar`.
+
 | Variable | Valores | Por defecto | Efecto |
 |---|---|---|---|
 | `SEMILLA` | `demo`, `plataforma` | `demo` | Qué semilla se carga al crear la base y al llamar a `/demo/reiniciar`. |
@@ -117,6 +120,9 @@ Regla que no se negocia: **en modo `api`, el front nunca decide si algo está di
 - La semilla `demo` **no cambia**: mismos datos, mismas reglas, mismos escenarios E1–E17, I1–I14 y los de registro.
 
 ### 4.2 Esquema 5
+
+> Sustituido por `docs/spec-refactor-estructura.md`. Esta sección conserva el
+> esquema histórico; las migraciones actuales gestionan la revisión de la base.
 
 `VERSION_ESQUEMA` pasa de 4 a 5. Cambios:
 
@@ -141,7 +147,10 @@ Cualquier otra adaptación de una prueba existente requiere detenerse y pregunta
 
 ### 4.3 Semilla `plataforma`
 
-Va en `app/semilla_plataforma.py`, con la misma técnica de `seed.py`: definiciones en tablas de datos, sin consultas dentro de bucles y con la transacción del llamador. Reutiliza `leer_ocupaciones` de `semilla_instrumentos.py`.
+El cargador está en `datos/plataforma.py`: definiciones en tablas de datos,
+sin consultas dentro de bucles y con la transacción del llamador. Reutiliza
+`leer_ocupaciones` de `datos/ocupaciones.py`. La ubicación sigue
+`docs/spec-refactor-estructura.md`; el contenido de esta sección se conserva.
 
 #### 4.3.1 Cuentas
 
@@ -308,7 +317,7 @@ En esta iteración solo se alcanzan los niveles 1 a 3.
 
 #### 4.3.7 Instrumento RIASEC
 
-Se crean con los mismos valores que en `semilla_instrumentos.py`: instrumento `TEST-RIASEC` (`tipo_resultado` COINCIDENCIAS), escala `ESC-LIKERT5` con la transformación O*NET, dimensiones `R I A S E C` y patrón de ítems `R R I I A A S S E E C C` repetido 5 veces. No se llama a `cargar_definiciones_instrumentos`, porque crea el bloque LAB y los otros instrumentos. Si conviene extraer funciones compartidas, la semilla `demo` debe producir exactamente los mismos datos. Cambian solo el nombre visible, los enunciados y las actividades de la aplicación.
+Se crean con los mismos valores que en `datos/demo/instrumentos.py`: instrumento `TEST-RIASEC` (`tipo_resultado` COINCIDENCIAS), escala `ESC-LIKERT5` con la transformación O*NET, dimensiones `R I A S E C` y patrón de ítems `R R I I A A S S E E C C` repetido 5 veces. No se llama a `cargar_definiciones_instrumentos`, porque crea el bloque LAB y los otros instrumentos. Si conviene extraer funciones compartidas, la semilla `demo` debe producir exactamente los mismos datos. Cambian solo el nombre visible, los enunciados y las actividades de la aplicación.
 
 - Nombre del instrumento: «Test de intereses (RIASEC)». Descripción: «Versión de prueba para la iteración 1.»
 - Aplicación `APL-RIASEC`, momento UNICA, con las actividades `act-tip-01` a `act-tip-14`.
@@ -434,7 +443,7 @@ No se crean endpoints nuevos salvo los indicados. Todos aceptan y devuelven lo q
 
 ### 4.5 Fixtures de contrato para el front
 
-Script `scripts/exportar_fixtures_front.py`: crea una aplicación con `SEMILLA=plataforma` sobre una base temporal, ejecuta el recorrido de los escenarios P1, P2, P7, P10 y P12 y guarda las respuestas JSON en la carpeta que recibe el argumento obligatorio `--destino`, que debe ser `tests/fixtures/servidor/` dentro de `ov_frontend`. Como los repos están en carpetas independientes, el script no asume ninguna ruta relativa entre ellos; si el destino no existe, lo crea, y si no se pasa, falla con un mensaje que lo explica. Nombres: `estado-inicial.json`, `completar-mission-welcome.json`, `completar-mission-next-step.json`, `estado-ciudad.json`, `items-act-tip-01.json`, `completar-act-tip-14.json`, `resultado-riasec.json`, `desbloqueos-no-vistos.json`. Las pruebas del front usan estos archivos; si el contrato cambia, se regeneran en la misma tarea.
+Script `scripts/exportar_fixtures_front.py`: prepara explícitamente una base temporal con `preparar_base(url, 'plataforma', crear_tablas=True)` y crea la aplicación sobre ella, según `docs/spec-refactor-estructura.md`. Ejecuta el recorrido de los escenarios P1, P2, P7, P10 y P12 y guarda las respuestas JSON en la carpeta que recibe el argumento obligatorio `--destino`, que debe ser `tests/fixtures/servidor/` dentro de `ov_frontend`. Como los repos están en carpetas independientes, el script no asume ninguna ruta relativa entre ellos; si el destino no existe, lo crea, y si no se pasa, falla con un mensaje que lo explica. Nombres: `estado-inicial.json`, `completar-mission-welcome.json`, `completar-mission-next-step.json`, `estado-ciudad.json`, `items-act-tip-01.json`, `completar-act-tip-14.json`, `resultado-riasec.json`, `desbloqueos-no-vistos.json`. Las pruebas del front usan estos archivos; si el contrato cambia, se regeneran en la misma tarea.
 
 ### 4.6 Escenarios de la semilla `plataforma`
 
@@ -456,7 +465,7 @@ En `tests/test_plataforma.py`. Todos parten de una base nueva con la semilla `pl
 | P12. Avisos | Tras P7, consultar los desbloqueos no vistos de Ana, marcarlos y volver a consultar. | La segunda consulta devuelve una lista vacía. |
 | P13. Progreso de lo bloqueado | Tras P2, consultar el progreso de BLOQUE CIUDAD, INSIGNIA I2 y ACTIVIDAD act-tip-final. | CIUDAD: COMPLETA_BLOQUE(CAMINO) en 0 de 1. I2: condición cumplida y evaluador `misiones_camino_sin_inicio` no cumplido. act-tip-final: COMPLETA_ACTIVIDAD(act-tip-14) en 0 de 1. |
 | P14. Audiencia | Consultar el estado de Rosa. | Sin bloques, fichas ni insignias de estudiante. |
-| P15. Semillas separadas | Arrancar con `SEMILLA=plataforma` sobre una base creada con `demo`. Luego llamar a `/demo/reiniciar` en una app `plataforma`. | El arranque falla con el mensaje de 4.2. El reinicio vuelve a cargar `plataforma`, no `demo`. |
+| P15. Semillas separadas | **Sustituido por `docs/spec-refactor-estructura.md`.** Escenario histórico: arrancar con `SEMILLA=plataforma` sobre una base creada con `demo`. Luego llamar a `/demo/reiniciar` en una app `plataforma`. | Resultado histórico: el arranque falla con el mensaje de 4.2. El reinicio vuelve a cargar `plataforma`, no `demo`. |
 | P16. Eventos nuevos | Registrar `INVITA_A_CREW`, `FORMA_CREW` y `VENCE_DESAFIO_INTACTO` con `POST /eventos`. | Se desbloquean I4, I5 e I10; en el estado, I10 aparece con su nombre y requisito. |
 
 Los invariantes de la sección 8 de la spec del motor se verifican también sobre esta semilla, reutilizando las pruebas parametrizables cuando se pueda.
@@ -589,7 +598,9 @@ Solo si `import.meta.env.DEV` y `modoApi`: el menú del estudiante (`StudentUser
 
 ## 6. Recorrido de aceptación
 
-Con el backend en `SEMILLA=plataforma` y el front en `VITE_DATOS=api`. Cada paso indica qué HU verifica.
+Con una base preparada con Alembic y cargada mediante
+`uv run python -m datos.cargar plataforma`, y el front en `VITE_DATOS=api`.
+Cada paso indica qué HU verifica.
 
 1. Reiniciar datos de prueba. Ingresar con el usuario `est-ana`. → Camino con «El inicio del viaje» recomendado y el resto bloqueado (HU-002, HU-011).
 2. Abrir «La plaza de los rumores» bloqueada. → Requisito «completa “El inicio del viaje”» (HU-025).
@@ -618,7 +629,7 @@ Con el backend en `SEMILLA=plataforma` y el front en `VITE_DATOS=api`. Cada paso
 | Tema | Decisión |
 |---|---|
 | Test de intereses | RIASEC O*NET de 60 ítems repartido en las 14 interacciones de Mara, en lugar del TIP de muestra. |
-| Semillas | `plataforma` nueva y separada; `demo` intacta para conservar sus pruebas. |
+| Semillas | **Sustituido por `docs/spec-refactor-estructura.md`.** Decisión histórica: `plataforma` nueva y separada; `demo` intacta para conservar sus pruebas. |
 | Códigos | Los ids del front son los códigos del backend. |
 | Universo de recomendación | Solo las ocupaciones del catálogo del front con código O*NET, para que la recomendación siempre muestre opciones conocidas. |
 | Comunicación | Proxy de Vite en desarrollo, sin CORS. |

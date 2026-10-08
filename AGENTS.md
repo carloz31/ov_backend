@@ -9,18 +9,79 @@ Las especificaciones son la fuente de verdad, y cada una extiende a la anterior 
 1. `docs/spec-demo-motor-desbloqueos.md`: motor de desbloqueos, acciones y consultas.
 2. `docs/spec-demo-instrumentos.md`: instrumentos, resultados y recomendación de carreras.
 3. `docs/spec-demo-registro-gemini.md`: actividades de registro con preguntas de seguimiento mediante Gemini.
-4. `docs/iteraciones/spec-iteracion-N.md` de la iteración vigente (hoy la 1): semilla `plataforma`, integración con el front y adaptaciones de pruebas autorizadas.
+4. `docs/iteraciones/spec-iteracion-N.md` de la iteración vigente (hoy la 1): datos `plataforma`, integración con el front y adaptaciones de pruebas autorizadas.
+5. `docs/spec-refactor-estructura.md`: estructura del repo, base de datos, migraciones y carga de datos. Prevalece sobre lo que las anteriores dicen de semillas, `SEMILLA`, `RUTA_BD` y versión de esquema.
 
 Si dos especificaciones parecen contradecirse, detente y explica la contradicción antes de cambiar nada.
 
-## Semillas
+## Estructura
 
-| Semilla | Para qué | Reglas |
+Esta estructura es fija. No crees carpetas ni módulos sueltos fuera de ella; si algo no encaja, detente y pregunta.
+
+```
+app/                    solo la aplicación
+  main.py               crear_aplicacion(): configuración, lifespan, routers
+  config.py             Configuracion y cargar_configuracion()
+  database.py           motor, sesiones y todo lo que depende del dialecto
+  dependencies.py       dependencias compartidas de FastAPI (SesionBD, ejecutar_accion)
+  exceptions.py         excepciones de dominio y su traducción a HTTP
+  api/                  rutas, un archivo por grupo; sin lógica de negocio
+  models/               tablas SQLAlchemy por dominio; __init__ reexporta todo
+  schemas/              Pydantic de entrada y salida por dominio
+  services/             lógica de negocio por dominio
+    motor/              núcleo de desbloqueos
+    instrumentos/       cálculo, consultas y resultados
+    registro/           registro con LLM
+  core/                 parámetros, caché de definiciones y contexto de consultas
+  static/               tablero de demo
+datos/                  todo lo que llena la base (plataforma, demo, Excel O*NET)
+migrations/             migraciones de Alembic
+scripts/                herramientas manuales
+tests/                  pruebas; ayudas en tests/soporte/
+docs/                   especificaciones y decisiones
+```
+
+### Dónde va cada cosa
+
+| Si agregas… | Va en… |
+|---|---|
+| Un endpoint | `app/api/<grupo>.py`. Solo valida, llama a un servicio y devuelve. |
+| Lógica de negocio | `app/services/<dominio>.py`, o `app/services/<dominio>/` si el dominio ya es carpeta. |
+| Una tabla o columna | `app/models/<dominio>.py` **y** una migración en `migrations/versions/` en el mismo commit. |
+| Un enumerado | `app/models/enums.py`. |
+| Un cuerpo de entrada o respuesta | `app/schemas/<dominio>.py`. |
+| Un umbral o constante de método | `app/core/parametros.py`. |
+| Una variable de entorno | `app/config.py` y `.env.example`. |
+| Datos de prueba o catálogo | `datos/plataforma.py` (o `datos/demo/`). Nunca en `app/`. |
+| Una tabla de estado de las cuentas | Además, en `TABLAS_DE_ESTADO` de `app/services/demo.py`, para que el reinicio la vacíe. |
+
+Si un dominio nuevo llega con la iteración (por ejemplo, favoritos o planes), créale un archivo en `services/`, `schemas/` y, si tiene tablas, en `models/`. Convierte un archivo en carpeta solo cuando ya no cabe en uno.
+
+### Dependencias entre capas
+
+- `api` → `services` → `core`, `models`. `api` también usa `schemas`, `dependencies` y `exceptions`.
+- `app/` nunca importa `datos`, `scripts` ni `tests`.
+- `services/` nunca importa `api/`. `core/` y `models/` nunca importan `services/`.
+- `services/instrumentos/calculo.py` no accede a la base.
+- Importa módulos con alias cuando los nombres coinciden entre capas: `from app.services import actividades as servicio_actividades`.
+
+## Base de datos
+
+- La URL viene de `DATABASE_URL` (por defecto `sqlite:///ov.db` en la raíz). La aplicación debe funcionar igual con SQLite y PostgreSQL.
+- Nada de SQL específico de un motor fuera de `app/database.py`. Los índices parciales llevan `sqlite_where` y `postgresql_where`. No reemplaces `func.date` por `CAST(... AS DATE)` (en SQLite devuelve el año).
+- El esquema lo gestiona Alembic. La aplicación nunca llama a `create_all` ni siembra datos; solo las pruebas, `scripts/exportar_fixtures_front.py` y `scripts/evaluar_gemini.py`, sobre bases temporales, usan `create_all` (mediante los auxiliares de `datos.cargar`).
+- Todo cambio en `app/models/` lleva su migración (`uv run alembic revision --autogenerate -m "..."`), revisada a mano, en el mismo commit. `tests/test_migraciones.py` debe seguir en verde.
+
+## Datos
+
+| Conjunto | Para qué | Reglas |
 |---|---|---|
-| `demo` | La demo original y sus pruebas (E1–E17, I1–I14, registro). | No cambies la semántica del motor, sus datos semilla ni los resultados esperados de sus escenarios. |
-| `plataforma` | Datos de prueba alineados con el front, para integrarlo. | La define la spec de la iteración vigente. Sus códigos son los ids del front. |
+| `demo` (`datos/demo/`) | La demo original y sus pruebas (E1–E17, I1–I14, registro). | No cambies sus datos, reglas ni los resultados esperados de sus escenarios. |
+| `plataforma` (`datos/plataforma.py`) | Datos alineados con el front, para integrarlo. | Los define la spec de la iteración vigente. Sus códigos son los ids del front. |
 
-`SEMILLA` (por defecto `demo`) elige cuál se carga al crear la base y en `/demo/reiniciar`. Cada semilla usa su propio archivo de base.
+- La aplicación no sabe qué conjunto tiene la base. Se carga con `uv run python -m datos.cargar <conjunto>`.
+- `POST /demo/reiniciar` borra el estado de las cuentas y conserva el catálogo.
+- Los datos inventados se marcan con `DATO DE PRUEBA`.
 
 ## Reglas de trabajo
 
@@ -28,34 +89,37 @@ Si dos especificaciones parecen contradecirse, detente y explica la contradicci�
 - Si un test de escenario falla, corrige la implementación, no el test. Solo se adaptan tests existentes cuando la spec vigente lo autoriza de forma explícita, y se anota en `docs/decisiones.md`.
 - Si algo no está definido en la especificación, elige la opción más simple, anótala en `docs/decisiones.md` y sigue. Si afecta también al front, anótala en `docs/iteraciones/decisiones-iteracion-N.md`.
 - No agregues endpoints que la spec no pida.
+- No dejes archivos de log, carpetas temporales de pytest ni bases `.db` en el repo.
 
 ## Stack
 
-- Python 3.14 (como fijan `.python-version` y `pyproject.toml`), FastAPI, Pydantic v2, SQLAlchemy 2.0, SQLite, pytest.
+- Python 3.14 (como fijan `.python-version` y `pyproject.toml`), FastAPI, Pydantic v2, SQLAlchemy 2.0, Alembic, SQLite (desarrollo y pruebas) y PostgreSQL (opcional, extra `postgres`), pytest.
 - Dependencias gestionadas con `uv` en `pyproject.toml` (con `uv.lock`). Agrégalas solo con `uv add` (`uv add --dev` para herramientas de prueba). No uses `pip` ni `requirements.txt`, y no agregues dependencias sin avisar.
 
 ## Comandos
 
-- Instalar: `uv sync`
-- Levantar con la demo: `uv run uvicorn app.main:app --reload`
-- Levantar para el front: `SEMILLA=plataforma uv run uvicorn app.main:app --reload` (PowerShell: `$env:SEMILLA="plataforma"`, luego el comando)
+- Instalar: `uv sync` (con PostgreSQL: `uv sync --extra postgres`)
+- Crear o actualizar el esquema: `uv run alembic upgrade head`
+- Cargar datos: `uv run python -m datos.cargar plataforma` (o `demo`; `--vaciar` para empezar de cero)
+- Levantar: `uv run uvicorn app.main:app --reload`
 - Tests: `uv run pytest -q`
+- Nueva migración: `uv run alembic revision --autogenerate -m "<descripción>"`
 - Fixtures para el front: `uv run python scripts/exportar_fixtures_front.py --destino <carpeta de ov_frontend>/tests/fixtures/servidor`
 
 Corre `uv run pytest -q` antes de dar por terminada cualquier fase.
 
 ## Convenciones
 
-- Código, tablas, columnas y funciones en español y `snake_case`.
+- Carpetas estándar en inglés (`api`, `models`, `schemas`, `services`, `core`); módulos, código, tablas, columnas y funciones en español y `snake_case`. Sin sufijos como `_service` o `_repo` en los archivos.
 - La API expone códigos legibles (`act-tip-01`, `est-ana`), nunca ids internos.
-- `motor.py` no importa nada de los routers.
+- `app/services/motor/` no importa nada de `app/api/`.
 - Consultas: definiciones en caché, lecturas agrupadas por cuenta, escrituras en lote y ninguna consulta dentro de bucles.
 
 ## Secretos y servicios externos
 
 - La clave de Gemini se lee de `.env`, que nunca se versiona. No la escribas en código, logs, respuestas, errores ni documentación.
 - La aplicación admite `EVALUADOR=gemini` o `EVALUADOR=falso`, como define `docs/spec-demo-registro-gemini.md`. El valor por defecto es `falso`.
-- Los tests usan siempre el evaluador falso y nunca acceden a la red.
+- Los tests usan siempre el evaluador falso y nunca acceden a la red (salvo `tests/test_postgres.py`, que se omite si no hay `TEST_POSTGRES_URL`).
 - No ejecutes nada que llame a la API real de Gemini (la aplicación con `EVALUADOR=gemini` o `scripts/evaluar_gemini.py`) salvo que yo lo pida explícitamente.
 
 ## Reglas compartidas entre ov_backend y ov_frontend

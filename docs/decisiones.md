@@ -398,6 +398,89 @@ Sin `TEST_POSTGRES_URL`, estos casos se omiten; no se inicia infraestructura.
 R5 queda pendiente. Los cambios previos de `AGENTS.md` y la especificación no
 versionada permanecen fuera del commit de R4; no se hace push.
 
+### 2026-10-08 · R5: documentación de la estructura y preparación explícita
+
+Se continúa desde `6777c46`, en `refactor-estructura`, con **1023 pruebas
+aprobadas, 4 omitidas y 2 avisos** como referencia de R4. Esta fase modifica
+únicamente documentación y comentarios de `.env.example`; no cambia código,
+datos, contratos ni expectativas de pruebas.
+
+#### Criterio de cierre precisado por el usuario
+
+El usuario autoriza la revisión contextual de las coincidencias de nombres
+antiguos: ninguna instrucción operativa vigente debe usar `SEMILLA`, `RUTA_BD`,
+la carga al arrancar o módulos retirados. Se conservan las referencias
+históricas, la especificación del refactor, el Anexo A y los nombres de pruebas
+que siguen siendo correctos. Esta precisión sustituye el criterio literal de
+búsqueda de la tabla R5, incompatible con copiar el propio Anexo A y preservar
+el historial. No se renombran pruebas ni alias válidos para silenciar la búsqueda.
+
+#### Cambios documentales
+
+- `AGENTS.md` se reemplaza literalmente por el Anexo A, incluida la excepción
+  autorizada para la preparación efímera del script manual de Gemini. La
+  sección compartida permanece idéntica a la del frontend; no se modifica
+  su `AGENTS.md`.
+- README describe la configuración por URL y entorno, precedencias, Alembic,
+  carga explícita de ambos conjuntos, PostgreSQL opcional y revisión manual de
+  migraciones. Incluye el árbol completo de §3 con ubicaciones actuales.
+  Se corrigen también los ejemplos de Gemini y del servidor visual trasladado,
+  los conteos de tablas y el reinicio: conserva catálogo, cuentas, vínculos,
+  cartas, caché, posiciones y revisión; vacía únicamente el estado.
+- La especificación de la iteración marca 4.1, 4.2, P15 y la decisión anterior
+  de conjuntos como sustituidos. Se actualizan referencias operativas de los
+  cargadores, preparación del exportador y recorrido; los datos, reglas y
+  resultados de escenarios permanecen intactos.
+- El plan de iteraciones y ambos README usan migración y carga antes del primer
+  arranque, y explican que los siguientes arranques solo necesitan Uvicorn.
+  `.env.example` aclara rutas, entorno y extra PostgreSQL, conservando los
+  valores predeterminados y la clave vacía.
+- En frontend solo cambian README y notas sobre el carácter histórico de los
+  informes de verificación. Los cambios compartidos se registran también en
+  `docs/iteraciones/decisiones-iteracion-1.md`.
+
+#### Coincidencias conservadas y su motivo
+
+La búsqueda se hace con `rg`, sobre Python y Markdown de ambos repositorios,
+respetando los directorios ignorados. Se revisa cada coincidencia por contexto:
+
+| Archivo | Coincidencias válidas |
+|---|---|
+| `AGENTS.md` | Una mención de las variables anteriores en la cláusula de precedencia, copiada literalmente del Anexo A. No prescribe utilizarlas. |
+| `docs/spec-refactor-estructura.md` | Descripción del sistema anterior, mapa de movimientos, adaptaciones y Anexo A; fuente histórica del refactor autorizada. Se conserva no versionada y fuera del commit. |
+| `docs/iteraciones/spec-iteracion-1.md` | Cinco líneas dentro de 4.1, 4.2 y P15, marcados expresamente como sustituidos. No quedan comandos antiguos vigentes en el recorrido ni en la preparación de fixtures. |
+| `docs/decisiones.md`, `docs/iteraciones/decisiones-iteracion-1.md` | Historial de implementación, pruebas y acuerdos de sustitución. Las configuraciones antiguas describen ejecuciones pasadas. |
+| `tests/test_semilla_plataforma.py` | Cinco usos del alias `semilla_plataforma`, importado desde el módulo vigente `datos.plataforma`; sus pruebas y objetivos de monkeypatch siguen siendo correctos. |
+| `ov_frontend/docs/student-experience/informe-f7.md` | Tres líneas de entorno y resultados históricos de F7, con una nota al inicio que remite a la preparación vigente. |
+| `ov_frontend/docs/student-experience/plan.md` | Cinco líneas de recorridos y cierres históricos F4–F6, con la misma aclaración documental. |
+
+README, plan de iteraciones, `.env.example` y docstrings operativos no contienen
+referencias a las variables o módulos retirados ni instrucciones de carga en
+el arranque. Los módulos de aplicación, datos y herramientas no requieren cambios.
+
+#### Verificación y entrega
+
+Se comprueba la igualdad exacta del nuevo `AGENTS.md` con el Anexo A y la de
+las reglas compartidas entre repositorios. `npm run build` y `npm run lint`
+del frontend pasan. `npm test` termina con **340 aprobadas y 16 fallas** entre
+356 pruebas, en 82.46 segundos. Las dieciséis fallas coinciden por nombre y
+ubicación con el historial F0/F7 de `tests/adventure-rendering.test.mjs`;
+no aparecen fallas nuevas. No se modifican sus pruebas ni implementación.
+`uv run pytest -q`, con `EVALUADOR=falso` y temporales y caché fuera del repo,
+termina con **1023 aprobadas, 4 omitidas y 2 avisos** en 883.49 segundos
+(14:43), sin fallos. Se conserva el conteo de R4 y no se agregan, eliminan
+ni adaptan pruebas. Las cuatro omisiones corresponden a PostgreSQL sin
+`TEST_POSTGRES_URL`; los avisos siguen siendo las deprecaciones conocidas de
+Starlette/httpx y Google en Python 3.14. `git diff --check` pasa en ambos repos.
+
+El frontend queda en el commit `3f58c1e`, con solo sus tres documentos y el
+árbol de trabajo limpio. El commit de backend incluye únicamente los siete
+archivos documentales de R5. Se detiene el trabajo al terminar esta fase.
+
+Los borrados ajenos de `docs/evidencias/registro*` detectados durante la tarea
+se conservan fuera del commit. No se modifica la especificación no versionada,
+no se hacen llamadas reales a Gemini, no se hace push ni se integra la rama.
+
 ## Iteración 1 · F3
 
 ### 2026-10-07 · Exportación de fixtures de contrato

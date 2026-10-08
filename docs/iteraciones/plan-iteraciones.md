@@ -40,7 +40,10 @@ Si Codex se detiene por una contradicción entre documentos, resuélvela en la s
 Backend (PowerShell, desde la carpeta `ov_backend`):
 
 ```powershell
-$env:SEMILLA = "plataforma"
+uv sync
+$env:EVALUADOR = "falso"
+uv run alembic upgrade head
+uv run python -m datos.cargar plataforma
 uv run uvicorn app.main:app --reload
 ```
 
@@ -50,4 +53,7 @@ Frontend (otra terminal, desde la carpeta `ov_frontend`), con un `.env.local` qu
 npm run dev
 ```
 
-En bash, el backend es `SEMILLA=plataforma uv run uvicorn app.main:app --reload`.
+En bash se usan los mismos comandos, con `export EVALUADOR=falso` en lugar
+de la asignación PowerShell. La preparación se ejecuta una vez; después basta
+con arrancar Uvicorn. Para otra base, definir `DATABASE_URL` antes de migrar,
+cargar y arrancar. La configuración está en el README de `ov_backend`.
