@@ -4,7 +4,7 @@ from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
 
 from app.core.parametros import (
-    DIMENSIONES_RIASEC, OPCION_ONET_MAXIMA, OPCION_ONET_MINIMA, transformar_opcion_onet,
+    DESCRIPCIONES_RIASEC, DIMENSIONES_RIASEC, OPCION_ONET_MAXIMA, OPCION_ONET_MINIMA, transformar_opcion_onet,
 )
 from app.models import (
     Actividad, ActividadItem, Aplicacion, AplicacionActividad, Audiencia, Bloque, Carrera,
@@ -17,6 +17,17 @@ from datos.ocupaciones import OcupacionArchivo
 
 
 REGISTRO = logging.getLogger(__name__)
+
+# Iteración 1, anexo de cierre, perfil y resultados · F2: textos de TEST-INT.
+DESCRIPCIONES_INTELIGENCIAS = {
+    "INT-LIN": "Usar las palabras para expresarte, contar historias, explicar y convencer.",
+    "INT-LOG": "Razonar con números, patrones y relaciones de causa y efecto.",
+    "INT-ESP": "Imaginar, dibujar y orientarte en el espacio, viendo las cosas en tu mente.",
+    "INT-CIN": "Usar el cuerpo con precisión para moverte, crear o expresarte.",
+    "INT-MUS": "Percibir ritmos, melodías y sonidos, y crear con ellos.",
+    "INT-INTER": "Entender a otras personas, ponerte en su lugar y trabajar en equipo.",
+    "INT-INTRA": "Conocerte, reconocer lo que sientes y saber qué te motiva.",
+}
 
 
 def cargar_definiciones_instrumentos(sesion: Session) -> None:
@@ -96,8 +107,13 @@ def cargar_definiciones_instrumentos(sesion: Session) -> None:
     dimensiones_por_item = {}
     for instrumento, filas in rejillas.items():
         for orden, (codigo, nombre, numeros) in enumerate(filas, start=1):
+            descripcion = (
+                DESCRIPCIONES_RIASEC[codigo] if instrumento == "TEST-RIASEC" else
+                DESCRIPCIONES_INTELIGENCIAS[codigo] if instrumento == "TEST-INT" else
+                f"Dimensión de demostración: {nombre}."
+            )
             dimension = Dimension(instrumento_id=instrumentos[instrumento].id, codigo=codigo,
-                                  nombre=nombre, descripcion=f"Dimensión de demostración: {nombre}.", orden=orden)
+                                  nombre=nombre, descripcion=descripcion, orden=orden)
             sesion.add(dimension)
             for numero in numeros:
                 if (instrumento, numero) in dimensiones_por_item:

@@ -6,6 +6,73 @@ Formato de cada entrada: fecha, fase, decisión, motivo y archivos afectados.
 
 ## Anexo de cierre, perfil y resultados
 
+### 2026-10-09 · F2: descripciones de dimensiones
+
+**Decisión y motivo.** Se ejecuta únicamente F2 del anexo. RIASEC usa
+`DESCRIPCIONES_RIASEC` de `app/core/parametros.py` en plataforma y demo;
+TEST-INT usa las siete descripciones aprobadas en su cargador de demo.
+TEST-HAB conserva sus textos de demostración. No cambian ítems, escalas,
+reglas, cálculos, resultados numéricos ni disponibilidad.
+
+`DimensionResultado.descripcion` es obligatorio y procede de
+`Dimension.descripcion` al representar resultados vigentes e históricos.
+Las destacadas reutilizan esas dimensiones y exponen el mismo texto.
+El frontend copia el contrato, explicita el tipo de la consulta y conserva
+la descripción recibida en el adaptador de Helena. Los ejemplos y las
+descripciones RIASEC de modo local viven en
+`features/discovery/data/dimensionExamples.ts`; los ejemplos no son datos
+del servidor. Se actualiza el inventario de origen de datos.
+
+**Autorización y límites.** F2, «Frontend», puntos 2–3 del anexo autoriza
+sustituir las descripciones generadas y usar los textos locales aprobados.
+No se modifica la composición de las vistas ni se adelanta F3 o F4. Las
+descripciones de dimensiones fuera del resumen y TEST-INT real quedan
+registradas en `ov_frontend/docs/pendientes-interfaz.md` para F4 y la futura
+integración de TEST-INT, respectivamente.
+
+El cargador rechaza bases pobladas, sin actualizar sus filas. El README
+indica cómo recrear una base local conservando la anterior como respaldo;
+reiniciar la demo no actualiza el catálogo. No se ejecuta esa recreación
+sobre la base del usuario ni se agrega una migración de datos.
+
+Se regeneran los dieciséis fixtures mediante el CLI autorizado, en bases
+temporales con evaluador falso. Solo cambia `resultado-riasec.json`: seis
+campos `descripcion`. Los otros quince conservan su contenido. Cuatro
+pruebas nuevas del backend verifican RIASEC en ambos conjuntos, historial,
+TEST-INT con destacadas, TEST-HAB y los textos del anexo. Tres nuevas del
+frontend verifican contrato, fuente remota sin sustitución y textos locales.
+
+La única adaptación de una prueba existente es el cargador aislado de
+«Helena prefers complete valid real results over examples and invalid older
+results»: admite la importación concreta de `dimensionExamples.ts`.
+No cambian aserciones ni expectativas; no se añade resolución de carpetas.
+No se modifican pruebas existentes del backend, dependencias ni claves de
+almacenamiento. La verificación usa evaluador falso, sin llamadas a Gemini.
+
+**Verificación del frontend.** Build y lint pasan, con el aviso previo del
+bundle mayor de 500 kB. Estructura: **537 archivos, cero infracciones y
+cero excepciones**. Suite completa: **421 pruebas, 406 aprobadas y las
+mismas 15 fallas previas**, sin omitidas ni canceladas. Frente a F1 se
+añaden tres pruebas aprobadas; los diagnósticos de las 15 fallas coinciden,
+excluyendo duraciones y ubicaciones de pila. Los quince fixtures ajenos
+al resultado permanecen idénticos byte por byte; al quitar únicamente los
+seis campos nuevos, el resultado es idéntico al anterior como JSON.
+
+**Verificación del backend.** Suite completa: **1095 aprobadas, cuatro
+omitidas, cero fallas y dos advertencias previas**, en **837,05 segundos**.
+Frente a F0 (1091 aprobadas), se añaden las cuatro pruebas nuevas, que
+también pasaron en la ejecución dirigida. Las omisiones son PostgreSQL sin
+`TEST_POSTGRES_URL`; las advertencias corresponden a Starlette/httpx y
+Google GenAI. Se usa `uv run --no-sync --offline python -m pytest -q -rs
+-p no:cacheprovider`, con `--basetemp` externo, evaluador falso y fuera del
+aislamiento por el bloqueo documentado de TestClient. Logs, bases y
+temporales permanecen fuera de ambos repositorios.
+
+**Cierre.** F2 completa. Un commit A2 por repo en `iteracion-1`, sin push.
+Se detiene el trabajo antes de F3. La presentación de todas las dimensiones
+queda para F4 según el anexo; TEST-INT real sigue fuera de plataforma y
+su futura integración permanece registrada. No se recrea la BD del usuario.
+
 ### 2026-10-09 · F0: lectura y preparación
 
 **Decisión y motivo.** Se ejecuta únicamente F0 de

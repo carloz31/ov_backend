@@ -101,6 +101,7 @@ class AvanceInstrumento(BaseModel):
 class DimensionResultado(BaseModel):
     codigo: str
     nombre: str
+    descripcion: str
     puntaje: float
     puntaje_maximo: float
     porcentaje: float

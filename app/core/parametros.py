@@ -40,3 +40,13 @@ DIMENSIONES_RIASEC = (
     ("R", "Realista"), ("I", "Investigativa"), ("A", "Artística"),
     ("S", "Social"), ("E", "Emprendedora"), ("C", "Convencional"),
 )
+
+# Iteración 1, anexo de cierre, perfil y resultados · F2.
+DESCRIPCIONES_RIASEC: dict[str, str] = {
+    "R": "Te atraen las actividades prácticas: trabajar con las manos, usar herramientas o máquinas y estar al aire libre.",
+    "I": "Te atrae observar, preguntar y analizar para entender cómo y por qué funcionan las cosas.",
+    "A": "Te atrae crear, imaginar y expresarte con libertad, sin reglas rígidas.",
+    "S": "Te atrae ayudar, enseñar, cuidar o acompañar a otras personas.",
+    "E": "Te atrae liderar, convencer, organizar proyectos y tomar decisiones.",
+    "C": "Te atrae ordenar información, seguir procedimientos claros y trabajar con datos de forma precisa.",
+}

@@ -8,7 +8,7 @@ from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
 from app import models as modelos
-from app.core.parametros import DIMENSIONES_RIASEC, transformar_opcion_onet
+from app.core.parametros import DESCRIPCIONES_RIASEC, DIMENSIONES_RIASEC, transformar_opcion_onet
 from datos.ocupaciones import RUTA_OCUPACIONES, leer_ocupaciones, validar_distribucion_items
 
 
@@ -337,7 +337,7 @@ def _cargar_riasec(sesion, actividades):
                    for n, etiqueta in enumerate(('Me disgusta mucho', 'Me disgusta', 'No estoy seguro',
                                                   'Me gusta', 'Me gusta mucho'), start=1))
     dimensiones = {c: modelos.Dimension(codigo=c, nombre=n, instrumento_id=instrumento.id, orden=orden,
-                                        descripcion=f'Dimensión de demostración: {n}.')
+                                        descripcion=DESCRIPCIONES_RIASEC[c])
                    for orden, (c, n) in enumerate(DIMENSIONES_RIASEC, start=1)}
     aplicacion = modelos.Aplicacion(codigo='APL-RIASEC', nombre='Intereses', instrumento_id=instrumento.id,
                                     momento=modelos.MomentoAplicacion.UNICA)

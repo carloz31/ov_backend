@@ -148,6 +148,15 @@ detener el servidor, ejecutar `uv run python -m datos.cargar plataforma --vaciar
 transacción: un fallo conserva las filas anteriores. La CLI no crea tablas;
 siempre se preparan con Alembic.
 
+**Descripciones de dimensiones · anexo de la iteración 1, F2.** La carga no
+actualiza filas existentes. Para ver las descripciones nuevas de RIASEC y
+TEST-INT, recrear la base local: detener el servidor, conservar la base
+anterior como respaldo y elegir otra `DATABASE_URL`, ejecutar
+`uv run alembic upgrade head` y `uv run python -m datos.cargar plataforma`
+(o `demo` para TEST-INT) y arrancar de nuevo. No se aplica una migración de
+datos. `POST /demo/reiniciar` conserva el catálogo y no actualiza estos
+textos; recargar el frontend tampoco los cambia.
+
 `POST /demo/reiniciar` borra únicamente las 16 tablas de estado de las cuentas.
 Conserva catálogo, cuentas, vínculos y sus cartas, la revisión de Alembic,
 la caché y las posiciones de registro. Funciona con ambos conjuntos y no

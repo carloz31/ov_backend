@@ -221,7 +221,7 @@ def representar_resultado(sesion: Session, resultado: ResultadoInstrumento, hist
     cargar_representaciones(sesion, [resultado])
     filas, afines, relaciones_carreras = contexto(sesion).representaciones[resultado.id]
     datos = dict(instrumento=instrumento.codigo, aplicacion=aplicacion.codigo, calculado_en=resultado.calculado_en,
-        perfil_plano=resultado.perfil_plano, dimensiones=[DimensionResultado(codigo=d.codigo, nombre=d.nombre,
+        perfil_plano=resultado.perfil_plano, dimensiones=[DimensionResultado(codigo=d.codigo, nombre=d.nombre, descripcion=d.descripcion,
             puntaje=r.puntaje, puntaje_maximo=r.puntaje_maximo, porcentaje=r.porcentaje) for d, r in filas])
     if instrumento.tipo_resultado == TipoResultado.DESTACADAS:
         destacadas = calcular_dimensiones_destacadas([
