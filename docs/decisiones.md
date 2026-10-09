@@ -3027,3 +3027,100 @@ No se ejecuta Gemini real. Los informes de tiempos, XML y bases quedan fuera
 de los repositorios; no se toca ninguna base local preexistente. El frontend
 permanece limpio y no se vuelve a ejecutar en esta fase exclusiva del backend.
 Un commit en `iteracion-1`, sin push. P4 cerrada; P5 queda pendiente.
+
+### P5 · Pruebas del frontend por área (9 de octubre de 2026)
+
+Se ejecuta §8 de `spec-pruebas-y-retiro-demo.md`. Los **27 archivos**
+`*.test.mjs` conservan sus nombres y pasan a las carpetas propuestas:
+
+| Carpeta en `ov_frontend/tests/` | Archivos |
+|---|---:|
+| `local/actividades/` | 5 |
+| `local/aventura/` | 2 |
+| `local/casos/` | 1 |
+| `local/perfil/` | 1 |
+| `local/portales/` | 3 |
+| `servidor/actividades/` | 6 |
+| `servidor/mapa/` | 1 |
+| `servidor/instrumentos/` | 4 |
+| `servidor/logros/` | 2 |
+| `servidor/perfil/` | 1 |
+| `despliegue/` | 1 |
+
+No se ajusta ningún destino respecto de §8.1: `contenidos.test.mjs` queda
+en actividades locales y `servidor-local.test.mjs` permanece junto a la
+integración, tal como propone la spec. Las carpetas `soporte/` y
+`fixtures/servidor/` no se mueven. El exportador del backend conserva su destino.
+
+La comparación byte a byte de los 27 archivos frente a P2 confirma que solo
+cambian los imports `./soporte/` a `../../soporte/`. No cambian aserciones,
+nombres de casos, cargadores, rutas de `src/` o de fixtures, ni el modo local.
+El archivo de despliegue no usa soporte y se conserva íntegro. El verificador
+`scripts/verificar-estructura.mjs` recorre exclusivamente `src/` y no enumera
+pruebas: se comprueba que pasa y no se modifica ni se agregan excepciones.
+
+`package.json` incorpora los cuatro comandos con glob entre comillas de §8.2:
+`npm test`, `npm run test:local`, `npm run test:servidor` y
+`npm run test:despliegue`. Node expande los patrones desde la raíz.
+Se verifica con el expansor de globs de Node que los tres selectores contienen
+**12, 14 y 1 archivos** respectivamente y que su unión coincide exactamente
+con los 27 de la suite completa, sin pérdidas ni duplicados. La ejecución
+se realiza con el Node instalado, **24.19.0**, manteniendo la sintaxis pedida
+para Node 22 y PowerShell. No se incorporan dependencias ni cambia el lockfile.
+
+Validación del frontend:
+
+- `npm test`: **463 casos, 449 correctos, 14 fallas en 37,285 s**; ninguna
+  omisión ni cancelación. Se contrastan por nombre todos los resultados con
+  el informe de P2, no solo el total: son exactamente los mismos. Las 14
+  fallas siguen perteneciendo a `local/aventura/adventure-rendering.test.mjs`
+  y son las previas expresamente excluidas de corrección por §8.2.
+- `npm run build`: correcto; permanece el aviso previo de bundle mayor
+  de 500 kB. `npm run lint`: correcto.
+- `npm run check:estructura`: **565 archivos, 0 infracciones y 0 excepciones**.
+
+Se registra la fase aquí, como pide la spec, y se verifica además la suite
+completa del backend con `-n auto`, temporales externos y un observador de
+informes externo: **526 correctas, 4 omitidas, 40 emisiones de las dos
+advertencias previas, en 40,65 s**, salida 0. No hay cambios en sus fuentes,
+datos, dependencias, fixtures o configuración respecto de P4.
+
+Para cumplir §7.4 después de P5, el observador recoge los **530 informes de
+setup** de los 20 procesos. Hay **24 mayores de 1 s**: 17 incluyen el primer
+uso de las plantillas de sesión del proceso y 7 siembran o migran de verdad.
+Se listan todos a continuación, con rutas relativas a `tests/integration/`.
+Son las excepciones justificadas de P4: no se sustituye la carga o Alembic
+que deben comprobar esas pruebas ni se altera su contenido para ocultar el
+coste de preparación.
+
+| Caso | Setup | Motivo |
+|---|---:|---|
+| `actividades/test_acciones.py::test_fallo_segundo_autor_revierte_entrevista_completa` | 3,382 s | Primer uso de las plantillas de sesión en `gw4`. |
+| `actividades/test_acciones.py::test_ingresar_repite_eventos_y_usa_hora_actual_de_lima` | 3,356 s | Primer uso de las plantillas de sesión en `gw1`. |
+| `contrato/test_consultas_dominio.py::test_visibilidad_no_oculta_filas_ni_titulos[DISPONIBLE-SIEMPRE]` | 3,356 s | Primer uso de las plantillas de sesión en `gw10`. |
+| `actividades/test_acciones.py::test_entradas_invalidas_no_generan_estado[check-in-cuerpo5]` | 3,331 s | Primer uso de las plantillas de sesión en `gw0`. |
+| `contrato/test_consultas_dominio.py::test_contrato_y_valores_plataforma[camino_completo-diario/preguntas]` | 3,330 s | Primer uso de las plantillas de sesión en `gw7`. |
+| `contrato/test_consultas_dominio.py::test_contrato_y_valores_plataforma[inicio-conversaciones]` | 3,330 s | Primer uso de las plantillas de sesión en `gw6`. |
+| `actividades/test_acciones.py::test_entradas_invalidas_no_generan_estado[publicar-entrevista-cuerpo11]` | 3,306 s | Primer uso de las plantillas de sesión en `gw2`. |
+| `contrato/test_consultas_dominio.py::test_apoderado_sin_listas_estudiantiles[logros]` | 3,296 s | Primer uso de las plantillas de sesión en `gw9`. |
+| `desarrollo/test_atomicidad_reinicio.py::test_reinicio_fallido_revierte_borrados` | 3,296 s | Primer uso de las plantillas de sesión en `gw19`. |
+| `cuentas/test_estado_cuentas.py::test_check_in_y_diario_aislados_por_cuenta` | 3,295 s | Primer uso de las plantillas de sesión en `gw14`. |
+| `contrato/test_consultas_dominio.py::test_cuenta_inexistente[testimonios]` | 3,291 s | Primer uso de las plantillas de sesión en `gw8`. |
+| `actividades/test_acciones.py::test_fecha_con_zona_conserva_calendario_simulado` | 3,290 s | Primer uso de las plantillas de sesión en `gw3`. |
+| `cuentas/test_check_in_unico.py::test_check_in_unico_por_dia_con_aislamiento_entre_estudiantes` | 3,290 s | Primer uso de las plantillas de sesión en `gw13`. |
+| `contrato/test_consultas_dominio.py::test_contrato_y_valores_plataforma[inicio-resumen]` | 3,262 s | Primer uso de las plantillas de sesión en `gw5`. |
+| `contrato/test_consultas_dominio.py::test_actividad_al_desbloquear_cambia_de_visible_con_la_accion` | 3,229 s | Primer uso de las plantillas de sesión en `gw11`. |
+| `escenarios/plataforma/test_escenarios_plataforma.py::test_p02_primer_paso` | 2,990 s | Primer uso de las plantillas de sesión en `gw16`. |
+| `escenarios/piloto/test_escenarios_piloto.py::test_elena_se_revela_despues_de_interaccion_catorce` | 2,119 s | Primer uso de las plantillas de sesión en `gw17`. |
+| `datos/test_semilla_plataforma.py::test_excel_erroneo_revierte_carga_explicita[referencia_ausente]` | 1,938 s | Carga real por caso, sin plantilla (§7.1). |
+| `datos/test_semilla_plataforma.py::test_catalogo_estructura_y_estado_vacio` | 1,803 s | Carga real por caso, sin plantilla (§7.1). |
+| `datos/test_semilla_plataforma.py::test_riasec_enunciados_y_distribucion_exactos` | 1,332 s | Carga real por caso, sin plantilla (§7.1). |
+| `datos/test_semilla_plataforma.py::test_fallo_tardio_revierte_carga_y_conserva_cache` | 1,274 s | Carga real por caso, sin plantilla (§7.1). |
+| `migraciones/test_migraciones.py::test_columnas_de_actividad_rechazan_nulos_y_visibilidad_invalida[None-SIEMPRE]` | 1,216 s | Alembic real sobre base vacía. |
+| `datos/test_semilla_plataforma.py::test_excel_erroneo_revierte_carga_explicita[ausente]` | 1,172 s | Carga real por caso, sin plantilla (§7.1). |
+| `datos/test_semilla_plataforma.py::test_excel_erroneo_revierte_carga_explicita[invalido]` | 1,077 s | Carga real por caso, sin plantilla (§7.1). |
+
+No cambian interfaz, contenido, contrato ni datos de la plataforma. Los
+informes y temporales permanecen fuera de ambos repositorios. No se llama
+a Gemini ni se hace push. Un commit de P5 en el frontend y otro en el
+backend para este registro. P5 cerrada; P6 queda pendiente.
