@@ -1,5 +1,7 @@
 """I1–I14 mediante acciones y consultas públicas; invariantes y atomicidad."""
 
+from soporte_dominios import RUTAS_DOMINIO
+
 from collections import Counter
 from datetime import datetime
 
@@ -75,7 +77,7 @@ def verificar_invariantes_persistidos(aplicacion):
 
 
 def estado_actividades(cliente, cuenta="est-ana"):
-    return {a["codigo"]: a["estado"] for b in cliente.get(f"/cuentas/{cuenta}/estado").json()["bloques"]
+    return {a["codigo"]: a["estado"] for b in cliente.get(f"/cuentas/{cuenta}/actividades").json()
             for a in b["actividades"]}
 
 
@@ -823,7 +825,7 @@ def test_i13_cuentas_intercaladas_con_resultados_y_reinicio_aislados(cliente, ap
                 "respuestas": [{"item": f"RIASEC-{15 * (n - 1) + 1:02}", "opcion": 1}]}).status_code == 409
             assert cliente.get(ruta).json() == respuestas
     fotografia_luis = {ruta: cliente.get(ruta).json() for ruta in (
-        "/cuentas/est-luis/estado", "/cuentas/est-luis/eventos", "/cuentas/est-luis/desbloqueos",
+        *(f"/cuentas/est-luis/{dominio}" for dominio in RUTAS_DOMINIO), "/cuentas/est-luis/eventos", "/cuentas/est-luis/desbloqueos",
         "/cuentas/est-luis/instrumentos", "/cuentas/est-luis/instrumentos/TEST-RIASEC/resultado",
         "/cuentas/est-luis/instrumentos/TEST-RIASEC/historial",
         *[f"/cuentas/est-luis/actividades/LAB-RIA{n}/respuestas" for n in range(1, 5)],

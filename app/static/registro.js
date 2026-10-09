@@ -255,12 +255,12 @@ function pintar() {
 
 async function recuperar() {
   const generacion = registro.generacion;
-  const [mapa, datos, novedades] = await Promise.all([
-    solicitar(`${ruta_cuenta()}/estado`), solicitar(ruta_registro()),
+  const [bloques, datos, novedades] = await Promise.all([
+    solicitar(`${ruta_cuenta()}/actividades`), solicitar(ruta_registro()),
     solicitar(`${ruta_cuenta()}/desbloqueos?solo_no_vistos=true`),
   ]);
   if (generacion !== registro.generacion) return;
-  registro.mapa = mapa;
+  registro.mapa = { bloques };
   registro.datos = datos;
   registro.novedades = novedades;
   pintar();

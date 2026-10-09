@@ -1,5 +1,7 @@
 """Registro: estructura y escenarios de acciones/consultas con evaluador falso."""
 
+from soporte_dominios import proyectar_bloques
+
 import json
 import re
 from datetime import datetime
@@ -128,13 +130,13 @@ def test_semilla_registro_coincide_con_especificacion(cliente, sesion):
 def test_reg_disponible_solo_para_estudiantes(cliente):
     assert cliente.post("/demo/reiniciar").status_code == 200
     for cuenta in ("est-ana", "est-luis"):
-        bloques = cliente.get(f"/cuentas/{cuenta}/estado").json()["bloques"]
+        bloques = proyectar_bloques(cliente.get(f"/cuentas/{cuenta}/actividades").json())
         registro = next(bloque for bloque in bloques if bloque["codigo"] == "REG")
         assert registro["estado"] == "DISPONIBLE"
         assert registro["actividades"] == [{
             "codigo": "REG-ACT08", "titulo": "Mi plan para fortalecer una habilidad", "estado": "DISPONIBLE",
         }]
-    assert "REG" not in [bloque["codigo"] for bloque in cliente.get("/cuentas/apo-rosa/estado").json()["bloques"]]
+    assert "REG" not in [bloque["codigo"] for bloque in cliente.get("/cuentas/apo-rosa/actividades").json()]
     reglas = cliente.get("/reglas").json()
     assert all(regla["objetivo"]["codigo"] not in ("REG", "REG-ACT08") for regla in reglas)
 
@@ -493,7 +495,7 @@ def test_r2_posicion_valida_crea_progreso_y_se_retoma(cliente, aplicacion, regis
     respuesta = cliente.post('/acciones/guardar-posicion', json=datos)
     assert respuesta.json() == {'posicion': 'plan', 'estado': 'EN_CURSO'}
     assert estado_registro(cliente).json() == {'posicion': 'plan', 'estado': 'EN_CURSO', 'respuestas': []}
-    bloques = cliente.get('/cuentas/est-ana/estado').json()['bloques']
+    bloques = cliente.get('/cuentas/est-ana/actividades').json()
     assert next(b for b in bloques if b['codigo'] == 'REG')['actividades'][0]['estado'] == 'EN_CURSO'
     antes = fotografia(aplicacion)
     assert cliente.post('/acciones/guardar-posicion', json={**datos, 'posicion': 'no-existe'}).status_code == 422
@@ -1090,7 +1092,7 @@ def test_r11_borrador_impide_completar_y_finales_completan_actividad_y_bloque(
     registro = estado_registro(cliente).json()
     assert registro['estado'] == 'COMPLETADA'
     assert [r['estado'] for r in registro['respuestas']] == ['FINAL'] * 3
-    bloques = cliente.get('/cuentas/est-ana/estado').json()['bloques']
+    bloques = cliente.get('/cuentas/est-ana/actividades').json()
     assert next(b for b in bloques if b['codigo'] == 'REG')['actividades'][0]['estado'] == 'COMPLETADA'
 
 
@@ -1121,7 +1123,7 @@ def test_r12_tres_reflexivas_desbloquean_pensador_sin_cambiar_reglas(cliente, ap
     for tabla in ('regla_desbloqueo', 'condicion_desbloqueo'):
         assert despues[tabla] == antes[tabla]
     assert len(despues['desbloqueo']) == 1
-    insignias = cliente.get('/cuentas/est-ana/estado').json()['insignias']
+    insignias = cliente.get('/cuentas/est-ana/logros').json()['insignias']
     assert next(i for i in insignias if i['codigo'] == 'LOG-PENSADOR')['estado'] == 'OBTENIDA'
 
 

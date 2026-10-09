@@ -1,5 +1,7 @@
 """Fixtures locales y recorridos de plataforma; no cambia las fixtures de demo."""
 
+from soporte_dominios import consultar_dominios
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -59,7 +61,7 @@ def responder(cliente, actividad, cuenta='est-ana', opcion=None, inicio=0, fin=N
 
 
 def estado(cliente, cuenta='est-ana'):
-    return pedir(cliente, 'GET', f'/cuentas/{cuenta}/estado')
+    return consultar_dominios(cliente, cuenta)
 
 
 def actividades(cliente, cuenta='est-ana'):

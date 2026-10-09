@@ -29,7 +29,7 @@ def mostrar_registro():
 
 @router.get("/catalogo")
 def consultar_catalogo(sesion: SesionBD):
-    """Opciones públicas para los formularios; la disponibilidad viene de /estado."""
+    """Opciones públicas para los formularios; la disponibilidad viene de las consultas por dominio."""
     return servicio_demo.consultar_catalogo(sesion)
 
 

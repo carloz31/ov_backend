@@ -1,4 +1,4 @@
-"""Contrato de B2, independiente de la proyección temporal de /estado."""
+"""Contrato de las siete consultas por dominio."""
 
 import pytest
 from sqlalchemy import select

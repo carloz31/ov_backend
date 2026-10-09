@@ -13,7 +13,7 @@ TABLAS_DE_ESTADO = (
 
 
 def consultar_catalogo(sesion: Session):
-    """Opciones públicas para los formularios; la disponibilidad viene de /estado."""
+    """Opciones públicas para los formularios; la disponibilidad viene de las consultas por dominio."""
     cuentas = {cuenta.id: cuenta.codigo for cuenta in sesion.scalars(select(Cuenta))}
     return {
         "actividades": [

@@ -1,3 +1,5 @@
+from soporte_dominios import consultar_dominios
+
 from collections import Counter
 
 import pytest
@@ -28,9 +30,9 @@ def completar(cliente, codigos, cuenta="est-ana"):
 
 
 def estado(cliente, cuenta="est-ana"):
-    respuesta = cliente.get(f"/cuentas/{cuenta}/estado")
+    respuesta = cliente.get(f"/cuentas/{cuenta}/resumen")
     assert respuesta.status_code == 200, respuesta.text
-    return respuesta.json()
+    return consultar_dominios(cliente, cuenta, resumen=respuesta.json())
 
 
 def historial(cliente, cuenta):

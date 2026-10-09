@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 
 import pytest
 from sqlalchemy import func, select
+from soporte_dominios import consultar_dominios, RUTAS_DOMINIO
 
 from app import models as modelos
 from app.database import crear_motor_bd
@@ -46,9 +47,9 @@ def preparar_ciudad(sesion):
 
 
 def consultar_estado(cliente, cuenta="est-ana"):
-    respuesta = cliente.get(f"/cuentas/{cuenta}/estado")
+    respuesta = cliente.get(f"/cuentas/{cuenta}/resumen")
     assert respuesta.status_code == 200
-    return respuesta.json()
+    return consultar_dominios(cliente, cuenta, resumen=respuesta.json())
 
 
 def actividades_por_codigo(estado):
@@ -230,7 +231,7 @@ def test_progreso_evaluador_especial_se_muestra_separado(sesion, cliente):
 
 
 @pytest.mark.parametrize("ruta", [
-    "/cuentas/no-existe/estado", "/cuentas/no-existe/progreso/ACTIVIDAD/ACT-01",
+    "/cuentas/no-existe/resumen", "/cuentas/no-existe/progreso/ACTIVIDAD/ACT-01",
     "/cuentas/no-existe/eventos", "/cuentas/no-existe/desbloqueos",
     "/cuentas/est-ana/progreso/ACTIVIDAD/ACT-NO-EXISTE",
     "/cuentas/est-ana/progreso/NIVEL/N0", "/cuentas/est-ana/progreso/NIVEL/N6",
@@ -312,7 +313,7 @@ def test_gets_no_generan_eventos_ni_desbloqueos(sesion, cliente):
                                  id_referencia=actividad.id, fecha_hora=FECHA))
     sesion.commit()
     for _ in range(2):
-        for ruta in ("/cuentas", "/reglas", "/cuentas/est-ana/estado", "/cuentas/est-ana/eventos",
+        for ruta in ("/cuentas", "/reglas", *(f"/cuentas/est-ana/{dominio}" for dominio in RUTAS_DOMINIO), "/cuentas/est-ana/eventos",
                      "/cuentas/est-ana/desbloqueos", "/cuentas/est-ana/progreso/ACTIVIDAD/ACT-02"):
             assert cliente.get(ruta).status_code == 200
     progreso = cliente.get("/cuentas/est-ana/progreso/ACTIVIDAD/ACT-02").json()
@@ -334,7 +335,7 @@ def test_respuestas_no_exponen_ids_internos(sesion, cliente):
             for contenido in valor:
                 verificar(contenido)
 
-    for ruta in ("/cuentas", "/reglas", "/cuentas/est-ana/estado", "/cuentas/est-ana/eventos",
+    for ruta in ("/cuentas", "/reglas", *(f"/cuentas/est-ana/{dominio}" for dominio in RUTAS_DOMINIO), "/cuentas/est-ana/eventos",
                  "/cuentas/est-ana/desbloqueos", "/cuentas/est-ana/progreso/ACTIVIDAD/ACT-17"):
         respuesta = cliente.get(ruta)
         assert respuesta.status_code == 200
@@ -438,7 +439,7 @@ def test_contadores_aislan_motores_y_permiten_contextos_independientes(contador_
 
 def test_medicion_base_estado_progreso_y_actividades(cliente, medidor_peticiones):
     medir = medidor_peticiones.medir
-    estado = medir("estado_inicial", "GET", "/cuentas/est-ana/estado")
+    estado = medir("estado_inicial", "GET", "/cuentas/est-ana/resumen")
     assert estado["nivel_actual"]["numero"] == 1
     medir("progreso_ACT17_inicial", "GET", "/cuentas/est-ana/progreso/ACTIVIDAD/ACT-17")
     simple = medir("completar_ACT01", "POST", "/acciones/completar-actividad", datos_medicion("ACT-01"))
@@ -449,7 +450,7 @@ def test_medicion_base_estado_progreso_y_actividades(cliente, medidor_peticiones
     assert {f"R-CIUDAD-C{numero}" for numero in range(1, 5)} <= {
         nuevo["regla"] for nuevo in ciudad["nuevos_desbloqueos"]
     }
-    estado = medir("estado_ciudad", "GET", "/cuentas/est-ana/estado")
+    estado = medir("estado_ciudad", "GET", "/cuentas/est-ana/resumen")
     assert estado["nivel_actual"]["numero"] == 3
     medir("progreso_ACT17_ciudad", "GET", "/cuentas/est-ana/progreso/ACTIVIDAD/ACT-17")
 
@@ -477,7 +478,7 @@ def test_medicion_base_respuestas_calculo_y_resultado_riasec(cliente, medidor_pe
     assert len(resultado["coincidencias"]) == 10
     medir("responder_24_items_nuevos", "POST", "/acciones/responder-items",
           respuestas_medicion("LAB-HAB", 1, 24, prefijo="HAB"))
-    medir("estado_avanzado", "GET", "/cuentas/est-ana/estado")
+    medir("estado_avanzado", "GET", "/cuentas/est-ana/actividades")
 
 
 @pytest.mark.skipif(not RUTA_OCUPACIONES.is_file(), reason=f"Falta el catálogo O*NET: {RUTA_OCUPACIONES}")
@@ -598,7 +599,7 @@ def test_consultas_no_crecen_con_100_reglas_y_500_eventos(
         # La confirmación reconstruye la caché fuera del contador. No se hace
         # ninguna petición de calentamiento a la base ampliada.
         assert len(ampliada.state.motor_bd.cache_definiciones.actual.listar(modelos.ReglaDesbloqueo)) == 147
-        for ruta, limite in (("/cuentas/est-ana/estado", 10),
+        for ruta, limite in (*((f"/cuentas/est-ana/{dominio}", 10) for dominio in RUTAS_DOMINIO),
                              (f"/cuentas/est-ana/progreso/FICHA/{objetivo}", 8)):
             _, normal = peticion_contada(cliente, aplicacion.state.motor_bd, contador_consultas, "GET", ruta)
             _, grande = peticion_contada(otro_cliente, ampliada.state.motor_bd, contador_consultas, "GET", ruta)
@@ -680,12 +681,13 @@ def test_lote_mixto_valida_antes_de_escribir_y_respeta_limite(cliente, aplicacio
 
 def test_estado_no_crece_con_100_objetos_adicionales(cliente, aplicacion, contador_consultas):
     estado, antes = peticion_contada(cliente, aplicacion.state.motor_bd, contador_consultas,
-                                     "GET", "/cuentas/est-ana/estado")
+                                     "GET", "/cuentas/est-ana/fichas")
     with aplicacion.state.fabrica_sesiones.begin() as sesion:
         sesion.add_all([modelos.Ficha(codigo=f"FIC-SINT-{numero:03}", titulo="Ficha sintética", contenido="Prueba")
                        for numero in range(100)])
     ampliado, despues = peticion_contada(cliente, aplicacion.state.motor_bd, contador_consultas,
-                                         "GET", "/cuentas/est-ana/estado")
+                                         "GET", "/cuentas/est-ana/fichas")
+    estado, ampliado = {"fichas": estado}, {"fichas": ampliado}
     assert despues.cantidad == antes.cantidad <= 10
     assert len(ampliado["fichas"]) == len(estado["fichas"]) + 100
     assert all(ficha["estado"] == "DISPONIBLE" for ficha in ampliado["fichas"] if ficha["codigo"].startswith("FIC-SINT-"))
@@ -718,10 +720,11 @@ def test_cache_aislada_detecta_commit_y_conserva_rollback(cliente, aplicacion, t
         assert cache.actual is not original
         assert otra.state.motor_bd.cache_definiciones.actual is otra_original
         estado, contador = peticion_contada(cliente, aplicacion.state.motor_bd, contador_consultas,
-                                            "GET", "/cuentas/est-ana/estado")
+                                            "GET", "/cuentas/est-ana/actividades")
+        estado = {"bloques": estado}
         assert contador.cantidad <= 10
         assert actividades_por_codigo(estado)["ACT-01"]["estado"] == "BLOQUEADA"
-        assert actividades_por_codigo(otro_cliente.get("/cuentas/est-ana/estado").json())["ACT-01"]["estado"] == "DISPONIBLE"
+        assert actividades_por_codigo(consultar_dominios(otro_cliente))["ACT-01"]["estado"] == "DISPONIBLE"
 
 
 def test_reinicio_conserva_cache_tras_exito_y_fallo(cliente, aplicacion, contador_consultas, monkeypatch):
@@ -729,7 +732,7 @@ def test_reinicio_conserva_cache_tras_exito_y_fallo(cliente, aplicacion, contado
     from sqlalchemy.exc import IntegrityError
 
     preparar_peticion(cliente, "/acciones/completar-actividad", datos_medicion("ACT-01"))
-    antes = cliente.get("/cuentas/est-ana/estado").json()
+    antes = consultar_dominios(cliente)
     original = aplicacion.state.motor_bd.cache_definiciones.actual
 
     def fallar(sesion):
@@ -741,11 +744,12 @@ def test_reinicio_conserva_cache_tras_exito_y_fallo(cliente, aplicacion, contado
         parche.setattr(servicio_demo, 'reiniciar_demo', fallar)
         assert cliente.post("/demo/reiniciar").status_code == 409
     assert aplicacion.state.motor_bd.cache_definiciones.actual is original
-    assert cliente.get("/cuentas/est-ana/estado").json() == antes
+    assert consultar_dominios(cliente) == antes
     assert cliente.post("/demo/reiniciar").status_code == 200
     assert aplicacion.state.motor_bd.cache_definiciones.actual is original
     estado, contador = peticion_contada(cliente, aplicacion.state.motor_bd, contador_consultas,
-                                        "GET", "/cuentas/est-ana/estado")
+                                        "GET", "/cuentas/est-ana/actividades")
+    estado = {"bloques": estado}
     assert contador.cantidad <= 10
     assert actividades_por_codigo(estado)["ACT-01"]["estado"] == "DISPONIBLE"
 
@@ -1263,3 +1267,25 @@ def test_registro_sql_no_crece_con_100_reglas_reflexivas_y_500_eventos(
         assert contadores[0].cantidad == contadores[1].cantidad <= LIMITES_SQL['estado_registro']
         assert contadores[0].por_tipo == contadores[1].por_tipo
         print(f'SQL crecimiento estado posterior {modo}: {contadores[0].cantidad} = {contadores[1].cantidad}')
+
+
+def test_preguntas_respondidas_no_se_mezclan_entre_cuentas(cliente, sesion):
+    cuentas = {c.codigo: c for c in sesion.scalars(select(modelos.Cuenta))}
+    preguntas = {p.codigo: p for p in sesion.scalars(select(modelos.PreguntaDiario))}
+    sesion.add_all([
+        modelos.EntradaDiario(cuenta_id=cuentas['est-ana'].id, origen=modelos.OrigenEntrada.GUIADA,
+                      pregunta_id=preguntas['PD-HISTORIA'].id, texto='Mi historia', fecha_hora=datetime(2026, 10, 8)),
+        modelos.EntradaDiario(cuenta_id=cuentas['est-luis'].id, origen=modelos.OrigenEntrada.GUIADA,
+                      pregunta_id=preguntas['PD-ASPIRACIONES'].id, texto='Mis aspiraciones', fecha_hora=datetime(2026, 10, 8)),
+        modelos.EntradaDiario(cuenta_id=cuentas['est-ana'].id, origen=modelos.OrigenEntrada.LIBRE,
+                      texto='Una entrada libre', fecha_hora=datetime(2026, 10, 8)),
+    ])
+    sesion.commit()
+    for cuenta, respondida in [('est-ana', 'PD-HISTORIA'), ('est-luis', 'PD-ASPIRACIONES')]:
+        respuesta = cliente.get(f'/cuentas/{cuenta}/diario/preguntas')
+        assert respuesta.status_code == 200
+        filas = respuesta.json()
+        assert [p['codigo'] for p in filas] == sorted(preguntas)
+        assert {p['codigo'] for p in filas if p['respondida']} == {respondida}
+        assert all(set(p) == {'codigo', 'pregunta', 'estado', 'respondida'} for p in filas)
+        assert all(p['pregunta'] == preguntas[p['codigo']].pregunta for p in filas)

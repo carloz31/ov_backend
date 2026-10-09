@@ -31,17 +31,13 @@ def _completar(cliente, actividad):
     })
 
 
-def _recorrer(cliente, *, por_dominio=False):
-    fixtures = {'estado-inicial.json': _pedir(cliente, 'GET', '/cuentas/est-ana/estado')}
-    if por_dominio:
-        fixtures.update(_consultas_dominio(cliente, 'inicial'))
+def _recorrer(cliente):
+    fixtures = _consultas_dominio(cliente, 'inicial')
     for actividad in CAMINO:
         respuesta = _completar(cliente, actividad)
         if actividad in ('mission-welcome', 'mission-next-step'):
             fixtures[f'completar-{actividad}.json'] = respuesta
-    fixtures['estado-ciudad.json'] = _pedir(cliente, 'GET', '/cuentas/est-ana/estado')
-    if por_dominio:
-        fixtures.update(_consultas_dominio(cliente, 'ciudad'))
+    fixtures.update(_consultas_dominio(cliente, 'ciudad'))
     ruta_avisos = '/cuentas/est-ana/desbloqueos?solo_no_vistos=true'
     avisos = _pedir(cliente, 'GET', ruta_avisos)
     fixtures['desbloqueos-no-vistos.json'] = avisos
@@ -90,7 +86,7 @@ def _recorrer_piloto(cliente):
 
 
 def exportar_fixtures(destino: Path, *, por_dominio: bool = False) -> list[Path]:
-    """Conserva los ocho originales; el CLI activa los diez nuevos con por_dominio.
+    """Exporta trece fixtures de plataforma; por_dominio añade tres de piloto.
 
     Cada conjunto usa su base temporal. Se termina todo el recorrido antes de
     escribir archivos, y nunca se abre DATABASE_URL ni se usa el evaluador real.
@@ -112,8 +108,6 @@ def exportar_fixtures(destino: Path, *, por_dominio: bool = False) -> list[Path]
                 with TestClient(aplicacion) as cliente:
                     if conjunto == 'piloto':
                         fixtures.update(_recorrer_piloto(cliente))
-                    elif por_dominio:
-                        fixtures.update(_recorrer(cliente, por_dominio=True))
                     else:
                         fixtures.update(_recorrer(cliente))
     finally:
@@ -134,7 +128,7 @@ def exportar_fixtures(destino: Path, *, por_dominio: bool = False) -> list[Path]
 
 def main() -> None:
     argumentos = argparse.ArgumentParser(
-        description='Genera los 18 fixtures de contrato en tests/fixtures/servidor de ov_frontend.',
+        description='Genera los 16 fixtures de contrato en tests/fixtures/servidor de ov_frontend.',
     )
     argumentos.add_argument('--destino', type=Path,
                            help='Carpeta tests/fixtures/servidor de ov_frontend; se crea si no existe.')

@@ -55,7 +55,7 @@ def test_catalogos_y_estado_inicial_de_instrumentos(sesion, cliente):
         modelos.Bloque.audiencia == modelos.Audiencia.ESTUDIANTE,
     )) == 28
     for cuenta in ("est-ana", "est-luis"):
-        bloques = cliente.get(f"/cuentas/{cuenta}/estado").json()["bloques"]
+        bloques = cliente.get(f"/cuentas/{cuenta}/actividades").json()
         lab = next(b for b in bloques if b["codigo"] == "LAB")
         assert lab["estado"] == "DISPONIBLE"
         assert {a["codigo"]: a["estado"] for a in lab["actividades"]} == {
@@ -63,7 +63,7 @@ def test_catalogos_y_estado_inicial_de_instrumentos(sesion, cliente):
             "LAB-INT1": "DISPONIBLE", "LAB-INT2": "BLOQUEADA", "LAB-RIA1": "DISPONIBLE",
             "LAB-RIA2": "BLOQUEADA", "LAB-RIA3": "BLOQUEADA", "LAB-RIA4": "BLOQUEADA",
         }
-    assert [b["codigo"] for b in cliente.get("/cuentas/apo-rosa/estado").json()["bloques"]] == ["P1"]
+    assert [b["codigo"] for b in cliente.get("/cuentas/apo-rosa/actividades").json()] == ["P1"]
     assert sesion.scalar(select(func.count()).select_from(modelos.EventoUso)) == 0
     validar_distribucion_items(sesion)
 

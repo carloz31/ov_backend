@@ -4,6 +4,56 @@ Registro de decisiones que afectan a ambos repos. Las internas de cada repo van 
 
 Formato de cada entrada: fecha, fase, decisión, motivo y archivos afectados.
 
+## Actividades por dominio · X · 2026-10-08
+
+Se retiran la consulta global, su servicio y esquema, los dos fixtures
+antiguos y la equivalencia temporal según §10. Los siete dominios mantienen
+sus respuestas. Los tableros de demo del backend también consultan dominios,
+con los mismos renderizadores y orden anterior. Las pruebas de escenarios
+mantienen datos y aserciones; las adaptaciones y nombres se registran en
+`docs/decisiones.md`. La prueba de aislamiento de preguntas se conserva en
+consultas; solo se retiran doce casos de equivalencia del endpoint borrado.
+
+El exportador produce dieciséis fixtures (trece de plataforma y tres de
+piloto), idénticos byte por byte al contenido Git anterior. El front elimina
+el tipo global y los dos fixtures retirados; no adapta ninguna prueba en X.
+Los dos AGENTS incorporan §13 con las reglas compartidas idénticas. Se
+actualizan el README del backend y el inventario de datos del frontend.
+
+Verificación HTTP: la ruta retirada devuelve 404 y no aparece en OpenAPI.
+Verificación manual tras el retiro: mapa integrado con Mara completada y
+Elena disponible; tableros demo, instrumentos y registro cargados sin errores
+de consola, en base demo desechable con evaluador falso. La auditoría no
+encuentra los símbolos ni la ruta retirados en app, tests, scripts o src.
+No cambian marcado, estilos, textos, almacenamiento, acciones ni contratos
+vigentes. Los pendientes de interfaz de F4 siguen registrados sin interfaz.
+
+Frontend: **413 pruebas, 398 aprobadas y las mismas 15 fallas previas** de
+F4 por nombre y detalle, excluyendo tiempos y ubicaciones de pila; cero
+omitidas o canceladas. Build y lint pasan, con el aviso previo del bundle;
+estructura: **536 archivos, cero infracciones y excepciones**.
+
+
+Validación final de X: backend **1091 aprobadas, 4 omitidas, cero fallas y
+2 advertencias previas**, con evaluador falso, en **1308,99 segundos**.
+Se ejecuta la suite completa `uv run --no-sync --offline python -m pytest -q`
+con caché desactivada y temporales externos. Se conservan las cuatro omisiones
+de PostgreSQL sin TEST_POSTGRES_URL y los avisos de Starlette/httpx y GenAI.
+Pasan todos los escenarios, invariantes y límites SQL. La caída de doce
+casos corresponde exclusivamente a las equivalencias temporales retiradas.
+
+Frontend final: **413 pruebas, 398 aprobadas y las mismas 15 fallas previas**,
+comparadas también después de actualizar pendientes; cero omitidas o
+canceladas. Build, lint y estructura pasan: **536 archivos, cero infracciones
+y excepciones**. La auditoría de símbolos/ruta retirada está vacía en ambos
+repos y la sección compartida de AGENTS es idéntica. Los dieciséis fixtures
+conservan exactamente los bytes del contenido Git anterior.
+
+Un commit X por repo en `iteracion-1`, sin push. F3, F4 y X quedan cerradas.
+Los servidores y pestañas temporales se cierran; bases, capturas y logs
+permanecen fuera de los repos. No se agregan dependencias ni se llama a Gemini.
+Los pendientes de interfaz registrados siguen sujetos a decisión del usuario.
+
 ## Actividades por dominio · F4 · 2026-10-08
 
 Recorrido manual de §12 sobre dos SQLite desechables independientes, creadas

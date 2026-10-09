@@ -1,3 +1,5 @@
+from soporte_dominios import consultar_dominios
+
 import pytest
 from sqlalchemy import func, select
 
@@ -32,9 +34,9 @@ def eventos(respuesta):
 
 
 def estado(cliente, cuenta="est-ana"):
-    respuesta = cliente.get(f"/cuentas/{cuenta}/estado")
+    respuesta = cliente.get(f"/cuentas/{cuenta}/resumen")
     assert respuesta.status_code == 200
-    return respuesta.json()
+    return consultar_dominios(cliente, cuenta, resumen=respuesta.json())
 
 
 def actividades(cliente):
@@ -88,9 +90,9 @@ def llevar_familia_a_e10(cliente):
 
 def test_e1_estado_inicial(cliente):
     assert cliente.post("/demo/reiniciar").status_code == 200
-    respuesta = cliente.get("/cuentas/est-ana/estado")
+    respuesta = cliente.get("/cuentas/est-ana/resumen")
     assert respuesta.status_code == 200
-    ana = respuesta.json()
+    ana = consultar_dominios(cliente, "est-ana", resumen=respuesta.json())
     actividades = {actividad["codigo"]: actividad["estado"]
                    for bloque in ana["bloques"] for actividad in bloque["actividades"]}
     assert len(actividades) == 28
@@ -120,9 +122,9 @@ def test_e1_estado_inicial(cliente):
     } for insignia in ocultas)
     assert all(insignia["requisito"] for insignia in ana["insignias"] if insignia["codigo"] != "???")
 
-    respuesta = cliente.get("/cuentas/apo-rosa/estado")
+    respuesta = cliente.get("/cuentas/apo-rosa/resumen")
     assert respuesta.status_code == 200
-    rosa = respuesta.json()
+    rosa = consultar_dominios(cliente, "apo-rosa", resumen=respuesta.json())
     assert [bloque["codigo"] for bloque in rosa["bloques"]] == ["P1"]
     assert {actividad["codigo"]: actividad["estado"] for bloque in rosa["bloques"]
             for actividad in bloque["actividades"]} == {"ACT-P01": "DISPONIBLE", "ACT-P02": "BLOQUEADA"}

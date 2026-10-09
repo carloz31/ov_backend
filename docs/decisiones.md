@@ -2553,3 +2553,111 @@ Starlette/httpx y Google en Python 3.14. Las ocho fases de implementación queda
 cerradas y las pruebas reales ejecutadas/revisadas; su aceptación semántica
 permanece parcial con los hallazgos explícitos del reporte. No se declara que
 Gemini haya aprobado todos los casos ni se hace una segunda ejecución real.
+
+
+## Actividades por dominio · X · 2026-10-08
+
+Se retiran la ruta global de cuenta, su servicio y los tres esquemas de
+proyección antiguos. Los siete dominios conservan sus contratos y datos.
+Las pruebas de escenarios consultan las rutas HTTP nuevas mediante
+`tests/soporte/soporte_dominios.py`; la proyección solo de prueba conserva
+los campos anteriores, el orden por código y las aserciones sobre demo.
+Los ayudantes `estado` de escenarios, invariantes y plataforma, y
+`consultar_estado` de consultas conservan su firma y resultados esperados.
+No se cambian datos, acciones, reglas ni umbrales de escenario.
+
+Las mediciones consultan el dominio que comprueban: resumen para nivel,
+fichas para agregar cien fichas y actividades para caché/reinicio. La prueba
+de cien reglas y quinientos eventos aplica el mismo límite de diez SQL a
+cada una de las siete rutas; el límite de ocho para progreso permanece.
+Se amplían también a las siete rutas la ausencia de escrituras e ids internos.
+No se aumenta ningún presupuesto SQL.
+
+Se borra `test_estado_equivalente.py`, temporal según §10. Sus doce casos
+de equivalencia/orden del endpoint retirado desaparecen. Su prueba de
+preguntas respondidas por cuenta se traslada a `test_consultas.py` sobre
+las mismas cuentas y datos de demo, conservando todas sus aserciones.
+El conteo esperado baja de 1103 a 1091 aprobadas, más las cuatro omisiones.
+
+El exportador deja de producir los dos fixtures globales. La llamada
+programática predeterminada genera trece de plataforma; se conserva el
+argumento `por_dominio=True` para añadir los tres de piloto (dieciséis,
+como el CLI). Se validan los esquemas de cada dominio y los mismos hitos,
+respuestas, avisos y resultados. Las comparaciones de fixtures ahora
+contrastan exportaciones independientes por dominio; solo los conteos y
+nombres retirados cambian. Los dieciséis JSON regenerados son idénticos a
+los ya versionados. En el front se retiran el tipo global y los dos JSON;
+los tipos base usados por los contratos de actividades se conservan.
+
+Los tres tableros de `app/static/` consultan sus dominios: demo reúne los
+siete para su tablero completo, instrumentos usa resumen y actividades,
+y registro solo actividades. Conservan el orden previo donde corresponde,
+los renderizadores, marcado, estilos, textos y acciones. Se actualizan los
+docstrings y las instrucciones vigentes del README. No se agrega endpoint.
+Los dos AGENTS incorporan exactamente las reglas de §13 y conservan la
+sección compartida idéntica. El inventario del frontend registra el retiro.
+
+Pruebas con cuerpo o parametrización adaptados directamente:
+
+- `tests/test_acciones.py`: `test_conversacion_solo_exige_disponibilidad_de_quien_marca`.
+
+- `tests/test_consultas.py`: `test_consultas_inexistentes_o_de_otra_audiencia_devuelven_404`, `test_gets_no_generan_eventos_ni_desbloqueos`, `test_respuestas_no_exponen_ids_internos`, `test_medicion_base_estado_progreso_y_actividades`, `test_medicion_base_respuestas_calculo_y_resultado_riasec`, `test_consultas_no_crecen_con_100_reglas_y_500_eventos`, `test_estado_no_crece_con_100_objetos_adicionales`, `test_cache_aislada_detecta_commit_y_conserva_rollback`, `test_reinicio_conserva_cache_tras_exito_y_fallo`, `test_preguntas_respondidas_no_se_mezclan_entre_cuentas`.
+
+- `tests/test_demo.py`: `test_pagina_y_recursos_no_modifican_el_estado`.
+
+- `tests/test_escenarios.py`: `test_e1_estado_inicial`.
+
+- `tests/test_exportar_fixtures_front.py`: `test_fixtures_reproducen_el_contrato_y_se_regeneran_identicos`.
+
+- `tests/test_fixtures_dominio.py`: `test_exportacion_completa_reproducible_y_compatible`, `test_cli_exporta_los_dieciseis_fixtures`.
+
+- `tests/test_instrumentos.py`: `test_i13_cuentas_intercaladas_con_resultados_y_reinicio_aislados`.
+
+- `tests/test_registro.py`: `test_reg_disponible_solo_para_estudiantes`, `test_r2_posicion_valida_crea_progreso_y_se_retoma`, `test_r11_borrador_impide_completar_y_finales_completan_actividad_y_bloque`, `test_r12_tres_reflexivas_desbloquean_pensador_sin_cambiar_reglas`.
+
+- `tests/test_semilla_instrumentos.py`: `test_catalogos_y_estado_inicial_de_instrumentos`.
+
+También se adaptan exclusivamente los ayudantes de consulta en
+`test_escenarios.py`, `test_invariantes.py`, `test_consultas.py`,
+`test_instrumentos.py` y `soporte_plataforma.py`; sus demás pruebas mantienen
+las aserciones existentes. `test_consultas_dominio.py` solo cambia su
+docstring. En el frontend no se modifica ninguna prueba en X.
+
+La primera ejecución de la suite detectó dos errores de teardown por claves
+renombradas de medición sin entrada en LIMITES_SQL. Se conservaron los
+nombres anteriores (`estado_inicial`, `estado_ciudad`, `estado_avanzado`)
+y todos los límites existentes; las rutas sí apuntan a resumen/actividades.
+No fallaron aserciones de reproducción ni se ajustaron resultados esperados.
+Se vuelve a ejecutar la suite completa sobre esta corrección.
+
+La adaptación inicial de escenarios e invariantes había sustituido el retorno
+del ayudante de acciones en lugar del de lectura. Se restaura `accion`
+exactamente y se modifica únicamente `estado`; la auditoría por AST confirma
+que los únicos ayudantes modificados son los de consulta. Los **28 escenarios
+e invariantes** pasan con todas sus aserciones anteriores. Se exige una nueva
+suite completa sobre esta corrección antes del commit de X.
+
+El caso del CLI se renombra de `test_cli_exporta_los_dieciocho_fixtures` a
+`test_cli_exporta_los_dieciseis_fixtures`, para reflejar únicamente la retirada
+de los dos JSON globales autorizada en X. Se conserva el resto de sus
+aserciones y la cobertura de reproducibilidad y aislamiento.
+
+Validación final de X: backend **1091 aprobadas, 4 omitidas, cero fallas y
+2 advertencias previas**, con evaluador falso, en **1308,99 segundos**.
+Se ejecuta la suite completa `uv run --no-sync --offline python -m pytest -q`
+con caché desactivada y temporales externos. Se conservan las cuatro omisiones
+de PostgreSQL sin TEST_POSTGRES_URL y los avisos de Starlette/httpx y GenAI.
+Pasan todos los escenarios, invariantes y límites SQL. La caída de doce
+casos corresponde exclusivamente a las equivalencias temporales retiradas.
+
+Frontend final: **413 pruebas, 398 aprobadas y las mismas 15 fallas previas**,
+comparadas también después de actualizar pendientes; cero omitidas o
+canceladas. Build, lint y estructura pasan: **536 archivos, cero infracciones
+y excepciones**. La auditoría de símbolos/ruta retirada está vacía en ambos
+repos y la sección compartida de AGENTS es idéntica. Los dieciséis fixtures
+conservan exactamente los bytes del contenido Git anterior.
+
+Un commit X por repo en `iteracion-1`, sin push. F3, F4 y X quedan cerradas.
+Los servidores y pestañas temporales se cierran; bases, capturas y logs
+permanecen fuera de los repos. No se agregan dependencias ni se llama a Gemini.
+Los pendientes de interfaz registrados siguen sujetos a decisión del usuario.

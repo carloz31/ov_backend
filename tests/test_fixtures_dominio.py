@@ -1,4 +1,4 @@
-"""Los diez fixtures nuevos de B3 conviven con los ocho contratos anteriores."""
+"""Fixtures por dominio y acciones de plataforma y piloto, reproducibles."""
 
 import json
 import os
@@ -43,22 +43,19 @@ def test_exportacion_completa_reproducible_y_compatible(tmp_path, monkeypatch):
     destino = tmp_path / 'completos'
     rutas = exportador.exportar_fixtures(destino, por_dominio=True)
     assert {ruta.name for ruta in rutas} == set(bytes_originales) | NUEVOS
-    assert len(rutas) == 18
+    assert len(rutas) == 16
     assert {nombre: (destino / nombre).read_bytes() for nombre in bytes_originales} == bytes_originales
     datos = {ruta.name: json.loads(ruta.read_text(encoding='utf-8')) for ruta in rutas}
+    datos_originales = {nombre: json.loads(contenido) for nombre, contenido in bytes_originales.items()}
     ResumenCuenta.model_validate(datos['resumen-inicial.json'])
-    assert datos['resumen-inicial.json'] == {
-        'cuenta': datos['estado-inicial.json']['cuenta'], 'nivel_actual': datos['estado-inicial.json']['nivel_actual'],
-    }
+    assert datos['resumen-inicial.json'] == datos_originales['resumen-inicial.json']
     for momento in ('inicial', 'ciudad'):
         bloques = TypeAdapter(list[BloqueActividades]).validate_python(datos[f'actividades-{momento}.json'])
         assert [len(b.actividades) for b in bloques] == [9, 15]
         TypeAdapter(list[ContenidoEstado]).validate_python(datos[f'fichas-{momento}.json'])
         LogrosCuenta.model_validate(datos[f'logros-{momento}.json'])
-        assert datos[f'fichas-{momento}.json'] == datos[f'estado-{momento}.json']['fichas']
-        assert datos[f'logros-{momento}.json'] == {
-            clave: datos[f'estado-{momento}.json'][clave] for clave in ('insignias', 'niveles')
-        }
+        assert datos[f'fichas-{momento}.json'] == datos_originales[f'fichas-{momento}.json']
+        assert datos[f'logros-{momento}.json'] == datos_originales[f'logros-{momento}.json']
     for momento in ('inicial', 'ciudad', 'final'):
         bloques = TypeAdapter(list[BloqueActividades]).validate_python(datos[f'piloto-actividades-{momento}.json'])
         assert [len(b.actividades) for b in bloques] == [5, 16]
@@ -96,12 +93,12 @@ def test_fallo_del_piloto_no_escribe_nada_y_restaura_evaluador(tmp_path, monkeyp
     assert 'EVALUADOR' not in os.environ
 
 
-def test_cli_exporta_los_dieciocho_fixtures(tmp_path):
+def test_cli_exporta_los_dieciseis_fixtures(tmp_path):
     script = Path(exportador.__file__).resolve()
     destino = tmp_path / 'front' / 'tests' / 'fixtures' / 'servidor'
     resultado = subprocess.run([sys.executable, str(script), '--destino', str(destino)],
                                cwd=tmp_path, capture_output=True, text=True)
     assert resultado.returncode == 0, resultado.stderr
-    assert 'Exportados 18 fixtures' in resultado.stdout
-    assert len(list(destino.glob('*.json'))) == 18
+    assert 'Exportados 16 fixtures' in resultado.stdout
+    assert len(list(destino.glob('*.json'))) == 16
     assert NUEVOS <= {ruta.name for ruta in destino.glob('*.json')}

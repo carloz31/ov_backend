@@ -1,3 +1,5 @@
+from soporte_dominios import consultar_dominios
+
 import re
 
 from sqlalchemy import func, select
@@ -9,7 +11,7 @@ def test_pagina_y_recursos_no_modifican_el_estado(cliente, sesion):
     assert cliente.post("/acciones/completar-actividad", json={
         "cuenta": "est-ana", "actividad": "ACT-01",
     }).status_code == 200
-    antes = cliente.get("/cuentas/est-ana/estado").json()
+    antes = consultar_dominios(cliente)
     eventos = cliente.get("/cuentas/est-ana/eventos").json()
     desbloqueos = cliente.get("/cuentas/est-ana/desbloqueos").json()
     respuesta = cliente.get("/demo")
@@ -23,7 +25,7 @@ def test_pagina_y_recursos_no_modifican_el_estado(cliente, sesion):
         assert contenido.status_code == 200
         assert len(contenido.content) > 0
     assert cliente.get("/demo/catalogo").status_code == 200
-    assert cliente.get("/cuentas/est-ana/estado").json() == antes
+    assert consultar_dominios(cliente) == antes
     assert cliente.get("/cuentas/est-ana/eventos").json() == eventos
     assert cliente.get("/cuentas/est-ana/desbloqueos").json() == desbloqueos
     assert sesion.scalar(select(func.count()).select_from(modelos.ProgresoActividad)) == 1

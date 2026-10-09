@@ -8,13 +8,10 @@ from app.models import (
     Cuenta, Desbloqueo, EventoUso, Insignia, Nivel, ReglaDesbloqueo, TipoEventoUso, TipoObjetivo,
 )
 from app.schemas.cuentas import (
-    ActividadEstado, BloqueEstado, CuentaResumen, DesbloqueoLegible, EstadoCuenta, EventoLegible,
+    CuentaResumen, DesbloqueoLegible, EventoLegible,
     NivelActual, ObjetivoProgreso, ProgresoObjetivo, ProgresoRegla, ResumenCuenta,
 )
 from app.schemas.motor import CondicionLegible, ReglaLegible
-from app.services import actividades as servicio_actividades, comunidad as servicio_comunidad
-from app.services import diario as servicio_diario, fichas as servicio_fichas
-from app.services import logros as servicio_logros, testimonios as servicio_testimonios
 from app.services.motor.referencias import (
     MODELOS_OBJETIVO, objetivo_legible, precargar_referencias, referencia_legible,
 )
@@ -56,25 +53,6 @@ def resumen_cuenta(sesion: Session, cuenta: Cuenta) -> ResumenCuenta:
     return ResumenCuenta(
         cuenta=CuentaResumen.model_validate(cuenta),
         nivel_actual=None if actual is None else NivelActual(numero=actual.numero, titulo=actual.titulo),
-    )
-
-
-@usar_contexto
-def estado_cuenta(sesion: Session, cuenta: Cuenta) -> EstadoCuenta:
-    resumen = resumen_cuenta(sesion, cuenta)
-    logros = servicio_logros.logros_cuenta(sesion, cuenta)
-    bloques = [BloqueEstado(
-        codigo=bloque.codigo, nombre=bloque.nombre, espacio=bloque.espacio, estado=bloque.estado,
-        actividades=[ActividadEstado(codigo=actividad.codigo, titulo=actividad.titulo, estado=actividad.estado)
-                     for actividad in bloque.actividades],
-    ) for bloque in sorted(servicio_actividades.listar_bloques_cuenta(sesion, cuenta), key=lambda bloque: bloque.codigo)]
-    return EstadoCuenta(
-        cuenta=resumen.cuenta, nivel_actual=resumen.nivel_actual, bloques=bloques,
-        fichas=servicio_fichas.listar_fichas_cuenta(sesion, cuenta),
-        testimonios=servicio_testimonios.listar_testimonios_cuenta(sesion, cuenta),
-        preguntas_diario=servicio_diario.listar_preguntas_cuenta(sesion, cuenta),
-        conversaciones=servicio_comunidad.estado_conversaciones(sesion, cuenta),
-        insignias=logros.insignias, niveles=logros.niveles,
     )
 
 

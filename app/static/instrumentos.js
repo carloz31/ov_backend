@@ -123,9 +123,11 @@ function pintar_navegacion() {
 }
 
 async function actualizar() {
-  const [estado, avance] = await Promise.all([
-    solicitar(`${ruta_cuenta()}/estado`), solicitar(`${ruta_cuenta()}/instrumentos`),
+  const [resumen, bloques, avance] = await Promise.all([
+    solicitar(`${ruta_cuenta()}/resumen`), solicitar(`${ruta_cuenta()}/actividades`),
+    solicitar(`${ruta_cuenta()}/instrumentos`),
   ]);
+  const estado = { ...resumen, bloques: bloques.sort((a, b) => a.codigo.localeCompare(b.codigo)) };
   laboratorio.estado = estado;
   laboratorio.avance = avance;
   buscar("rol").textContent = `${estado.cuenta.nombre} · ${estado.cuenta.rol}`;

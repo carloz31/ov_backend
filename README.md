@@ -186,14 +186,14 @@ uv run python scripts/exportar_fixtures_front.py --destino 'C:/ruta/a/ov_fronten
 
 `--destino` es obligatorio y la carpeta se crea si falta. El script prepara
 bases temporales separadas para `plataforma` y `piloto`, fuerza el evaluador
-falso y usa fechas y respuestas fijas. Guarda 18 respuestas JSON reproducibles:
-los ocho fixtures anteriores, siete consultas por dominio de plataforma y tres
+falso y usa fechas y respuestas fijas. Guarda 16 respuestas JSON reproducibles:
+seis respuestas de acciones/instrumentos, siete consultas por dominio de plataforma y tres
 momentos del piloto (inicio, Ciudad abierta y Mara completa). Los avisos no
 vistos corresponden al cierre del Camino de plataforma, antes de Mara.
 No modifica bases existentes ni llama a Gemini. Si cambia el contrato,
 regenerar los fixtures en la misma tarea. El uso programático existente
-`exportar_fixtures(destino)` conserva sus ocho archivos; `por_dominio=True`
-activa los 18, como hace siempre el comando.
+`exportar_fixtures(destino)` exporta los trece archivos de plataforma;
+`por_dominio=True` añade los tres de piloto, como hace siempre el comando.
 
 ### Historial de validación de la iteración 1
 
@@ -558,11 +558,12 @@ La página `/demo/registro` permite realizar este mismo recorrido visualmente.
    `{"mensaje":"Demo reiniciada"}`.
 2. En **Consultas**, ejecutar `GET /cuentas` y `GET /reglas` para revisar
    las cuentas y las reglas con códigos públicos.
-3. Ejecutar `GET /cuentas/{cuenta}/estado` con `cuenta = est-ana`.
+3. Ejecutar las consultas por dominio (`resumen`, `actividades`, `fichas`,
+   `logros`, `testimonios`, `diario/preguntas` y `conversaciones`) con `cuenta = est-ana`.
 4. En **Acciones**, desplegar el POST elegido, pulsar **Try it out**, reemplazar
    el cuerpo por uno de los ejemplos de abajo y pulsar **Execute**.
 5. Leer `eventos_registrados` y `nuevos_desbloqueos`, y volver a ejecutar la
-   consulta de estado o progreso para observar el cambio.
+   consulta del dominio o progreso para observar el cambio.
 
 El reinicio **borra el estado de las cuentas**, incluidos eventos, progresos,
 entradas, respuestas y desbloqueos. Conserva catálogo, cuentas, vínculos y cartas. Ejecutarlo entre escenarios y sin
@@ -728,7 +729,13 @@ registra eventos ni cambia la fecha de la conversación.
 |---|---|
 | `GET /cuentas` | Cuentas y roles de la demo |
 | `GET /reglas` | Reglas, objetivos, condiciones y evaluadores especiales |
-| `GET /cuentas/{cuenta}/estado` | Tablero del contenido correspondiente al rol |
+| `GET /cuentas/{cuenta}/resumen` | Cuenta y nivel actual |
+| `GET /cuentas/{cuenta}/actividades` | Bloques y actividades del rol, en orden |
+| `GET /cuentas/{cuenta}/fichas` | Fichas y disponibilidad |
+| `GET /cuentas/{cuenta}/logros` | Insignias y niveles |
+| `GET /cuentas/{cuenta}/testimonios` | Testimonios disponibles |
+| `GET /cuentas/{cuenta}/diario/preguntas` | Preguntas y respuestas del diario |
+| `GET /cuentas/{cuenta}/conversaciones` | Disponibilidad de conversaciones |
 | `GET /cuentas/{cuenta}/progreso/{tipo_objetivo}/{codigo}` | Avance de cada condición y evaluador |
 | `GET /cuentas/{cuenta}/eventos` | Historial, del evento más reciente al más antiguo |
 | `GET /cuentas/{cuenta}/desbloqueos?solo_no_vistos=true` | Novedades pendientes |

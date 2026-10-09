@@ -131,7 +131,7 @@ def test_carta_se_actualiza_sin_repetir_evento(cliente, sesion):
 
 def test_conversacion_solo_exige_disponibilidad_de_quien_marca(cliente, sesion):
     habilitar_rosa(cliente)
-    assert cliente.get("/cuentas/est-ana/estado").json()["conversaciones"]["estado"] == "BLOQUEADA"
+    assert cliente.get("/cuentas/est-ana/conversaciones").json()["estado"] == "BLOQUEADA"
     primera = post(cliente, "completar-conversacion", cuenta="apo-rosa", conversacion="CONV-01")
     assert {nuevo["regla"] for nuevo in primera["por_cuenta"]["est-ana"]["nuevos_desbloqueos"]} == {"R-PD-CONV-01"}
     segunda = post(cliente, "completar-conversacion", cuenta="apo-rosa", conversacion="CONV-01",

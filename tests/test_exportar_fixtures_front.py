@@ -11,14 +11,18 @@ from scripts import exportar_fixtures_front as exportador
 
 from app import main as principal
 from app.schemas.acciones import RespuestaCompletarActividad
-from app.schemas.cuentas import DesbloqueoLegible, EstadoCuenta
+from app.schemas.cuentas import DesbloqueoLegible, ResumenCuenta
+from app.schemas.actividades import BloqueActividades
+from app.schemas.comun import ContenidoEstado
+from app.schemas.logros import LogrosCuenta
 from app.schemas.instrumentos import ItemPublico, ResultadoPublico
 
 
 SCRIPT = Path(exportador.__file__).resolve()
 NOMBRES = {
-    'estado-inicial.json', 'completar-mission-welcome.json',
-    'completar-mission-next-step.json', 'estado-ciudad.json',
+    'resumen-inicial.json', 'actividades-inicial.json', 'actividades-ciudad.json',
+    'fichas-inicial.json', 'fichas-ciudad.json', 'logros-inicial.json', 'logros-ciudad.json',
+    'completar-mission-welcome.json', 'completar-mission-next-step.json',
     'items-act-tip-01.json', 'completar-act-tip-14.json',
     'resultado-riasec.json', 'desbloqueos-no-vistos.json',
 }
@@ -62,15 +66,19 @@ def test_fixtures_reproducen_el_contrato_y_se_regeneran_identicos(tmp_path, monk
     assert {ruta.name for ruta in destino.iterdir()} == NOMBRES
     bytes_antes = {ruta.name: ruta.read_bytes() for ruta in archivos}
     datos = {nombre: json.loads(contenido) for nombre, contenido in bytes_antes.items()}
-    for nombre in ('estado-inicial.json', 'estado-ciudad.json'):
-        EstadoCuenta.model_validate(datos[nombre])
+    ResumenCuenta.model_validate(datos['resumen-inicial.json'])
+    for momento in ('inicial', 'ciudad'):
+        TypeAdapter(list[BloqueActividades]).validate_python(datos[f'actividades-{momento}.json'])
+        TypeAdapter(list[ContenidoEstado]).validate_python(datos[f'fichas-{momento}.json'])
+        LogrosCuenta.model_validate(datos[f'logros-{momento}.json'])
     for nombre in ('completar-mission-welcome.json', 'completar-mission-next-step.json',
                    'completar-act-tip-14.json'):
         RespuestaCompletarActividad.model_validate(datos[nombre])
     TypeAdapter(list[ItemPublico]).validate_python(datos['items-act-tip-01.json'])
     TypeAdapter(list[DesbloqueoLegible]).validate_python(datos['desbloqueos-no-vistos.json'])
     ResultadoPublico.model_validate(datos['resultado-riasec.json'])
-    inicial = datos['estado-inicial.json']
+    inicial = {**datos['resumen-inicial.json'], **datos['logros-inicial.json'],
+               'bloques': datos['actividades-inicial.json']}
     estados = {a['codigo']: a['estado'] for b in inicial['bloques'] for a in b['actividades']}
     assert estados['mission-welcome'] == 'DISPONIBLE'
     assert all(e == 'BLOQUEADA' for c, e in estados.items() if c != 'mission-welcome')
@@ -84,7 +92,9 @@ def test_fixtures_reproducen_el_contrato_y_se_regeneran_identicos(tmp_path, monk
         'R-ciudad', 'R-I3', 'R-NIV-3', 'R-FAM-ESTUDIANTE',
     }
     assert llegada['eventos_registrados'][-1]['referencia'] == 'CAMINO'
-    ciudad = datos['estado-ciudad.json']
+    niveles = datos['logros-ciudad.json']['niveles']
+    ciudad = {'nivel_actual': max((n for n in niveles if n['estado'] == 'OBTENIDO'), key=lambda n: n['numero']),
+              'bloques': datos['actividades-ciudad.json']}
     assert ciudad['nivel_actual']['numero'] == 3
     bloque = next(b for b in ciudad['bloques'] if b['codigo'] == 'CIUDAD')
     assert bloque['estado'] == 'DISPONIBLE'

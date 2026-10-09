@@ -1,13 +1,8 @@
 from datetime import datetime
-from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models import Espacio, Rol, TipoEventoUso, TipoObjetivo
-from app.schemas.comun import ContenidoEstado, EstadoDisponibilidad
-from app.schemas.comunidad import ConversacionesEstado
-from app.schemas.diario import PreguntaDiarioEstado
-from app.schemas.logros import InsigniaEstado, NivelEstado
+from app.models import Rol, TipoEventoUso, TipoObjetivo
 from app.schemas.motor import ObjetivoLegible, ProgresoCondicion, ResultadoEvaluador
 
 
@@ -27,32 +22,6 @@ class NivelActual(BaseModel):
 class ResumenCuenta(BaseModel):
     cuenta: CuentaResumen
     nivel_actual: NivelActual | None
-
-
-class ActividadEstado(BaseModel):
-    codigo: str
-    titulo: str
-    estado: Literal["BLOQUEADA", "DISPONIBLE", "EN_CURSO", "COMPLETADA"]
-
-
-class BloqueEstado(BaseModel):
-    codigo: str
-    nombre: str
-    espacio: Espacio
-    estado: EstadoDisponibilidad
-    actividades: list[ActividadEstado]
-
-
-class EstadoCuenta(BaseModel):
-    cuenta: CuentaResumen
-    nivel_actual: NivelActual | None
-    bloques: list[BloqueEstado]
-    fichas: list[ContenidoEstado]
-    testimonios: list[ContenidoEstado]
-    preguntas_diario: list[PreguntaDiarioEstado]
-    conversaciones: ConversacionesEstado
-    insignias: list[InsigniaEstado]
-    niveles: list[NivelEstado]
 
 
 class ObjetivoProgreso(BaseModel):

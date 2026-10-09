@@ -96,12 +96,14 @@ async function cargar_cuenta() {
   const secuencia = ++datos_demo.carga;
   const cuenta = datos_demo.cuenta;
   const ruta = `/cuentas/${encodeURIComponent(cuenta)}`;
-  const [estado, eventos, novedades] = await Promise.all([
-    solicitar(`${ruta}/estado`), solicitar(`${ruta}/eventos`),
+  const [resumen, bloques, fichas, logros, testimonios, preguntas_diario, conversaciones, eventos, novedades] = await Promise.all([
+    ...["resumen", "actividades", "fichas", "logros", "testimonios", "diario/preguntas", "conversaciones"]
+      .map((dominio) => solicitar(`${ruta}/${dominio}`)), solicitar(`${ruta}/eventos`),
     solicitar(`${ruta}/desbloqueos?solo_no_vistos=true`),
   ]);
   if (secuencia !== datos_demo.carga) return;
-  datos_demo.estado = estado;
+  datos_demo.estado = { ...resumen, bloques: bloques.sort((a, b) => a.codigo.localeCompare(b.codigo)),
+    fichas, ...logros, testimonios, preguntas_diario, conversaciones };
   datos_demo.eventos = eventos;
   datos_demo.novedades = novedades;
   pintar_resumen();
