@@ -2661,3 +2661,85 @@ Un commit X por repo en `iteracion-1`, sin push. F3, F4 y X quedan cerradas.
 Los servidores y pestañas temporales se cierran; bases, capturas y logs
 permanecen fuera de los repos. No se agregan dependencias ni se llama a Gemini.
 Los pendientes de interfaz registrados siguen sujetos a decisión del usuario.
+
+## Pruebas y retiro de demo
+
+### P0 · Línea base (9 de octubre de 2026)
+
+Se leen completos los AGENTS.md de ambos repos y la especificación de retiro.
+Medición en `iteracion-1`: backend `6d26399`, frontend `7df1b17`.
+Entorno Windows, Python 3.14.7, uv 0.11.16, Node 24.19.0 y npm 12.0.2.
+
+`uv sync` termina correctamente, sin modificar dependencias versionadas.
+`npm ci` termina correctamente (143 paquetes; 43 s). Informa una vulnerabilidad
+de severidad alta; no se ejecuta `npm audit fix`, para conservar el lockfile.
+La instalación requirió detener el servidor Vite de ov_frontend, que mantenía
+bloqueados los binarios nativos de Rolldown y Tailwind (EPERM).
+
+`uv run pytest` falla antes de ejecutar pruebas por el lanzador de Windows
+(`trampoline failed to canonicalize script path`). Se usa el equivalente
+`uv run python -m pytest`. Un primer intento dentro del sandbox se interrumpe
+por errores de permisos al crear directorios temporales; el diagnóstico con
+`-x` confirma que son errores de infraestructura, no aserciones. La medición
+válida se ejecuta fuera del sandbox, con temporales externos al repositorio
+y caché desactivada (`-p no:cacheprovider`).
+
+Recolección: `uv run python -m pytest --collect-only -q`, con caché externa:
+**1099 pruebas en 3,00 s**, código de salida 0 y dos advertencias previas
+(Starlette/httpx y google-genai/Python).
+
+Frontend: `npm test` descubre **463 pruebas: 449 aprobadas, 14 fallidas**,
+en **22,534 s** (segunda ejecución para recuperar el resumen completo).
+Todas las fallas están en `tests/adventure-rendering.test.mjs`, coincidiendo
+con las 14 fallas previas de la especificación. No se corrigen en P0.
+Líneas de declaración: 1502, 1569, 1777, 1856, 1882, 1916, 1933, 1952,
+2001, 2034, 2327, 2622, 2659 y 3199. Cubren envío y validación inmersivos,
+preguntas y seguimientos (límites, versiones, recuperación y evaluación),
+renderizado de nodos, secuencia y enlaces de fase 8 y relaciones del atlas.
+
+Verificaciones adicionales del frontend exigidas por su AGENTS.md:
+`npm run build`, `npm run lint` y `npm run check:estructura` pasan;
+565 archivos, cero infracciones y cero excepciones. Build conserva el aviso
+de chunks mayores de 500 kB.
+
+Backend: `uv run python -m pytest -q --durations=25 -p no:cacheprovider
+--basetemp=<temporal externo>/ov-p0-base-final` termina con código 0:
+**1095 aprobadas, 4 omitidas, cero fallas y 2 advertencias en 788,50 s
+(13 min 8,50 s)**. Las omisiones son las cuatro pruebas de PostgreSQL sin
+`TEST_POSTGRES_URL`; las advertencias son las mismas de la recolección.
+El conteo coincide con las 1099 recolectadas y con la referencia de la spec.
+
+Las 25 duraciones más lentas de esa ejecución (rutas relativas a `tests/`):
+
+| Segundos | Etapa | Prueba |
+|---|---|---|
+| 11,49 | call | test_fixtures_dominio.py::test_exportacion_completa_reproducible_y_compatible |
+| 5,58 | call | test_fixtures_dominio.py::test_cli_exporta_los_dieciseis_fixtures |
+| 2,82 | call | test_piloto.py::test_cargador_cli_admite_piloto_y_vaciado |
+| 2,76 | call | test_exportar_fixtures_front.py::test_fixtures_reproducen_el_contrato_y_se_regeneran_identicos |
+| 2,71 | call | test_fixtures_dominio.py::test_fallo_del_piloto_no_escribe_nada_y_restaura_evaluador |
+| 2,64 | call | test_consultas.py::test_registro_sql_no_crece_con_100_reglas_reflexivas_y_500_eventos[seguimiento_1_timeout] |
+| 2,48 | call | test_consultas.py::test_registro_sql_no_crece_con_100_reglas_reflexivas_y_500_eventos[seguimiento_2_vaga] |
+| 2,26 | call | test_consultas.py::test_registro_sql_no_crece_con_100_reglas_reflexivas_y_500_eventos[seguimiento_2_atencion] |
+| 2,25 | setup | test_registro_v2.py::test_turno_vacio_no_evalua_ni_sobrescribe_borrador[False-\u2003\xa0] |
+| 2,24 | setup | test_registro_v2.py::test_edicion_exige_orden_valido_sin_coercion[1] |
+| 2,21 | setup | test_registro.py::test_restricciones_sql_registro[evaluacion_respuesta-criterios_faltantes-{}] |
+| 2,17 | setup | test_registro.py::test_envio_vacio_422_sin_escrituras[final- \t\n] |
+| 2,16 | call | test_consultas.py::test_registro_sql_no_crece_con_100_reglas_reflexivas_y_500_eventos[seguimiento_2_invalido] |
+| 2,15 | call | test_consultas.py::test_calculo_riasec_no_crece_con_100_ocupaciones |
+| 2,11 | call | test_consultas.py::test_registro_sql_no_crece_con_100_reglas_reflexivas_y_500_eventos[seguimiento_2_adecuada] |
+| 2,07 | setup | test_consultas.py::test_limite_sql_envio_registro_cualquier_origen[fallo-progreso] |
+| 2,05 | setup | test_registro.py::test_unicidad_de_definiciones_y_respuestas[ActividadItemRegistro] |
+| 1,99 | setup | test_consultas.py::test_registro_sql_no_crece_con_100_reglas_reflexivas_y_500_eventos[seguimiento_generico] |
+| 1,99 | call | test_invariantes.py::test_eventos_de_primera_vez_y_repeticiones_por_cuenta_y_referencia |
+| 1,98 | setup | test_acciones.py::test_accion_no_permitida_responde_409_sin_efectos[escribir-carta-cuerpo4] |
+| 1,97 | setup | test_consultas.py::test_logro_oculto_obtenido_revela_estado_y_progreso |
+| 1,96 | call | test_configuracion.py::test_demo_solo_en_desarrollo_sin_contaminar_instancias |
+| 1,96 | setup | test_consultas.py::test_progreso_oculto_responde_403_sin_explicacion[LOG-INCANSABLE] |
+| 1,92 | setup | test_consultas.py::test_progreso_objetivo_sin_reglas[ACTIVIDAD-ACT-01] |
+| 1,92 | call | test_consultas.py::test_registro_sql_no_crece_con_100_reglas_reflexivas_y_500_eventos[seguimiento_2_fallo] |
+
+P0 cerrada: solo se registra la línea base, sin adaptar pruebas, retirar datos,
+cambiar código ni agregar dependencias. No se inicia P1 ni se hace push.
+El frontend queda sin cambios versionados; el commit de fase corresponde
+únicamente a este registro en el backend. No se llama a Gemini.
