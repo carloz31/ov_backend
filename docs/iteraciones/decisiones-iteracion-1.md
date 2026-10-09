@@ -4,6 +4,59 @@ Registro de decisiones que afectan a ambos repos. Las internas de cada repo van 
 
 Formato de cada entrada: fecha, fase, decisión, motivo y archivos afectados.
 
+## Anexo de cierre, perfil y resultados
+
+### 2026-10-09 · F0: lectura y preparación
+
+**Decisión y motivo.** Se ejecuta únicamente F0 de
+`spec-iteracion-1-cierre-perfil-resultados.md`. Se leen completos los
+`AGENTS.md` de ambos repos, `plan-iteraciones.md`, `spec-iteracion-1.md`,
+este registro y el anexo. Su precedencia expresa se incorpora a «Interfaz
+del estudiante» del `AGENTS.md` del front para la tarjeta de cierre, el
+perfil y el resultado completo. El anexo autoriza los cambios de esas
+vistas en sus fases respectivas; F0 no los implementa. No se detectan
+contradicciones que impidan esta preparación.
+
+**Resumen de fases del anexo.**
+
+| Fase | Repositorio | Alcance |
+|---|---|---|
+| F0 | Ambos | Lectura, precedencia y registro de decisiones. |
+| F1 | Frontend | Restaurar el perfil completo en modo API, con la misma vista en ambos modos. |
+| F2 | Ambos | Completar las descripciones de dimensiones, exponer `descripcion` en el resultado y actualizar contrato, adaptadores y fixtures. |
+| F3 | Frontend | Tarjeta de cierre con recursos, diario y extras según los desbloqueos recibidos. |
+| F4 | Frontend | Resultado completo por página de Helena, según COINCIDENCIAS o DESTACADAS; inteligencias conserva su demostración señalada. |
+| F5 | Ambos | Verificaciones finales, documentos, pendientes de interfaz y recorridos manuales en API y local. |
+
+**Archivos afectados en F0.** `ov_frontend/AGENTS.md` y este documento.
+No cambian código, vistas, contratos, fixtures, almacenamiento ni
+dependencias. Se trabaja en `iteracion-1` en ambos repos, con un commit
+por repo y sin push. F1–F5 permanecen pendientes.
+
+**Verificación del frontend.** Build y lint pasan. Estructura: **536
+archivos, cero infracciones y cero excepciones**. `npm test`: **413 pruebas,
+398 aprobadas y las mismas 15 fallas previas**, sin omitidas ni canceladas;
+los nombres y el orden coinciden con la tabla de B0 y los conteos con la
+línea base del anexo. No se modifican implementación ni expectativas para
+corregirlas en F0. El build conserva el aviso previo de bundle mayor de
+500 kB. Las reglas compartidas de ambos `AGENTS.md` siguen idénticas.
+Los registros de las verificaciones y los temporales de pytest quedan
+fuera de los repositorios, en visualizaciones de esta conversación.
+
+**Verificación del backend.** La suite completa termina con **1091
+aprobadas, cuatro omitidas, cero fallas y dos advertencias previas**, en
+**874,19 segundos**; coincide con el cierre de X. Las cuatro omisiones
+corresponden a PostgreSQL sin `TEST_POSTGRES_URL`; las advertencias son
+las deprecaciones de Starlette/httpx y Google GenAI. Se ejecuta
+`uv run --no-sync --offline python -m pytest -q -rs -p no:cacheprovider`,
+con `--basetemp` externo y `EVALUADOR=falso`, fuera del aislamiento por el
+bloqueo de TestClient documentado en las fases anteriores. No se instalan
+dependencias ni se llama a Gemini.
+
+**Cierre.** F0 del anexo queda completa, sin cambios de interfaz. El
+frontend confirma la precedencia en `9d9357b`; el backend confirma este
+registro en su commit A0. Sin push. El trabajo se detiene antes de F1.
+
 ## Actividades por dominio · X · 2026-10-08
 
 Se retiran la consulta global, su servicio y esquema, los dos fixtures
