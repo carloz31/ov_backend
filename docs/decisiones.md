@@ -2917,3 +2917,113 @@ La auditoría final vuelve a confirmar las 815 aserciones exactas, nombres
 El frontend no se modifica ni se vuelve a ejecutar en P3; mantiene el resultado
 registrado en P2 (449 correctas y 14 fallas previas; build, lint y estructura
 correctos). Un commit en el backend, sin push. P3 cerrada; P4 pendiente.
+
+### P4 · Plantillas y ejecución paralela (9 de octubre de 2026)
+
+Se ejecuta §7 de `spec-pruebas-y-retiro-demo.md`, únicamente en el backend.
+Se avisa antes de instalar y se ejecuta `uv add --dev pytest-xdist`, autorizado
+por la spec. Se incorporan **pytest-xdist 3.8.0** y su dependencia transitiva
+**execnet 2.1.2** en `pyproject.toml` y `uv.lock`; no se actualizan otras
+dependencias. La marca `postgres` se registra en la configuración de pytest
+y se aplica al módulo de humo PostgreSQL. `-m postgres --collect-only`
+selecciona exactamente **4 de 530 casos**; se mantiene la omisión si falta
+`TEST_POSTGRES_URL`.
+
+`tests/integration/conftest.py` crea `plantilla-plataforma.db` y
+`plantilla-piloto.db` con `preparar_base(..., crear_tablas=True)` una vez por
+sesión, dentro de `tmp_path_factory`. Cada proceso de xdist tiene sus propias
+plantillas. `aplicacion` y `aplicacion_piloto` abren una copia nueva en el
+`tmp_path` de cada caso; las plantillas cerradas solo se leen para copiarlas.
+Cada aplicación conserva su motor, sesiones y caché propios, y el fixture
+dispone el motor al terminar incluso si no se abre un TestClient.
+
+Desaparecen `aplicacion_plataforma` y los fixtures puente de
+`soporte_plataforma.py`, junto con sus importaciones. La única parametrización
+que mencionaba el fixture antiguo pasa a `aplicacion`, sin cambiar su cuerpo
+ni sus expectativas. El piloto conserva un alias local a `aplicacion_piloto`
+para que sus escenarios usen los fixtures comunes de cliente y sesión.
+La sesión SQLAlchemy del núcleo del motor abre también una copia, sin
+introducir TestClient ni aplicación en esas pruebas.
+
+Las bases adicionales de nueve ports R01–R40 pasan por el fixture
+`base_aislada`, que inyecta la plantilla en la ayuda de soporte existente.
+Se añade ese argumento a las nueve funciones correspondientes; sus cuerpos
+permanecen exactos, incluidos los nombres de variantes y los presupuestos SQL.
+La copia se centraliza en `tests/soporte/soporte_bases.py` y no se comparte
+ninguna base mutable entre pruebas, variantes o procesos.
+
+Las pruebas de carga, CLI, `--vaciar`, migraciones y fallos atómicos siguen
+ejecutando sus cargas reales. En `integration/datos/conftest.py`, el fixture
+de aplicación siembra directamente por caso: las pruebas de catálogo y
+de carga fallida no dependen de una plantilla. El exportador también mantiene
+su preparación propia. No cambian sus aserciones ni se elude el código que
+deben verificar.
+
+La comparación AST frente a P3 confirma **214 cuerpos de prueba idénticos**
+y **815 aserciones exactas**. Solo cambian nueve firmas para inyectar
+`base_aislada` y el nombre del fixture parametrizado de descripciones; el
+conteo sigue siendo **530** (297 unitarios y 233 de integración).
+Recolección completa: **530 en 5,72 s**; selección PostgreSQL: **4 de 530
+en 4,85 s**. La medición secuencial contrasta también las identidades de
+caso con P3, normalizando únicamente aquel nombre de fixture.
+
+Primera suite completa en paralelo: `uv run python -m pytest -n auto -q
+-p no:cacheprovider --basetemp=<temporal externo> --durations=25
+--junitxml=<archivo externo> --tb=short`, **526 correctas, 4 omitidas en
+46,18 s**, salida 0. `auto` usa 20 procesos en este equipo. Las dos
+advertencias previas aparecen una vez por proceso (40 emisiones), sin
+advertencias nuevas. Frente a los **192,37 s** secuenciales de P3, son
+**146,19 s menos (76,0 %), o 4,17 veces más rápido**. Es una medición local,
+incluido el arranque de los procesos, no un umbral de rendimiento portable.
+
+La medición secuencial posterior también pasa: **526 correctas, 4 omitidas
+y 2 advertencias en 143,86 s**, salida 0. Se ejecuta pytest mediante
+`uv run python` con los mismos argumentos de aislamiento, sin `-n`, y un
+observador temporal externo para los informes de cada fase. El observador
+confirma una sola ejecución de `plantillas_bd` durante toda la sesión.
+Las sumas de los informes son **32,54 s de setup, 106,41 s de ejecución y
+0,81 s de teardown**; el resto corresponde a recolección y gestión de pytest.
+Las preparaciones ordinarias ajenas al primer arranque, carga y migraciones
+tienen un máximo de **0,610 s**.
+
+| Medición local | Casos | Resultado | Tiempo |
+|---|---:|---|---:|
+| P3 · secuencial, siembra por caso | 530 | 526 correctas, 4 omitidas | 192,37 s |
+| P4 · secuencial, plantillas | 530 | 526 correctas, 4 omitidas | 143,86 s |
+| P4 · `-n auto`, plantillas | 530 | 526 correctas, 4 omitidas | 46,18 s |
+
+Las plantillas por sí solas reducen el tiempo observado un **25,2 %**;
+el paralelo reduce otro **67,9 %** respecto de la medición secuencial con
+plantillas. Se mantienen conteo y resultado en las tres mediciones.
+
+Preparaciones mayores de 1 s observadas en la medición secuencial completa
+(rutas relativas a `tests/integration/`), registradas para §7.4:
+
+| Caso | Setup | Motivo |
+|---|---:|---|
+| `actividades/test_acciones.py::test_ingresar_repite_eventos_y_usa_hora_actual_de_lima` | 1,824 s | Primer caso: crea las dos plantillas de sesión; el coste no se repite en los casos siguientes. |
+| `datos/test_semilla_plataforma.py::test_excel_erroneo_revierte_carga_explicita[invalido]` | 1,553 s | Carga real por caso, excluida de plantillas por §7.1. |
+| `migraciones/test_migraciones.py::test_visibilidad_predeterminada_y_al_desbloquear_en_base_migrada` | 1,374 s | Alembic real sobre base vacía, excluido de plantillas. |
+| `migraciones/test_migraciones.py::test_columnas_de_actividad_rechazan_nulos_y_visibilidad_invalida[None-SIEMPRE]` | 1,336 s | Alembic real sobre base vacía. |
+| `datos/test_semilla_plataforma.py::test_riasec_enunciados_y_distribucion_exactos` | 1,193 s | Valida la semilla cargada directamente, sin plantilla. |
+| `datos/test_semilla_plataforma.py::test_fallo_tardio_revierte_carga_y_conserva_cache` | 1,184 s | Carga real y prueba de su reversión. |
+| `migraciones/test_migraciones.py::test_columnas_de_actividad_rechazan_nulos_y_visibilidad_invalida[prueba-None]` | 1,134 s | Alembic real sobre base vacía. |
+| `datos/test_semilla_plataforma.py::test_excel_erroneo_revierte_carga_explicita[ausente]` | 1,068 s | Carga real y prueba de su reversión. |
+| `migraciones/test_migraciones.py::test_columnas_de_actividad_rechazan_nulos_y_visibilidad_invalida[prueba-INVALIDA]` | 1,064 s | Alembic real sobre base vacía. |
+| `migraciones/test_migraciones.py::test_esquema_migrado_vacio_arranca_y_rechaza_enumerado_invalido` | 1,032 s | Alembic real sobre base vacía. |
+| `datos/test_semilla_plataforma.py::test_catalogo_estructura_y_estado_vacio` | 1,021 s | Comprueba el resultado de una carga real. |
+| `datos/test_semilla_plataforma.py::test_excel_erroneo_revierte_carga_explicita[referencia_ausente]` | 1,006 s | Carga real y prueba de su reversión. |
+
+En paralelo, el primer caso que solicita plantillas en cada proceso incluye
+también su creación: el máximo observado es **3,80 s** en
+`contrato/test_consultas_dominio.py::test_apoderado_sin_listas_estudiantiles[logros]`.
+El reparto cambia cuál es ese primer caso; el coste pertenece al fixture de
+sesión, no a esa consulta. Las excepciones de carga y Alembic conservan el
+trabajo real que deben probar; no se rebajan ni se eluden sus verificaciones
+para cumplir el objetivo de setup.
+
+No cambian aplicación, catálogo, esquema, migraciones, contrato ni frontend.
+No se ejecuta Gemini real. Los informes de tiempos, XML y bases quedan fuera
+de los repositorios; no se toca ninguna base local preexistente. El frontend
+permanece limpio y no se vuelve a ejecutar en esta fase exclusiva del backend.
+Un commit en `iteracion-1`, sin push. P4 cerrada; P5 queda pendiente.

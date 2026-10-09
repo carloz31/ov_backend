@@ -1,10 +1,10 @@
 """R19: varias aplicaciones por actividad, selección y coste constante."""
 
 from soporte_plataforma import MARA, pedir
-from soporte_retiro import aplicaciones_extra, base_aislada, medir, preparar_ultimo, resultado
+from soporte_retiro import aplicaciones_extra, medir, preparar_ultimo, resultado
 
 
-def test_r19_resultados_por_aplicacion_y_sql_constante(tmp_path):
+def test_r19_resultados_por_aplicacion_y_sql_constante(tmp_path, base_aislada):
     cantidades = []
     for extra in (1, 10):
         with base_aislada(tmp_path, f'aplicaciones-{extra}') as (aplicacion, cliente):

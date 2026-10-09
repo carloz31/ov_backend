@@ -6,24 +6,19 @@ from sqlalchemy.orm import Session
 
 from app import models as modelos
 from app.database import crear_motor_bd
-from app.models.base import Base
 from app.services.motor import reglas as motor
 from app.services.motor.evaluadores import EVALUADORES
-from datos.plataforma import cargar as cargar_semilla
 
 
 FECHA = datetime(2026, 10, 1, 10)
 
 
 @pytest.fixture
-def sesion(tmp_path):
+def sesion(url_base_plataforma):
     """Pruebas del núcleo con SQLAlchemy, sin aplicación ni routers."""
-    motor_bd = crear_motor_bd(f"sqlite:///{(tmp_path / 'motor.db').as_posix()}")
-    Base.metadata.create_all(motor_bd)
+    motor_bd = crear_motor_bd(url_base_plataforma)
     try:
         with Session(motor_bd) as sesion:
-            with sesion.begin():
-                cargar_semilla(sesion)
             yield sesion
     finally:
         motor_bd.dispose()

@@ -3,7 +3,7 @@
 import re
 from pathlib import Path
 import pytest
-from soporte_plataforma import MARA, aplicacion, avanzar_camino, cliente, filas_base, pedir, sesion
+from soporte_plataforma import MARA, avanzar_camino, filas_base, pedir
 from sqlalchemy import func, select, text
 from app import models as modelos
 from app.main import crear_aplicacion

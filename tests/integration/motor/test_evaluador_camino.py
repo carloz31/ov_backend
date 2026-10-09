@@ -4,7 +4,7 @@ from datetime import datetime
 from types import SimpleNamespace
 import pytest
 from soporte_consultas import ContadorConsultas
-from soporte_plataforma import FECHA, aplicacion, cliente, sesion
+from soporte_plataforma import FECHA
 from sqlalchemy import insert, select
 from app import models as modelos
 from app.core.contexto import ContextoConsultas

@@ -2,10 +2,10 @@
 
 from app import models as m
 from soporte_plataforma import pedir
-from soporte_retiro import base_aislada, condicion, regla
+from soporte_retiro import condicion, regla
 
 
-def test_r14_cache_por_motor_commit_y_rollback(cliente, aplicacion, tmp_path):
+def test_r14_cache_por_motor_commit_y_rollback(cliente, aplicacion, tmp_path, base_aislada):
     with base_aislada(tmp_path, 'otra') as (otra, otro_cliente):
         cache = aplicacion.state.motor_bd.cache_definiciones
         otra_cache = otra.state.motor_bd.cache_definiciones

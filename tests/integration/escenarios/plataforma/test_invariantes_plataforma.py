@@ -1,6 +1,6 @@
 """Invariantes plataforma."""
 
-from soporte_plataforma import CAMINO, actividades, aplicacion, cliente, completar, estado, eventos, filas_base, sesion
+from soporte_plataforma import CAMINO, actividades, completar, estado, eventos, filas_base
 from sqlalchemy import select
 from app import models as modelos
 

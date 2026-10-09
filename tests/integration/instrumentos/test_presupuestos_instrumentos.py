@@ -4,10 +4,10 @@ from soporte_datos_ports import agregar_ocupaciones
 from sqlalchemy import select
 from app import models as m
 from soporte_plataforma import MARA, avanzar_camino, pedir
-from soporte_retiro import base_aislada, ciclo, datos_respuestas, medir, preparar_ultimo
+from soporte_retiro import ciclo, datos_respuestas, medir, preparar_ultimo
 
 
-def test_r12_uno_o_todos_insertar_y_reemplazar_con_identidad(tmp_path):
+def test_r12_uno_o_todos_insertar_y_reemplazar_con_identidad(tmp_path, base_aislada):
     conteos = []
     for cantidad in (1, 5):
         with base_aislada(tmp_path, f'lote-{cantidad}') as (aplicacion, cliente):
@@ -29,7 +29,7 @@ def test_r12_uno_o_todos_insertar_y_reemplazar_con_identidad(tmp_path):
     assert conteos[0] == conteos[1]
 
 
-def test_r30_calculo_constante_con_cien_ocupaciones(tmp_path):
+def test_r30_calculo_constante_con_cien_ocupaciones(tmp_path, base_aislada):
     conteos = []
     for extra in (0, 100):
         with base_aislada(tmp_path, f'ocupaciones-{extra}') as (aplicacion, cliente):

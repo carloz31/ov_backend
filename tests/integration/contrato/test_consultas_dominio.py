@@ -7,9 +7,7 @@ from app.models import Actividad, Bloque, Cuenta, EstadoProgreso, ProgresoActivi
 from datos.plataforma import (
     ACTIVIDADES_CAMINO, ACTIVIDADES_CIUDAD, CONTENIDOS_ACTIVIDADES, FICHAS, INSIGNIAS, NIVELES,
 )
-from soporte_plataforma import (
-    CAMINO, aplicacion, avanzar_camino, cliente, completar, pedir, responder, sesion,
-)
+from soporte_plataforma import CAMINO, avanzar_camino, completar, pedir, responder
 
 
 RUTAS = ('resumen', 'actividades', 'fichas', 'logros', 'testimonios', 'diario/preguntas', 'conversaciones')

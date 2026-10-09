@@ -25,9 +25,11 @@ postgres = [
 testpaths = ["tests"]
 addopts = "--import-mode=importlib"
 pythonpath = [".", "tests/soporte"]
+markers = ["postgres: pruebas opcionales contra TEST_POSTGRES_URL"]
 
 [dependency-groups]
 dev = [
     "httpx>=0.28.1",
     "pytest>=9.1.1",
+    "pytest-xdist>=3.8.0",
 ]

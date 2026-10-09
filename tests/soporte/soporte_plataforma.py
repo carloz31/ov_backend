@@ -1,9 +1,7 @@
-"""Fixtures locales y recorridos de plataforma."""
+"""Recorridos y consultas de plataforma, sin fixtures de base."""
 
 from soporte_dominios import consultar_dominios
 
-import pytest
-from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from app.models.base import Base
@@ -13,23 +11,6 @@ FECHA = '2026-10-07T10:00:00'
 CAMINO = ('mission-welcome', 'enc-mitos', 'act-07', 'mission-story', 'mission-future',
           'mission-compass', 'act-06', 'mission-expectations', 'mission-next-step')
 MARA = tuple(f'act-tip-{n:02}' for n in range(1, 15))
-
-
-@pytest.fixture
-def aplicacion(aplicacion_plataforma):
-    return aplicacion_plataforma
-
-
-@pytest.fixture
-def cliente(aplicacion):
-    with TestClient(aplicacion) as abierto:
-        yield abierto
-
-
-@pytest.fixture
-def sesion(cliente, aplicacion):
-    with aplicacion.state.fabrica_sesiones() as abierta:
-        yield abierta
 
 
 def pedir(cliente, metodo, ruta, datos=None, esperado=200):

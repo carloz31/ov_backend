@@ -6,7 +6,7 @@ from app import models as m
 from app.services import actividades as servicio_actividades
 from app.services.instrumentos import resultados as servicio_resultados
 from soporte_plataforma import MARA, avanzar_camino, completar, filas_base, pedir, responder
-from soporte_retiro import base_aislada, ciclo, preparar_ultimo
+from soporte_retiro import ciclo, preparar_ultimo
 
 
 def test_r18_fallo_despues_de_guardar_resultado_revierte_toda_accion(cliente, aplicacion, monkeypatch):
@@ -24,7 +24,7 @@ def test_r18_fallo_despues_de_guardar_resultado_revierte_toda_accion(cliente, ap
     assert filas_base(aplicacion) == antes
 
 
-def test_r24_reinicio_parcial_y_completo_revierte_despues_del_evento(tmp_path, monkeypatch):
+def test_r24_reinicio_parcial_y_completo_revierte_despues_del_evento(tmp_path, monkeypatch, base_aislada):
     original = servicio_actividades.responder_con_eventos
     def fallar(sesion, cuenta, eventos, fecha):
         salida = original(sesion, cuenta, eventos, fecha)

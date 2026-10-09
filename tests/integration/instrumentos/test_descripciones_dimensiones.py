@@ -24,7 +24,7 @@ def completar_cuestionario(cliente, actividades):
         assert respuesta.status_code == 200, respuesta.text
 
 
-@pytest.mark.parametrize('fixture', ['aplicacion_plataforma'])
+@pytest.mark.parametrize('fixture', ['aplicacion'])
 def test_resultado_riasec_incluye_las_seis_descripciones_reales(request, fixture):
     aplicacion = request.getfixturevalue(fixture)
     with TestClient(aplicacion) as cliente:

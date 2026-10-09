@@ -4,7 +4,7 @@ import soporte_escenarios_plataforma as escenarios
 
 
 from soporte_plataforma import (
-    CAMINO, FECHA, MARA, actividades, aplicacion, avanzar_camino, cliente, completar, estado,
+    CAMINO, FECHA, MARA, actividades, avanzar_camino, completar, estado,
     eventos, filas_base, pedir, progreso, reglas, responder,
 )
 

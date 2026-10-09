@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from app import models as m
 from app.main import crear_aplicacion
-from datos.cargar import preparar_base
+from soporte_bases import copiar_plantilla
 from soporte_consultas import ContadorConsultas
 from soporte_plataforma import FECHA, MARA, avanzar_camino, completar, pedir, responder
 
@@ -49,9 +49,8 @@ def medir(cliente, aplicacion, metodo, ruta, datos=None, esperado=200, limite=10
 
 
 @contextmanager
-def base_aislada(tmp_path, nombre):
-    url = f'sqlite:///{(tmp_path / (nombre + ".db")).as_posix()}'
-    preparar_base(url, 'plataforma', crear_tablas=True)
+def base_aislada(tmp_path, nombre, *, plantilla):
+    url = copiar_plantilla(plantilla, tmp_path / (nombre + '.db'))
     aplicacion = crear_aplicacion(url)
     with TestClient(aplicacion) as cliente:
         yield aplicacion, cliente

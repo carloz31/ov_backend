@@ -12,10 +12,8 @@ CAMINO = ('mission-welcome', 'enc-mitos', 'act-07', 'mission-story', 'mission-co
 
 
 @pytest.fixture
-def aplicacion(tmp_path):
-    url = f"sqlite:///{(tmp_path / 'piloto.db').as_posix()}"
-    preparar_base(url, 'piloto', crear_tablas=True)
-    return crear_aplicacion(url)
+def aplicacion(aplicacion_piloto):
+    return aplicacion_piloto
 
 
 def actividades(cliente):

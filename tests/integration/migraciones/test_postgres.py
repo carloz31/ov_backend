@@ -17,6 +17,9 @@ from datos.cargar import preparar_base
 import soporte_escenarios_plataforma as escenarios
 
 
+pytestmark = pytest.mark.postgres
+
+
 @pytest.mark.skipif(not os.environ.get('TEST_POSTGRES_URL'), reason='Falta TEST_POSTGRES_URL')
 @pytest.mark.parametrize('escenario', ['p01_estado_inicial', 'p02_primer_paso',
                                       'p07_llegada_a_la_ciudad', 'p10_resultado'])

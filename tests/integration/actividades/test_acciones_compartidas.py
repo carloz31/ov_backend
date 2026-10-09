@@ -5,7 +5,7 @@ from soporte_datos_ports import preparar_conversacion
 import pytest
 from app.services import comun
 from soporte_plataforma import avanzar_camino, filas_base, pedir
-from soporte_retiro import base_aislada, medir
+from soporte_retiro import medir
 
 
 def test_r33_conversacion_actor_disponible_repeticion_y_rollback(cliente, aplicacion, monkeypatch):
@@ -39,7 +39,7 @@ def test_r33_conversacion_actor_disponible_repeticion_y_rollback(cliente, aplica
     assert filas_base(aplicacion) == primera
 
 
-def test_r34_coautoria_independiente_y_sql_de_dos_a_veinte(tmp_path):
+def test_r34_coautoria_independiente_y_sql_de_dos_a_veinte(tmp_path, base_aislada):
     cantidades = []
     for cantidad in (2, 20):
         with base_aislada(tmp_path, f'autores-{cantidad}') as (aplicacion, cliente):
