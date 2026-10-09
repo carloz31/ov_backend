@@ -2,21 +2,15 @@
 
 import json
 import logging
-import re
 import socket
 from dataclasses import replace
-from pathlib import Path
-from urllib.parse import quote
 
 import httpx
 import pytest
 from fastapi.testclient import TestClient
 from google import genai
 from google.genai import errors, types
-from scripts import evaluar_gemini as script
-from sqlalchemy import event
 
-from datos.cargar import preparar_base
 from app import main as modulo_main
 from app.config import (
     Configuracion, cargar_configuracion, crear_evaluador_registro,
@@ -82,31 +76,6 @@ class ClienteSimulado:
 
     def close(self):
         self.cierres += 1
-
-
-class ClienteConversacionesSimulado(ClienteSimulado):
-    def __init__(self, *, respuestas=None, errores=None, observar=None):
-        super().__init__(observar=observar)
-        self.respuestas = respuestas or {}
-        self.errores = errores or {}
-
-    def generate_content(self, **argumentos):
-        contexto = json.loads(argumentos['contents'])
-        numero = next(n for n, caso in enumerate(script.CASOS, 1)
-                      if caso.texto == contexto['conversacion']['texto_inicial'])
-        turno = len(contexto['conversacion']['turnos'])
-        datos = ADECUADA
-        if numero == 14:
-            datos = {**ADECUADA, 'requiere_atencion': True}
-        elif numero == 15 and turno == 0:
-            datos = {**VAGA, 'pregunta': '¿En qué situaciones notas que te cuesta comunicarte?'}
-        elif numero == 16:
-            datos = {**VAGA, 'criterios_faltantes': ['C1', 'C2'], 'pregunta': (
-                '¿Qué harás exactamente y en qué momento?' if turno == 0 else
-                '¿Qué acción concreta podrías probar en tu próximo trabajo grupal?')}
-        self.respuesta = respuesta_sdk(self.respuestas.get((numero, turno), datos))
-        self.error = self.errores.get((numero, turno))
-        return super().generate_content(**argumentos)
 
 
 def procesar(cliente, contexto=CONTEXTO, configuracion=CONFIGURACION):
@@ -362,205 +331,6 @@ def test_cliente_propio_se_cierra_y_error_inicial_saneado(monkeypatch):
     assert CLAVE_SIMULADA not in str(error.value)
 
 
-@pytest.mark.parametrize('respuesta,error', [(respuesta_sdk(VAGA), None), (None, httpx.ReadTimeout(CLAVE_SIMULADA))])
-def test_integracion_aplicacion_cliente_simulado_sin_conexion_y_con_metadatos(tmp_path, monkeypatch, respuesta, error):
-    def observar():
-        assert app.state.motor_bd.pool.checkedout() == 0
-    cliente_simulado = ClienteSimulado(respuesta, error, observar)
-    monkeypatch.setattr(modulo_main, 'cargar_configuracion', lambda **kwargs: replace(CONFIGURACION, url_bd=kwargs['entorno']['DATABASE_URL']))
-    url = f'sqlite:///{(tmp_path / "registro.db").as_posix()}'
-    preparar_base(url, 'demo', crear_tablas=True)
-    app = modulo_main.crear_aplicacion(url)
-    monkeypatch.setattr(genai, 'Client', lambda **kwargs: cliente_simulado)
-    with TestClient(app) as cliente:
-        envio = cliente.post('/acciones/registro/enviar', json={
-            'cuenta': 'est-ana', 'actividad': 'REG-ACT08', 'item': 'REG-HAB-2', 'texto': CONTEXTO.conversacion.texto_inicial,
-        })
-        assert envio.status_code == 200
-        assert envio.json()['estado'] == ('FINAL' if error else 'PENDIENTE_SEGUIMIENTO')
-        assert not set(envio.json()) & {'clasificacion', 'criterios_faltantes', 'requiere_atencion', 'modelo', 'error'}
-        auditoria = cliente.get('/demo/registro/est-ana/REG-ACT08/evaluaciones').json()[0]
-        assert auditoria['modelo'] == CONFIGURACION.modelo
-        assert auditoria['version_prompt'] == 'v2'
-        assert auditoria['latencia_ms'] >= 0
-        assert auditoria['origen'] == ('RESPALDO_LONGITUD' if error else 'LLM')
-        assert CLAVE_SIMULADA not in json.dumps(auditoria)
-    assert cliente_simulado.cierres == 1
-
-
-def test_script_16_casos_contextos_y_reporte_simulado(tmp_path):
-    assert len(script.CASOS) == 16
-    assert script.CASOS[11].texto == 'Empatía, aunque creo que está sobrevalorada; igual me serviría, porque cuando mis amigos me cuentan sus problemas no sé qué decirles.'
-    assert script.CASOS[13].esperada == 'requiere atención'
-    assert script.CASOS[6].texto == 'Voy a practicar hablando más.'
-    assert script.CASOS[6].esperada == 'VAGA (falta C2)'
-    assert script.CASOS[15].texto == 'Voy a esforzarme más.'
-    ruta = tmp_path / 'reporte.md'
-    esperas = []
-    cliente = ClienteConversacionesSimulado()
-    adaptador = EvaluadorGemini(CONFIGURACION, cliente=cliente)
-    try:
-        resultados = script.ejecutar_casos(adaptador, CONFIGURACION, ruta, pausa=7, esperar=esperas.append)
-    finally:
-        adaptador.cerrar()
-    assert esperas == [7] * 17
-    assert len(cliente.llamadas) == len(resultados) == 18
-    assert all(r.evaluacion.origen == 'LLM' for r in resultados)
-    llamadas_iniciales = [llamada for llamada in cliente.llamadas
-                          if not json.loads(llamada['contents'])['conversacion']['turnos']]
-    for caso, llamada in zip(script.CASOS, llamadas_iniciales, strict=True):
-        datos = json.loads(llamada['contents'])
-        assert datos['conversacion']['texto_inicial'] == caso.texto
-        orden = int(caso.item[-1]) - 1
-        assert [r['conversacion']['texto_inicial'] for r in datos['respuestas_anteriores']] == [script.CASOS[1].texto, script.CASOS[5].texto][:orden]
-        assert [c['codigo'] for c in datos['criterios']] == ['C1', 'C2']
-    for numero, faltantes in [(15, ['C2']), (16, ['C1', 'C2'])]:
-        inicial, turno = [fila for fila in resultados if fila.numero == numero]
-        llamada = cliente.llamadas[15 if numero == 15 else 17]
-        datos = json.loads(llamada['contents'])
-        assert datos['criterios_faltantes_previos'] == faltantes
-        assert datos['conversacion']['texto_inicial'] == script.CASOS[numero - 1].texto
-        assert datos['conversacion']['turnos'] == [{
-            'pregunta': inicial.evaluacion.pregunta, 'respuesta': script.CASOS[numero - 1].respuesta_turno_1}]
-        assert turno.pregunta_respondida == inicial.evaluacion.pregunta
-        assert json.loads(turno.evaluacion.texto_evaluado) == datos['conversacion']
-        assert turno.evaluacion.clasificacion == ('ADECUADA' if numero == 15 else 'VAGA')
-        if numero == 16:
-            assert turno.evaluacion.pregunta != inicial.evaluacion.pregunta
-    reporte = ruta.read_text(encoding='utf-8')
-    assert reporte.count('\n| ') == 19
-    assert 'requiere atención' in reporte
-    assert 'Turno 1' in reporte and 'Pregunta respondida' in reporte and 'Pregunta generada' in reporte
-    assert resultados[-1].evaluacion.pregunta in reporte
-    assert CLAVE_SIMULADA not in reporte
-
-
-def test_script_fallo_no_interrumpe_casos_ni_expone_clave(tmp_path):
-    ruta = tmp_path / 'fallos.md'
-    resultados = script.ejecutar_casos(EvaluadorFalso(), CONFIGURACION, ruta, pausa=0, esperar=lambda _: None)
-    assert len(resultados) == 18
-    assert all(fila.evaluacion is None for fila in resultados if fila.turno)
-    cliente = ClienteSimulado(error=RuntimeError(CLAVE_SIMULADA))
-    adaptador = EvaluadorGemini(CONFIGURACION, cliente=cliente)
-    try:
-        resultados = script.ejecutar_casos(adaptador, CONFIGURACION, ruta, pausa=0, esperar=lambda _: None)
-    finally:
-        adaptador.cerrar()
-    assert len(cliente.llamadas) == 16
-    assert all(r.evaluacion.origen == 'RESPALDO_LONGITUD' for r in resultados if r.evaluacion is not None)
-    assert resultados[-1].evaluacion is None and 'genérico' in resultados[-1].observacion
-    assert CLAVE_SIMULADA not in ruta.read_text(encoding='utf-8')
-    assert script.celda('a|b\n<script>') == 'a&#124;b<br>&lt;script&gt;'
-
-
-@pytest.mark.parametrize('pausa', [-1, float('nan'), float('inf')])
-def test_script_rechaza_pausa_invalida_antes_de_llamar(tmp_path, pausa):
-    cliente = ClienteSimulado()
-    with pytest.raises(ValueError, match='pausa'):
-        script.ejecutar_casos(cliente, CONFIGURACION, tmp_path / 'no_creado', pausa=pausa)
-    assert cliente.llamadas == []
-
-
-def test_cli_ayuda_no_inicializa_cliente(monkeypatch, capsys):
-    def prohibida(*args, **kwargs):
-        raise AssertionError('La ayuda no crea un cliente')
-    monkeypatch.setattr(script, 'EvaluadorGemini', prohibida)
-    with pytest.raises(SystemExit) as salida:
-        script.main(['--help'])
-    assert salida.value.code == 0
-    assert '--pausa' in capsys.readouterr().out
-
-
-def test_cli_fallo_externo_saneado_y_cliente_cerrado(monkeypatch, capsys):
-    cliente = ClienteSimulado()
-    # No escribir el reporte real; esta prueba solo verifica el límite del CLI.
-    monkeypatch.setattr(script, 'cargar_configuracion', lambda **kwargs: CONFIGURACION)
-    monkeypatch.setattr(script, 'EvaluadorGemini', lambda _: cliente)
-    cliente.cerrar = cliente.close
-    def fallar(*args, **kwargs):
-        raise RuntimeError(CLAVE_SIMULADA)
-    monkeypatch.setattr(script, 'ejecutar_casos', fallar)
-    assert script.main(['--pausa', '0']) == 1
-    salida = capsys.readouterr()
-    assert 'No se pudo generar' in salida.err
-    assert CLAVE_SIMULADA not in salida.err + salida.out
-    assert cliente.cierres == 1
-
-
-def test_prompt_y_casos_coinciden_con_la_especificacion_v2():
-    especificacion = (Path(__file__).resolve().parents[1] / 'docs' / 'spec-demo-registro-gemini.md').read_text(encoding='utf-8')
-    prompt = especificacion.split('Instrucción de sistema (versión `v2`):', 1)[1].split('```', 2)[1].strip()
-    assert PROMPT_REGISTRO_V2 == prompt
-    apartado = especificacion.split('## 10. Prueba con Gemini real', 1)[1].split('## 11.', 1)[0]
-    iniciales = re.findall(r'^\| (\d+) \| (REG-HAB-\d) \| ([^|]*?) \| ([^|]*?) \|$', apartado, re.MULTILINE)
-    assert len(iniciales) == 14
-    for numero, item, texto, esperada in iniciales:
-        caso = script.CASOS[int(numero) - 1]
-        assert (caso.item, caso.texto, caso.esperada) == (item, texto, esperada)
-    conversaciones = re.findall(r'^\| (15|16) \| (REG-HAB-\d) \| (.*?) \| (.*?) \| (.*?) \|$', apartado, re.MULTILINE)
-    assert len(conversaciones) == 2
-    for numero, item, texto, respuesta, revision in conversaciones:
-        caso = script.CASOS[int(numero) - 1]
-        assert (caso.item, caso.texto, caso.respuesta_turno_1) == (item, texto, respuesta)
-
-
-@pytest.mark.parametrize('datos', [ADECUADA, {**ADECUADA, 'requiere_atencion': True},
-                                  {**VAGA, 'requiere_atencion': True}])
-def test_script_no_inventa_turnos_si_el_inicial_finaliza(tmp_path, datos):
-    cliente = ClienteConversacionesSimulado(respuestas={(15, 0): datos, (16, 0): datos})
-    adaptador = EvaluadorGemini(CONFIGURACION, cliente=cliente)
-    esperas = []
-    try:
-        filas = script.ejecutar_casos(adaptador, CONFIGURACION, tmp_path / 'omitidos.md', pausa=2, esperar=esperas.append)
-    finally:
-        adaptador.cerrar()
-    assert len(cliente.llamadas) == 16 and esperas == [2] * 15
-    turnos = [fila for fila in filas if fila.turno]
-    assert len(turnos) == 2
-    assert all(fila.evaluacion is None and fila.pregunta_respondida == '' and 'No ejecutado' in fila.observacion
-               for fila in turnos)
-
-
-@pytest.mark.parametrize('numero', [15, 16])
-@pytest.mark.parametrize('fallo', ['timeout', 'invalido', 'externo'])
-def test_script_fallo_del_turno_sigue_con_los_demas_casos_y_no_reintenta(tmp_path, numero, fallo):
-    errores = {(numero, 1): (httpx.ReadTimeout(CLAVE_SIMULADA) if fallo == 'timeout' else RuntimeError(CLAVE_SIMULADA))}
-    respuestas = {}
-    if fallo == 'invalido':
-        errores = {}
-        respuestas[numero, 1] = {**ADECUADA, 'criterios_faltantes': ['C1']}
-    cliente = ClienteConversacionesSimulado(respuestas=respuestas, errores=errores)
-    adaptador = EvaluadorGemini(CONFIGURACION, cliente=cliente)
-    ruta = tmp_path / 'fallo-turno.md'
-    try:
-        filas = script.ejecutar_casos(adaptador, CONFIGURACION, ruta, pausa=0, esperar=lambda _: None)
-    finally:
-        adaptador.cerrar()
-    assert len(cliente.llamadas) == 18
-    turno = next(fila for fila in filas if fila.numero == numero and fila.turno == 1)
-    assert turno.evaluacion.origen == 'RESPALDO_LONGITUD'
-    assert turno.evaluacion.clasificacion == 'NO_EVALUADA' and turno.evaluacion.pregunta is None
-    assert turno.evaluacion.error and CLAVE_SIMULADA not in turno.evaluacion.error
-    assert CLAVE_SIMULADA not in ruta.read_text(encoding='utf-8')
-
-
-def test_script_respaldo_corto_genera_turno_generico_sin_evaluar_ni_pausar_otra_vez(tmp_path):
-    cliente = ClienteConversacionesSimulado(errores={(16, 0): httpx.ReadTimeout(CLAVE_SIMULADA)})
-    adaptador = EvaluadorGemini(CONFIGURACION, cliente=cliente)
-    esperas = []
-    try:
-        filas = script.ejecutar_casos(adaptador, CONFIGURACION, tmp_path / 'generico.md', pausa=3, esperar=esperas.append)
-    finally:
-        adaptador.cerrar()
-    assert len(cliente.llamadas) == 17 and esperas == [3] * 16
-    inicial, turno = [fila for fila in filas if fila.numero == 16]
-    assert inicial.evaluacion.origen == 'RESPALDO_LONGITUD' and inicial.evaluacion.clasificacion == 'VAGA'
-    assert inicial.evaluacion.criterios_faltantes == ('C1', 'C2')
-    assert turno.evaluacion is None and turno.pregunta_respondida == inicial.evaluacion.pregunta
-    assert 'sin nueva evaluación' in turno.observacion
-    assert json.loads(cliente.llamadas[-1]['contents'])['conversacion']['texto_inicial'] == 'Voy a esforzarme más.'
-
-
 @pytest.mark.parametrize('faltantes', [['C1'], ['C1', 'C2']])
 def test_adaptador_rechaza_criterios_ya_cumplidos_en_el_seguimiento(faltantes):
     contexto = replace(CONTEXTO, criterios_faltantes_previos=('C2',), conversacion=ConversacionEvaluacion(
@@ -617,70 +387,3 @@ def test_sdk_con_transporte_simulado_envia_inicial_y_ambos_turnos_con_esquema_v2
     finally:
         adaptador.cerrar()
         cliente_http.close()
-
-
-def test_script_reporte_escapa_html_y_omite_clave_literal_y_codificada(tmp_path):
-    clave = 'clave &"sintetica?'  # Solo dato inventado para la prueba.
-    configuracion = replace(CONFIGURACION, clave=clave)
-    pregunta = f'<script>|\n{clave} / {quote(clave, safe="")}'
-    cliente = ClienteSimulado(respuesta_sdk({**VAGA, 'pregunta': pregunta}))
-    adaptador = EvaluadorGemini(configuracion, cliente=cliente)
-    ruta = tmp_path / 'saneado.md'
-    try:
-        script.ejecutar_casos(adaptador, configuracion, ruta, pausa=0, esperar=lambda _: None)
-    finally:
-        adaptador.cerrar()
-    reporte = ruta.read_text(encoding='utf-8')
-    assert clave not in reporte and quote(clave, safe='') not in reporte and script.celda(clave) not in reporte
-    assert '[secreto omitido]' in reporte and '&lt;script&gt;&#124;<br>' in reporte
-    assert '<script>' not in reporte and reporte.count('\n| ') == 19
-
-
-def test_script_libera_conexiones_antes_del_evaluador_y_solo_prepara_definiciones_en_memoria(tmp_path, monkeypatch):
-    crear_original = script.crear_motor_bd
-    activas, sentencias = set(), []
-    preparado = []
-    def crear(url):
-        assert url == 'sqlite:///:memory:'
-        motor = crear_original(url)
-        event.listen(motor, 'checkout', lambda conexion, registro, proxy: activas.add(id(conexion)))
-        event.listen(motor, 'checkin', lambda conexion, registro: activas.discard(id(conexion)))
-        event.listen(motor, 'before_cursor_execute', lambda *args: sentencias.append(args[2]))
-        return motor
-    monkeypatch.setattr(script, 'crear_motor_bd', crear)
-    def observar():
-        assert not activas
-        if not preparado:
-            preparado.append(len(sentencias))
-        assert len(sentencias) == preparado[0]
-    cliente = ClienteConversacionesSimulado(observar=observar)
-    adaptador = EvaluadorGemini(CONFIGURACION, cliente=cliente)
-    try:
-        script.ejecutar_casos(adaptador, CONFIGURACION, tmp_path / 'sin-bd.md', pausa=0, esperar=lambda _: None)
-    finally:
-        adaptador.cerrar()
-    assert len(cliente.llamadas) == 18 and preparado[0] > 0 and not activas
-    assert not any(sentencia.startswith(('INSERT INTO respuesta_registro ', 'INSERT INTO turno_seguimiento ',
-                                         'INSERT INTO evaluacion_respuesta ', 'INSERT INTO evento_uso '))
-                   for sentencia in sentencias)
-
-
-def test_cli_exito_simulado_cierra_cliente_y_conserva_el_proveedor_del_entorno(tmp_path, monkeypatch, capsys):
-    import os
-    previo = os.environ['EVALUADOR']
-    cliente = ClienteConversacionesSimulado()
-    monkeypatch.setattr(genai, 'Client', lambda **kwargs: cliente)
-    def configurar(**argumentos):
-        assert argumentos['entorno']['EVALUADOR'] == 'gemini'
-        return CONFIGURACION
-    monkeypatch.setattr(script, 'cargar_configuracion', configurar)
-    ejecutar_original = script.ejecutar_casos
-    ruta = tmp_path / 'cli.md'
-    monkeypatch.setattr(script, 'ejecutar_casos', lambda evaluador, configuracion, **opciones:
-        ejecutar_original(evaluador, configuracion, ruta, esperar=lambda _: None, **opciones))
-    assert script.main(['--pausa', '0']) == 0
-    assert ruta.exists() and len(cliente.llamadas) == 18 and cliente.cierres == 1
-    assert os.environ['EVALUADOR'] == previo
-    salida = capsys.readouterr()
-    assert 'Reporte generado' in salida.out and salida.err == ''
-    assert CLAVE_SIMULADA not in salida.out

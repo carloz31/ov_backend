@@ -106,13 +106,13 @@ def test_upgrade_repetible_downgrade_y_nuevo_upgrade(base_migrada):
     assert set(inspect(motor).get_table_names()) == set(Base.metadata.tables) | {'alembic_version'}
 
 
-@pytest.mark.parametrize('conjunto', ['demo', 'plataforma'])
+@pytest.mark.parametrize('conjunto', ['plataforma'])
 def test_carga_vaciado_y_reinicio_conservan_revision(base_migrada, conjunto):
     url, configuracion, motor = base_migrada
     preparar_base(url, conjunto)
     aplicacion = crear_aplicacion(url)
     with TestClient(aplicacion) as cliente:
-        assert cliente.post('/demo/reiniciar').json() == {'mensaje': 'Demo reiniciada'}
+        assert cliente.post('/desarrollo/reiniciar').json() == {'mensaje': 'Datos de prueba reiniciados'}
     preparar_base(url, conjunto, vaciar=True)
     with motor.connect() as conexion:
         assert conexion.execute(text('SELECT version_num FROM alembic_version')).all() == [

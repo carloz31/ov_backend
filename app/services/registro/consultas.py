@@ -1,11 +1,9 @@
-"""Lecturas agrupadas del registro y su historial técnico."""
+"""Lecturas agrupadas del registro."""
 
-from sqlalchemy import select
 
 from app.core.contexto import usar_contexto
-from app.models import EvaluacionRespuesta, ProgresoActividad, RespuestaRegistro
 from app.schemas.registro import (
-    EvaluacionRegistroDemo, ItemRegistroPublico, RegistroConsultado, RespuestaRegistroPublica,
+    ItemRegistroPublico, RegistroConsultado, RespuestaRegistroPublica,
 )
 from app.services.registro.acciones import conversacion_publica, leer_registro, validar_registro
 
@@ -28,18 +26,3 @@ def consultar_registro(sesion, cuenta, actividad):
             conversacion=conversacion_publica(respuestas[item.id].texto_inicial,
                 registro.turnos.get(respuestas[item.id].id, ())))
             for item in items if item.id in respuestas])
-
-
-@usar_contexto
-def consultar_evaluaciones(sesion, cuenta, actividad):
-    cuenta, actividad, items = validar_registro(sesion, actividad, cuenta)
-    codigos = {item.id: item.codigo for item in items}
-    filas = sesion.execute(select(EvaluacionRespuesta, RespuestaRegistro.item_registro_id).join(
-        RespuestaRegistro, RespuestaRegistro.id == EvaluacionRespuesta.respuesta_id).join(
-        ProgresoActividad, ProgresoActividad.id == RespuestaRegistro.progreso_id).where(
-        ProgresoActividad.cuenta_id == cuenta.id, ProgresoActividad.actividad_id == actividad.id
-    ).order_by(EvaluacionRespuesta.id))
-    return [EvaluacionRegistroDemo(item=codigos[item_id], **{
-        campo: getattr(evaluacion, campo)
-        for campo in EvaluacionRegistroDemo.model_fields if campo != 'item'
-    }) for evaluacion, item_id in filas]

@@ -1,4 +1,4 @@
-"""Parámetros de la demo; fuentes: especificaciones de instrumentos y registro.
+"""Parámetros de la plataforma; fuentes: especificaciones de instrumentos y registro.
 
 Los umbrales son los criterios de §5.4, no una atribución bibliográfica
 adicional. Las opciones persistidas siguen siendo la fuente de sus puntajes.

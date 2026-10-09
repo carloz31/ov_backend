@@ -1,1 +1,1 @@
-"""Demo del motor de desbloqueos de orientación vocacional."""
+"""Plataforma gamificada de orientación vocacional."""

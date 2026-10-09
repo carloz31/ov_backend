@@ -14,7 +14,7 @@ from app.models import (
 )
 from app.models.enums import ClasificacionRespuesta, EstadoRespuestaRegistro, OrigenEvaluacion
 from app.schemas.registro import (
-    EstadoItemRegistro, MensajePreguntaRegistro, MensajeRespuestaRegistro, PosicionGuardada,
+    EstadoItemRegistro, MensajePreguntaRegistro, MensajeRespuestaRegistro,
     RespuestaEnvioRegistro,
 )
 from app.services.comun import (
@@ -132,16 +132,6 @@ def turno_pendiente(turnos):
     return turnos[-1]
 
 
-@usar_contexto
-def guardar_posicion(sesion, entrada, posiciones):
-    cuenta, actividad, _ = validar_registro(sesion, entrada.actividad, entrada.cuenta, disponible=True)
-    if entrada.posicion not in posiciones.get(actividad.codigo, ()):
-        raise ErrorAccion("La posición no pertenece a los momentos de la actividad", estado_http=422)
-    progreso = contexto(sesion).progresos_de(cuenta.id).get(actividad.id)
-    if progreso is None:
-        progreso = crear_progreso(sesion, cuenta, actividad)
-    progreso.posicion = entrada.posicion
-    return PosicionGuardada(posicion=entrada.posicion, estado=progreso.estado)
 
 
 @usar_contexto

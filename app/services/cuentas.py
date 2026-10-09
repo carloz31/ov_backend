@@ -144,5 +144,5 @@ def marcar_desbloqueos_vistos(sesion: Session, cuenta: Cuenta) -> int:
     return resultado.rowcount
 
 
-def obtener_cuenta_demo(sesion: Session, cuenta: str) -> Cuenta | None:
+def obtener_cuenta(sesion: Session, cuenta: str) -> Cuenta | None:
     return sesion.scalar(select(Cuenta).where(Cuenta.codigo == cuenta))

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from app.dependencies import CuentaDemo, SesionBD
+from app.dependencies import CuentaConsultada, SesionBD
 from app.models import TipoObjetivo
 from app.schemas.cuentas import (
     CuentaResumen, DesbloqueoLegible, DesbloqueosMarcados, EventoLegible,
@@ -28,17 +28,17 @@ def consultar_cuentas(sesion: SesionBD):
 
 
 @router.get("/cuentas/{cuenta}/resumen", response_model=ResumenCuenta)
-def consultar_resumen(cuenta_demo: CuentaDemo, sesion: SesionBD):
-    return servicio_cuentas.resumen_cuenta(sesion, cuenta_demo)
+def consultar_resumen(cuenta_consultada: CuentaConsultada, sesion: SesionBD):
+    return servicio_cuentas.resumen_cuenta(sesion, cuenta_consultada)
 
 
 @router.get(
     "/cuentas/{cuenta}/progreso/{tipo_objetivo}/{codigo}",
     response_model=ProgresoObjetivo, response_model_exclude_unset=True,
 )
-def consultar_progreso(cuenta_demo: CuentaDemo, tipo_objetivo: TipoObjetivo, codigo: str, sesion: SesionBD):
+def consultar_progreso(cuenta_consultada: CuentaConsultada, tipo_objetivo: TipoObjetivo, codigo: str, sesion: SesionBD):
     try:
-        return progreso_objetivo(sesion, cuenta_demo, tipo_objetivo, codigo)
+        return progreso_objetivo(sesion, cuenta_consultada, tipo_objetivo, codigo)
     except LookupError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
     except PermissionError as error:
@@ -46,17 +46,17 @@ def consultar_progreso(cuenta_demo: CuentaDemo, tipo_objetivo: TipoObjetivo, cod
 
 
 @router.get("/cuentas/{cuenta}/eventos", response_model=list[EventoLegible])
-def consultar_eventos(cuenta_demo: CuentaDemo, sesion: SesionBD):
-    return listar_eventos(sesion, cuenta_demo)
+def consultar_eventos(cuenta_consultada: CuentaConsultada, sesion: SesionBD):
+    return listar_eventos(sesion, cuenta_consultada)
 
 
 @router.get("/cuentas/{cuenta}/desbloqueos", response_model=list[DesbloqueoLegible])
-def consultar_desbloqueos(cuenta_demo: CuentaDemo, sesion: SesionBD, solo_no_vistos: bool = False):
-    return listar_desbloqueos(sesion, cuenta_demo, solo_no_vistos)
+def consultar_desbloqueos(cuenta_consultada: CuentaConsultada, sesion: SesionBD, solo_no_vistos: bool = False):
+    return listar_desbloqueos(sesion, cuenta_consultada, solo_no_vistos)
 
 
 @router.post("/cuentas/{cuenta}/desbloqueos/marcar-vistos", response_model=DesbloqueosMarcados)
-def marcar_vistos(cuenta_demo: CuentaDemo, sesion: SesionBD):
-    cantidad = marcar_desbloqueos_vistos(sesion, cuenta_demo)
+def marcar_vistos(cuenta_consultada: CuentaConsultada, sesion: SesionBD):
+    cantidad = marcar_desbloqueos_vistos(sesion, cuenta_consultada)
     sesion.commit()
     return DesbloqueosMarcados(marcados=cantidad)

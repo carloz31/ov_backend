@@ -1,9 +1,13 @@
 # Inventario para el retiro de la demo · P1
 
-Estado: **propuesta pendiente de aprobación**. Fecha: 9 de octubre de 2026.
+Estado: **aprobado por el usuario al solicitar P2**. Fecha: 9 de octubre de 2026.
 Fuente: `docs/spec-pruebas-y-retiro-demo.md`, especialmente §§4, 5, 10 y 11.
 Base revisada: `iteracion-1`, backend `5beec8c` (P0), frontend `7df1b17`.
 P1 no cambia aplicación, datos, pruebas, configuración ni contrato.
+
+Ejecución P2: 489 casos A/B conservados, 40 ports R01–R40 y una prueba
+arquitectónica, **530 casos recolectados**. Los destinos finales de P3 siguen
+pendientes; en P2 los ports permanecen directamente en `tests/`.
 
 ## Criterio y unidad de conteo
 

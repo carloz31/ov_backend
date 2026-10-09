@@ -115,7 +115,7 @@ def test_reinicio_conserva_catalogo_piloto(cliente, sesion):
     inicial = actividades(cliente)
     for codigo in CAMINO:
         completar(cliente, codigo)
-    pedir(cliente, 'POST', '/demo/reiniciar')
+    pedir(cliente, 'POST', '/desarrollo/reiniciar')
     assert actividades(cliente) == inicial
     assert list(sesion.scalars(select(EventoUso))) == []
     assert list(sesion.scalars(select(ProgresoActividad))) == []
@@ -138,7 +138,7 @@ def test_catalogos_ajenos_camino_son_identicos_a_plataforma(aplicacion, tmp_path
 
 def test_cargador_cli_admite_piloto_y_vaciado(tmp_path):
     url = f"sqlite:///{(tmp_path / 'cli-piloto.db').as_posix()}"
-    preparar_base(url, 'demo', crear_tablas=True)
+    preparar_base(url, 'plataforma', crear_tablas=True)
     codigo = "from datos.cargar import main; raise SystemExit(main(['piloto', '--vaciar']))"
     entorno = {**os.environ, 'DATABASE_URL': url, 'EVALUADOR': 'falso'}
     resultado = subprocess.run([sys.executable, '-c', codigo], env=entorno, capture_output=True, text=True)

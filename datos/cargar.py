@@ -3,18 +3,17 @@
 import argparse
 import re
 
-from sqlalchemy import Engine, delete, func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.config import cargar_configuracion
-from app.database import comprobar_tablas, crear_motor_bd, es_sqlite_en_memoria
+from app.database import comprobar_tablas, crear_motor_bd
 from app.models import Actividad, Base
-from datos import demo, piloto, plataforma
-from datos.demo.registro import cargar_definiciones_registro
+from datos import piloto, plataforma
 
 
-CONJUNTOS = {'demo': demo.cargar, 'plataforma': plataforma.cargar, 'piloto': piloto.cargar}
+CONJUNTOS = {'plataforma': plataforma.cargar, 'piloto': piloto.cargar}
 TABLAS_PRINCIPALES = (
     'cuenta', 'actividad', 'regla_desbloqueo', 'item_instrumento', 'ocupacion', 'item_registro',
 )
@@ -34,7 +33,7 @@ def preparar_base(
     url: str, conjunto: str, *, crear_tablas: bool = False, vaciar: bool = False,
 ) -> dict[str, int]:
     if conjunto not in CONJUNTOS:
-        raise ValueError('El conjunto debe ser demo, plataforma o piloto')
+        raise ValueError('El conjunto debe ser plataforma o piloto')
     motor = crear_motor_bd(url)
     try:
         if crear_tablas:
@@ -59,14 +58,6 @@ def preparar_base(
         motor.dispose()
 
 
-def preparar_base_registro_en_memoria(motor: Engine) -> None:
-    """Excepción autorizada para el script manual: sin Excel ni estado de cuentas."""
-    if not es_sqlite_en_memoria(motor):
-        raise ValueError('La preparación de registro requiere una base SQLite en memoria')
-    Base.metadata.create_all(motor)
-    with Session(motor) as sesion, sesion.begin():
-        cargar_definiciones_registro(sesion)
-        validar_contenidos_actividades(sesion)
 
 
 def main(argumentos=None) -> int:

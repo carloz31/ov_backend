@@ -1,7 +1,7 @@
 [project]
 name = "ov-backend"
 version = "0.1.0"
-description = "Demo del motor de desbloqueos de orientación vocacional"
+description = "Plataforma del motor de desbloqueos de orientación vocacional"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [

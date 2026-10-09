@@ -14,7 +14,7 @@ from sqlalchemy.schema import CreateSchema, DropSchema
 from app.database import crear_motor_bd
 from app.main import crear_aplicacion
 from datos.cargar import preparar_base
-import test_plataforma as escenarios
+import soporte_escenarios_plataforma as escenarios
 
 
 @pytest.mark.skipif(not os.environ.get('TEST_POSTGRES_URL'), reason='Falta TEST_POSTGRES_URL')
@@ -39,7 +39,7 @@ def test_postgresql_por_http(monkeypatch, escenario):
         command.upgrade(configuracion, 'head')
         preparar_base(url_texto, 'plataforma')
         with TestClient(crear_aplicacion(url_texto)) as cliente:
-            getattr(escenarios, f'test_{escenario}')(cliente)
+            getattr(escenarios, f'verificar_{escenario}')(cliente)
     finally:
         try:
             if creado:

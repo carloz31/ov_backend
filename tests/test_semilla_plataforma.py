@@ -1,13 +1,11 @@
 """Semilla, evaluador, compatibilidad e invariantes complementarios de F2."""
 
-import ast
 import re
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from fastapi.testclient import TestClient
 from soporte_consultas import ContadorConsultas
 from soporte_plataforma import (
     CAMINO, FECHA, MARA, actividades, aplicacion, avanzar_camino, cliente, completar, estado,
@@ -21,11 +19,9 @@ from app.main import crear_aplicacion
 from app.models.base import Base
 from app.services.motor.evaluadores import misiones_camino_sin_inicio
 from app.services.motor.reglas import evaluar_regla, registrar_eventos
-from datos import demo as seed
 from datos import ocupaciones as datos_ocupaciones
 from datos import plataforma as semilla_plataforma
 from datos.cargar import preparar_base
-from datos.demo import instrumentos as semilla_instrumentos
 from datos.ocupaciones import leer_ocupaciones, validar_distribucion_items
 
 
@@ -82,31 +78,6 @@ def test_riasec_enunciados_y_distribucion_exactos(sesion, cliente):
     assert all(i['inverso'] is False for i in todos)
     assert [(o['orden'], o['puntaje']) for o in todos[0]['escala']['opciones']] == [(1, 0), (2, 1), (3, 2), (4, 3), (5, 4)]
     assert pedir(cliente, 'GET', '/actividades/mission-compass/items') == []
-
-
-def test_cargador_independiente_en_arranque_y_reinicio(tmp_path, monkeypatch):
-    def prohibido(*args, **kwargs):
-        pytest.fail('La plataforma no debe cargar definiciones ni catálogo de demo')
-    monkeypatch.setattr(semilla_instrumentos, 'cargar_definiciones_instrumentos', prohibido)
-    monkeypatch.setattr(semilla_instrumentos, 'cargar_catalogo_ocupaciones', prohibido)
-    monkeypatch.setattr(seed, 'cargar', prohibido)
-    import app.main as principal
-    ruta = tmp_path / 'independiente.db'
-    url = f'sqlite:///{ruta.as_posix()}'
-    preparar_base(url, 'plataforma', crear_tablas=True)
-    app = crear_aplicacion(url)
-    with TestClient(app) as abierto:
-        assert app.state.posiciones_registro == {}
-        pedir(abierto, 'POST', '/demo/reiniciar')
-        assert {b['codigo'] for b in estado(abierto)['bloques']} == {'CAMINO', 'CIUDAD'}
-    arbol = ast.parse(Path(semilla_plataforma.__file__).read_text(encoding='utf-8'))
-    prohibidas = {'cargar_definiciones_instrumentos', 'cargar_catalogo_ocupaciones', 'cargar_semilla'}
-    for nodo in ast.walk(arbol):
-        if isinstance(nodo, ast.ImportFrom):
-            assert not prohibidas.intersection(a.name for a in nodo.names)
-        if isinstance(nodo, ast.Call):
-            nombre = getattr(nodo.func, 'id', getattr(nodo.func, 'attr', None))
-            assert nombre not in prohibidas
 
 
 @pytest.mark.parametrize('fallo', ['ausente', 'invalido', 'referencia_ausente'])

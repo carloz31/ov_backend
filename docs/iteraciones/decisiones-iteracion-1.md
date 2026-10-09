@@ -1029,3 +1029,20 @@ Balance: 24 actividades distintas completadas y 25 eventos COMPLETA_ACTIVIDAD; s
 - No cambian respuestas HTTP, esquemas, modelos, servicios, migraciones, fixtures, datos, pruebas ni dependencias del backend. Los datos narrativos siguen en el frontend y el servidor conserva la autoridad sobre disponibilidad, progreso y resultados. No se adelantan iteraciones ni se hace push.
 - Validación del frontend: build y lint correctos; **365 pruebas, 350 correctas y las mismas 15 fallas previas**; **77/77** pruebas `servidor-*`; estructura **515 archivos, cero infracciones y ninguna excepción**. La auditoría comprueba las rutas documentadas y la igualdad de las reglas compartidas.
 - Validación del backend: `uv run --no-sync --offline python -m pytest -q`, con evaluador falso y semilla demo: **1.023 correctas, 4 omitidas, cero fallas**, dos advertencias de dependencias, 772 segundos. Las cuatro omitidas corresponden a los escenarios opcionales de PostgreSQL (`Falta TEST_POSTGRES_URL`), comprobados mediante `-rs`. Caché, bases y temporales de pruebas quedan fuera del repo; los registros están en `ov_frontend/logs/`, ignorados por Git. Sin instalaciones ni llamadas a Gemini. R7 queda cerrada, sin integración ni push.
+
+## Pruebas y retiro de demo · P2 (9 de octubre de 2026)
+
+Por `spec-pruebas-y-retiro-demo.md` y el inventario P1 aprobado, el reinicio
+remoto pasa de `/demo/reiniciar` a `POST /desarrollo/reiniciar`, solo en
+desarrollo. Conserva catálogo y cartas, y borra las mismas 16 tablas de
+estado en una transacción. Responde `{"mensaje":"Datos de prueba reiniciados"}`.
+El frontend usa `src/services/api/desarrollo.ts` desde operaciones de estado
+remoto; mantiene la forma ya tipada `{mensaje: string}`, sin nuevos campos
+ni vistas. Se regeneran los 16 fixtures y no cambian sus bytes.
+
+La demo local del frontend permanece intacta. Se retira la demo del backend
+y las posiciones de registro obtenidas de archivos; el esquema conserva su
+columna de posición. No hay migraciones, dependencias ni HUs nuevas. El
+registro de validación y los 530 casos resultantes están en
+`docs/decisiones.md`, sección «Pruebas y retiro de demo», P2. La reorganización
+de pruebas y la aceleración se reservan para P3/P4; no se hace push.

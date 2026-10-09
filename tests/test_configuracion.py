@@ -3,13 +3,11 @@
 from dataclasses import FrozenInstanceError
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import inspect, select, text
+from sqlalchemy import inspect, text
 
 from app.config import Configuracion, RAIZ_PROYECTO, cargar_configuracion
 from app.database import MENSAJE_SIN_ESQUEMA, crear_motor_bd
 from app.main import crear_aplicacion
-from app.models import Base
-from datos.cargar import preparar_base
 
 
 def test_valores_predeterminados_y_ruta_independiente_del_directorio(tmp_path, monkeypatch):
@@ -95,35 +93,3 @@ def test_arranque_sin_esquema_falla_sin_crear_tablas(tmp_path, parcial):
                 assert conexion.execute(text('SELECT codigo FROM cuenta')).scalars().all() == ['dato-anterior']
     finally:
         motor.dispose()
-
-
-def test_arranque_con_esquema_y_catalogo_vacio_no_siembra(tmp_path):
-    url = f'sqlite:///{(tmp_path / "vacia.db").as_posix()}'
-    motor = crear_motor_bd(url)
-    Base.metadata.create_all(motor)
-    motor.dispose()
-    aplicacion = crear_aplicacion(url)
-    with TestClient(aplicacion) as cliente:
-        assert cliente.get('/cuentas').json() == []
-        assert cliente.get('/reglas').json() == []
-        assert cliente.get('/instrumentos').json() == []
-        assert aplicacion.state.posiciones_registro == {}
-        with aplicacion.state.fabrica_sesiones() as sesion:
-            assert all(sesion.execute(select(tabla)).first() is None for tabla in Base.metadata.sorted_tables)
-
-
-def test_demo_solo_en_desarrollo_sin_contaminar_instancias(tmp_path, monkeypatch):
-    url = f'sqlite:///{(tmp_path / "entornos.db").as_posix()}'
-    preparar_base(url, 'demo', crear_tablas=True)
-    for entorno in ('produccion', 'desarrollo', 'produccion'):
-        monkeypatch.setenv('ENTORNO', entorno)
-        aplicacion = crear_aplicacion(url)
-        with TestClient(aplicacion) as cliente:
-            assert cliente.get('/cuentas').status_code == 200
-            rutas = ['/demo', '/demo/registro', '/demo/instrumentos', '/demo/catalogo',
-                     '/demo/recursos/contenido/REG-ACT08.json',
-                     '/demo/registro/est-ana/REG-ACT08/evaluaciones']
-            for ruta in rutas:
-                assert cliente.get(ruta).status_code == (200 if entorno == 'desarrollo' else 404)
-            assert cliente.post('/demo/reiniciar').status_code == (200 if entorno == 'desarrollo' else 404)
-            assert any(ruta.startswith('/demo') for ruta in aplicacion.openapi()['paths']) == (entorno == 'desarrollo')

@@ -1,1 +1,1 @@
-"""Endpoints de la demo."""
+"""Endpoints de la plataforma."""

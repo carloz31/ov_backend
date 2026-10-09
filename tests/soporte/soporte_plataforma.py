@@ -1,4 +1,4 @@
-"""Fixtures locales y recorridos de plataforma; no cambia las fixtures de demo."""
+"""Fixtures locales y recorridos de plataforma."""
 
 from soporte_dominios import consultar_dominios
 

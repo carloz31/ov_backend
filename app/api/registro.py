@@ -5,21 +5,16 @@ from app.database import es_bloqueo_temporal
 from app.dependencies import SesionBD, ejecutar_accion
 from app.exceptions import ErrorAccion, traducir_error_accion
 from app.schemas.registro import (
-    AccionItemRegistroEntrada, EstadoItemRegistro, EvaluacionRegistroDemo, GuardarPosicionEntrada,
-    ItemRegistroPublico, PosicionGuardada, RegistroConsultado, ResponderSeguimientoEntrada,
+    AccionItemRegistroEntrada, EstadoItemRegistro,
+    ItemRegistroPublico, RegistroConsultado, ResponderSeguimientoEntrada,
     RespuestaEnvioRegistro, TextoRegistroEntrada,
 )
 from app.services.registro import acciones as acciones_registro, consultas as consultas_registro
 
 
 router = APIRouter(tags=['Registro'])
-router_demo = APIRouter(tags=['Registro'])
 
 
-@router.post('/acciones/guardar-posicion', response_model=PosicionGuardada)
-def guardar_posicion(entrada: GuardarPosicionEntrada, sesion: SesionBD, peticion: Request):
-    return ejecutar_accion(sesion, lambda: acciones_registro.guardar_posicion(
-        sesion, entrada, peticion.app.state.posiciones_registro))
 
 
 @router.post('/acciones/registro/guardar-borrador', response_model=EstadoItemRegistro)
@@ -77,8 +72,3 @@ def consultar_items(actividad: str, sesion: SesionBD):
             response_model_exclude_unset=True)
 def consultar_registro(cuenta: str, actividad: str, sesion: SesionBD):
     return ejecutar_accion(sesion, lambda: consultas_registro.consultar_registro(sesion, cuenta, actividad))
-
-
-@router_demo.get('/demo/registro/{cuenta}/{actividad}/evaluaciones', response_model=list[EvaluacionRegistroDemo])
-def consultar_evaluaciones(cuenta: str, actividad: str, sesion: SesionBD):
-    return ejecutar_accion(sesion, lambda: consultas_registro.consultar_evaluaciones(sesion, cuenta, actividad))

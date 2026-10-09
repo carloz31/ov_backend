@@ -2743,3 +2743,88 @@ P0 cerrada: solo se registra la línea base, sin adaptar pruebas, retirar datos,
 cambiar código ni agregar dependencias. No se inicia P1 ni se hace push.
 El frontend queda sin cambios versionados; el commit de fase corresponde
 únicamente a este registro en el backend. No se llama a Gemini.
+
+### P2 · Retiro y ports aprobados (9 de octubre de 2026)
+
+La instrucción del usuario «continua con p2» aprueba el inventario P1
+(`f8b06d2`). Se ejecutan §§4 y 5, sin adelantar la reorganización P3 ni
+la aceleración P4. `datos/cargar.py` admite únicamente `plataforma` y `piloto`.
+Se retiran `datos/demo/`, `app/static/`, las rutas y el catálogo HTTP de demo,
+la auditoría HTTP de registro, la carga de posiciones desde JSON, guardar
+posición, el script manual Gemini y sus auxiliares/pruebas exclusivos.
+`docs/evaluacion_gemini.md` y las especificaciones anteriores son históricos.
+
+El reinicio pasa a `POST /desarrollo/reiniciar`, exclusivamente en desarrollo,
+con `{"mensaje":"Datos de prueba reiniciados"}`. Conserva la misma lista de
+16 tablas de estado y la transacción original; catálogo, cartas familiares
+y caché permanecen. Se renombra la dependencia `CuentaDemo` a
+`CuentaConsultada` y su búsqueda a `obtener_cuenta`, sin cambiar el contrato
+de consultas. El arranque no carga datos ni lee archivos narrativos. La nueva
+prueba arquitectónica comprueba los cinco patrones prohibidos de §4.4.
+No cambian modelos, esquema, migraciones, datos de plataforma/piloto ni
+dependencias. La columna `progreso_actividad.posicion` permanece.
+
+Adaptaciones de pruebas autorizadas por §§5 y 11 y el inventario:
+
+- Se retiran los 607 casos C originales. Los 40 comportamientos R01–R40
+  se reescriben, un caso recolectado por identificador; las variantes se
+  recorren dentro del caso y se aíslan cuando modifican el catálogo.
+- Se conservan los A/B, salvo los tres parámetros `demo` explícitamente
+  retirados en carga, migraciones y contenido. Se retira la rama inalcanzable
+  de contenido demo y la variante C de las descripciones RIASEC.
+- Los B preparan plataforma y mantienen sus aserciones. Carga fallida,
+  CLI `--vaciar` y piloto cambian la preparación genérica; el reinicio de
+  carga, migraciones y piloto adapta únicamente ruta/servicio/mensaje.
+- Los cuatro verificadores P01/P02/P07/P10 se extraen con aserciones exactas
+  a `soporte_escenarios_plataforma`; sus pruebas SQLite y PostgreSQL llaman
+  a los mismos verificadores. No quedan importaciones entre `test_*.py`.
+- Los datos sintéticos se preparan únicamente en bases temporales mediante
+  ayudas en `tests/soporte/`, marcadas `DATO DE PRUEBA`. Los instrumentos
+  DESTACADAS/COMPARACION son mínimos; no se recrea el catálogo retirado.
+  Los textos de inteligencias de soporte se contrastan con el anexo aprobado.
+- Comparación AST de 170 cuerpos A/B, incluidos los verificadores extraídos:
+  cero diferencias fuera de las sustituciones mecánicas autorizadas. Las
+  dos ramas retiradas y el despacho PostgreSQL se revisan por separado.
+- No se elevan presupuestos SQL. Los ports verifican lecturas agrupadas y
+  coste constante al aumentar reglas, eventos, autores, resultados,
+  aplicaciones y ocupaciones, además de fallos tras persistir/conceder.
+
+Conteo: **1099 − 607 − 3 + 40 + 1 = 530**, sin diferencias respecto de P1.
+Recolección final: **530 en 1,96 s**. Primera suite completa de P2:
+**526 correctas, 4 omitidas, 2 advertencias en 279,86 s**; las omisiones
+siguen siendo PostgreSQL sin `TEST_POSTGRES_URL`, y las advertencias siguen
+siendo Starlette/httpx y google-genai/Python. Tras extraer las preparaciones
+a soporte, la suite completa sobre el árbol final confirma **526 correctas,
+4 omitidas y 2 advertencias en 227,94 s (3 min 47,94 s)**, código de salida 0.
+Se usa `uv run python -m pytest
+-q -p no:cacheprovider --basetemp=<temporal externo>` por las limitaciones
+del lanzador y del directorio temporal del sandbox ya medidas en P0.
+
+Frontend: se renombra el módulo API a `desarrollo.ts`, se actualiza su consumo
+en operaciones y solo la ruta esperada de la prueba de servicios (además del
+nombre del módulo que carga). La forma `{mensaje: string}` ya está tipada;
+se revisan tipos y adaptadores y no requieren modificación. Los **16 fixtures
+regenerados son idénticos**. No hay campos nuevos sin vista. El verificador
+de estructura no enumera el módulo API y no necesita adaptación.
+`npm test`: **463 casos, 449 correctos y las mismas 14 fallas previas** en
+`adventure-rendering.test.mjs`, **29,568 s**. Se contrastan los 14 nombres
+contra P0. `npm run build`, `npm run lint` y `npm run check:estructura`
+pasan: 565 archivos, cero infracciones y cero excepciones. Permanece el
+aviso previo de bundle mayor de 500 kB. No se corrigen las fallas ajenas.
+
+Auditoría de residuos (`rg -n -i demo app datos scripts tests`):
+
+| Archivo | Coincidencia conservada y motivo |
+|---|---|
+| `tests/test_calculo_instrumentos.py` | `DIM-DEMO`, etiqueta arbitraria en una aserción A de cálculo puro; se conserva exacta. |
+| `tests/test_descripciones_dimensiones.py` | «Dimensión de demostración:», texto rechazado por una aserción A; se conserva exacta. |
+| `tests/test_entorno_desarrollo.py` | Rutas históricas `/demo*`, únicamente para exigir 404 y su ausencia del OpenAPI. |
+
+`app/`, `datos/` y `scripts/` no tienen coincidencias. No quedan rutas HTTP
+`/demo` en `app/` ni referencias a ellas en servicios API o estado remoto
+del frontend. La búsqueda textual amplia en todo `src/` también encuentra
+importaciones `@/data/demo/...` y `demoAccess`: son el modo local protegido
+expresamente por §3, no llamadas a la API retirada, y se conservan intactas.
+Temporales, bases de validación y registros de estas ejecuciones quedan fuera
+de ambos repos. No se toca ninguna base local preexistente ni se llama a
+Gemini real. Un commit por repo en `iteracion-1`, sin push. P3 queda pendiente.
