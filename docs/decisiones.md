@@ -2828,3 +2828,92 @@ expresamente por §3, no llamadas a la API retirada, y se conservan intactas.
 Temporales, bases de validación y registros de estas ejecuciones quedan fuera
 de ambos repos. No se toca ninguna base local preexistente ni se llama a
 Gemini real. Un commit por repo en `iteracion-1`, sin push. P3 queda pendiente.
+
+### P3 · Pruebas del backend por tipo y dominio (9 de octubre de 2026)
+
+Se ejecuta exclusivamente §6 de `spec-pruebas-y-retiro-demo.md`. Los 49
+archivos de prueba que estaban directamente en `tests/` pasan a 62 archivos
+por tipo y dominio. Junto con la prueba arquitectónica ya existente, quedan
+63 archivos `test_*.py`, todos con nombres únicos. `test_fase1.py` se renombra
+a `integration/migraciones/test_restricciones_estado.py`; `test_motor.py`,
+`test_instrumentos.py` y `test_invariantes.py` pasan a nombres que describen
+el núcleo del motor, las entradas de instrumentos y el check-in único.
+`pyproject.toml` añade `--import-mode=importlib` y conserva
+`pythonpath = [".", "tests/soporte"]`.
+
+Divisiones y criterios de ubicación:
+
+| Archivo anterior | Destinos y criterio |
+|---|---|
+| `test_configuracion.py` | Configuración y fábrica con SQLite en memoria sin sembrar en `unit/configuracion`; arranque con base temporal/TestClient en `integration/desarrollo`. |
+| `test_consultas.py` | Contadores sobre SQLite en memoria sin semillas en `unit/motor`; consultas públicas en `integration/cuentas`; presupuesto de fichas en `integration/fichas`. |
+| `test_migraciones.py` | Selección del dialecto con motor simulado y clasificación de errores en `unit/configuracion`; esquema, migraciones y compilación SQL sin conexión en `integration/migraciones`. |
+| `test_evaluador_gemini.py` | Configuración sin base en `unit/configuracion`; evaluación, prompt, SDK y transportes simulados en `unit/registro`; rechazo del arranque con TestClient en `integration/desarrollo`. |
+| `test_carga_datos.py` | Clasificación estática de tablas, sin motor ni sesión, en `unit/arquitectura`; carga y CLI en `integration/datos`; reversión del reinicio en `integration/desarrollo`. |
+| `test_semilla_instrumentos.py` | Lectura y validación de archivos Excel en `integration/datos` (regla residual de §6.1); restricciones SQL de resultados y coincidencias en `integration/migraciones`. |
+| `test_semilla_plataforma.py` | Semilla y carga en `integration/datos`; evaluador con sesión sembrada en `integration/motor`; aislamiento de estado en `integration/cuentas`; recorrido de invariantes en `integration/escenarios/plataforma`. |
+| `test_piloto.py` | CLI de carga en `integration/datos`; recorrido y catálogo del piloto en `integration/escenarios/piloto`. |
+| `test_consultas_dominio.py` | `integration/contrato`: prueba conjunta y parametrizada del contrato de las siete consultas; se conserva entera. |
+
+El `conftest.py` raíz conserva únicamente el autouse del evaluador falso.
+Los fixtures de base, cliente y sesión pasan a `integration/conftest.py`
+con el mismo cuerpo y alcance por prueba. El contador compartido queda en
+`soporte_fixtures.py`, importado por integración y `unit/motor/conftest.py`.
+El bloqueo de red Gemini pasa sin cambios a `soporte_red.py`, importado
+por las tres divisiones. El lector de filas compartido por carga y reinicio
+se extrae a `soporte_estado_desarrollo.py`, sin copiar su implementación.
+No hay importaciones entre archivos `test_*.py`.
+
+Se mantienen `aplicacion_plataforma`, los fixtures puente de
+`soporte_plataforma.py` y las preparaciones específicas del núcleo y del
+piloto: las plantillas, su sustitución, xdist y la marca `postgres` corresponden
+a P4. No se agregan dependencias ni se modifica aplicación, datos, esquema,
+contrato o frontend. Las tablas de impacto de `AGENTS.md` y la documentación
+general corresponden a P6.
+
+Verificación estructural frente a P2: las **214 funciones de prueba** conservan
+cuerpos y decoradores, normalizando únicamente los índices `parents[...]`
+que deben seguir apuntando a la misma raíz física tras el traslado. Las
+**815 aserciones** de pruebas y ayudas coinciden por AST exacto, sin
+normalización. Los **530 identificadores de caso y sus parámetros** coinciden
+uno a uno aplicando solamente el mapa de rutas. No basta con comparar el total.
+
+| Tipo / dominio | Casos recolectados |
+|---|---:|
+| Unit · arquitectura | 2 |
+| Unit · configuración | 40 |
+| Unit · instrumentos | 69 |
+| Unit · motor | 3 |
+| Unit · registro | 183 |
+| **Unit total** | **297** |
+| Integration · actividades | 30 |
+| Integration · contrato | 48 |
+| Integration · cuentas | 8 |
+| Integration · datos | 25 |
+| Integration · desarrollo | 6 |
+| Integration · escenarios (plataforma 16, piloto 8) | 24 |
+| Integration · fichas | 1 |
+| Integration · instrumentos | 25 |
+| Integration · logros | 1 |
+| Integration · migraciones | 34 |
+| Integration · motor | 31 |
+| **Integration total** | **233** |
+| **Total conservado de P2** | **530** |
+
+`uv run python -m pytest --collect-only -q -p no:cacheprovider` confirma
+**530 casos en 4,29 s**, con las dos advertencias previas de Starlette/httpx
+y google-genai/Python. Las comprobaciones y sus bases temporales se mantienen
+fuera del repositorio, como en P2.
+
+Suite completa de P3: `uv run python -m pytest -q -p no:cacheprovider
+--basetemp=<temporal externo> --durations=10 --tb=short`, **526 correctas,
+4 omitidas y 2 advertencias en 192,37 s (3 min 12,37 s)**, salida 0.
+Las cuatro omisiones siguen correspondiendo a PostgreSQL sin
+`TEST_POSTGRES_URL`. Tras extraer la ayuda de filas, se verifican además
+`integration/datos/test_carga_datos.py` e
+`integration/desarrollo/test_atomicidad_reinicio.py`: **7 correctas en 4,76 s**.
+La auditoría final vuelve a confirmar las 815 aserciones exactas, nombres
+únicos, ausencia de importaciones entre tests y ausencia de carpetas vacías.
+El frontend no se modifica ni se vuelve a ejecutar en P3; mantiene el resultado
+registrado en P2 (449 correctas y 14 fallas previas; build, lint y estructura
+correctos). Un commit en el backend, sin push. P3 cerrada; P4 pendiente.

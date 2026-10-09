@@ -1,0 +1,1 @@
+from soporte_fixtures import contador_consultas

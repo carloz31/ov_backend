@@ -23,6 +23,7 @@ postgres = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "--import-mode=importlib"
 pythonpath = [".", "tests/soporte"]
 
 [dependency-groups]

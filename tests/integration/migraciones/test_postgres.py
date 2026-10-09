@@ -35,7 +35,7 @@ def test_postgresql_por_http(monkeypatch, escenario):
         url_texto = url.render_as_string(hide_password=False)
         monkeypatch.setenv('DATABASE_URL', url_texto)
         monkeypatch.setenv('ENTORNO', 'desarrollo')
-        configuracion = Config(str(Path(__file__).resolve().parents[1] / 'alembic.ini'))
+        configuracion = Config(str(Path(__file__).resolve().parents[3] / 'alembic.ini'))
         command.upgrade(configuracion, 'head')
         preparar_base(url_texto, 'plataforma')
         with TestClient(crear_aplicacion(url_texto)) as cliente:

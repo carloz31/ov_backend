@@ -3,6 +3,7 @@
 from datetime import datetime
 from sqlalchemy import select
 from app import models as modelos
+from app.models import Base
 
 
 def llenar_estado(aplicacion):
@@ -52,3 +53,9 @@ def llenar_estado(aplicacion):
             modelos.EvaluacionRespuesta(respuesta_id=respuesta.id, numero=1, origen='RESPALDO_LONGITUD', clasificacion='VAGA',
                 criterios_faltantes=['C1'], texto_evaluado='DATO DE PRUEBA', fecha_hora=fecha),
         ])
+
+
+def filas(motor):
+    with motor.connect() as conexion:
+        return {tabla.name: conexion.execute(select(tabla).order_by(*tabla.primary_key.columns)).all()
+                for tabla in Base.metadata.sorted_tables}

@@ -1,10 +1,7 @@
-"""R4: esquema migrado, integridad y compilación de ambos dialectos."""
+"""Migraciones."""
 
 from io import StringIO
 from pathlib import Path
-from types import SimpleNamespace
-from unittest.mock import Mock
-
 import pytest
 from alembic import command
 from alembic.autogenerate import compare_metadata
@@ -14,16 +11,15 @@ from alembic.script import ScriptDirectory
 from fastapi.testclient import TestClient
 from sqlalchemy import CheckConstraint, ForeignKeyConstraint, MetaData, UniqueConstraint, inspect, select, text
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.exc import IntegrityError, OperationalError
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.schema import CreateIndex, CreateTable
-
 from app import database
 from app.main import crear_aplicacion
 from app.models import Base
 from datos.cargar import preparar_base
 
 
-RUTA_CONFIGURACION = Path(__file__).resolve().parents[1] / 'alembic.ini'
+RUTA_CONFIGURACION = Path(__file__).resolve().parents[3] / 'alembic.ini'
 
 
 @pytest.fixture
@@ -222,31 +218,3 @@ def test_visibilidad_predeterminada_y_al_desbloquear_en_base_migrada(base_migrad
         assert conexion.scalar(text('SELECT visibilidad FROM actividad')) == 'SIEMPRE'
         conexion.execute(text("UPDATE actividad SET visibilidad = 'AL_DESBLOQUEAR'"))
         assert conexion.scalar(text('SELECT visibilidad FROM actividad')) == 'AL_DESBLOQUEAR'
-
-
-@pytest.mark.parametrize('url, opciones, escucha', [
-    ('sqlite:///:memory:', {'connect_args': {'check_same_thread': False}}, True),
-    ('postgresql+psycopg://ov:ov@localhost/ov', {'pool_pre_ping': True}, False),
-])
-def test_motor_configura_solo_su_dialecto(monkeypatch, url, opciones, escucha):
-    crear = Mock(return_value=object())
-    registrar = Mock(return_value=lambda funcion: funcion)
-    monkeypatch.setattr(database, 'create_engine', crear)
-    monkeypatch.setattr(database.event, 'listens_for', registrar)
-    assert database.crear_motor_bd(url) is crear.return_value
-    crear.assert_called_once_with(url, **opciones)
-    assert bool(registrar.call_count) == escucha
-
-
-@pytest.mark.parametrize('atributos, esperado', [
-    ({'sqlite_errorname': 'SQLITE_BUSY'}, True),
-    ({'sqlite_errorname': 'SQLITE_BUSY_SNAPSHOT'}, True),
-    ({'sqlite_errorname': 'SQLITE_LOCKED'}, True),
-    ({'pgcode': '40001'}, True), ({'pgcode': '55P03'}, True),
-    ({'sqlstate': '40001'}, True), ({'sqlstate': '55P03'}, True),
-    ({'sqlite_errorname': 'SQLITE_ERROR'}, False),
-    ({'pgcode': '23505'}, False), ({'sqlstate': '23505'}, False), ({}, False),
-])
-def test_clasificacion_de_bloqueos(atributos, esperado):
-    error = OperationalError('consulta', {}, SimpleNamespace(**atributos))
-    assert database.es_bloqueo_temporal(error) is esperado

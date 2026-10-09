@@ -1,30 +1,25 @@
-"""Fase 6: exclusivamente clientes y transportes simulados; sin red."""
+"""Evaluador gemini."""
 
 import json
 import logging
-import socket
 from dataclasses import replace
-
 import httpx
 import pytest
-from fastapi.testclient import TestClient
 from google import genai
 from google.genai import errors, types
-
-from app import main as modulo_main
-from app.config import (
-    Configuracion, cargar_configuracion, crear_evaluador_registro,
-)
-from app.services.registro.evaluacion import (
-    ContextoEvaluacion, ConversacionEvaluacion, CriterioEvaluacion, EvaluadorFalso,
-    RespuestaAnterior, TurnoEvaluacion, evaluar_respuesta,
-)
+from app.config import Configuracion
+from app.services.registro.evaluacion import ContextoEvaluacion, ConversacionEvaluacion, CriterioEvaluacion, RespuestaAnterior, TurnoEvaluacion, evaluar_respuesta
 from app.services.registro.gemini import EvaluadorGemini, razonamiento_minimo
 from app.services.registro.prompt import PROMPT_REGISTRO_V2
+from soporte_red import impedir_red
 
 
 CLAVE_SIMULADA = 'clave-sintetica-solo-pruebas'
+
+
 CONFIGURACION = Configuracion(evaluador='gemini', clave=CLAVE_SIMULADA)
+
+
 CONTEXTO = ContextoEvaluacion(
     'Mi plan para fortalecer una habilidad', '¿Qué harás para practicarla?',
     (CriterioEvaluacion('C1', 'Acción concreta'), CriterioEvaluacion('C2', 'Situación concreta')),
@@ -32,22 +27,12 @@ CONTEXTO = ContextoEvaluacion(
     ConversacionEvaluacion('En el trabajo de Comunicación del jueves voy a decir mi opinión al menos una vez.'),
     ('C1', 'C2'),
 )
+
+
 ADECUADA = dict(clasificacion='ADECUADA', criterios_faltantes=[], pregunta=None, requiere_atencion=False)
+
+
 VAGA = dict(clasificacion='VAGA', criterios_faltantes=['C2'], pregunta='¿Cuándo lo practicarías?', requiere_atencion=False)
-
-
-@pytest.fixture(autouse=True)
-def impedir_red(monkeypatch):
-    conectar = socket.socket.connect
-    def conectar_solo_bucle_interno(instancia, direccion):
-        # Windows crea el socketpair de asyncio mediante TCP de loopback.
-        if isinstance(direccion, tuple) and direccion[0] in ('127.0.0.1', '::1'):
-            return conectar(instancia, direccion)
-        raise AssertionError('Las pruebas Gemini no pueden acceder a la red')
-    def prohibida(*args, **kwargs):
-        raise AssertionError('Las pruebas Gemini no pueden acceder a la red')
-    monkeypatch.setattr(socket.socket, 'connect', conectar_solo_bucle_interno)
-    monkeypatch.setattr(socket, 'create_connection', prohibida)
 
 
 def respuesta_sdk(datos=ADECUADA):
@@ -87,51 +72,6 @@ def procesar(cliente, contexto=CONTEXTO, configuracion=CONFIGURACION):
         return resultado
     finally:
         adaptador.cerrar()
-
-
-def test_configuracion_predeterminada_sin_clave(tmp_path):
-    configuracion = cargar_configuracion(ruta_env=tmp_path / 'ausente', entorno={})
-    assert configuracion == Configuracion()
-    assert isinstance(crear_evaluador_registro(configuracion), EvaluadorFalso)
-
-
-def test_env_precedencia_sin_mutar_entorno_ni_interpolar(tmp_path, monkeypatch):
-    ruta = tmp_path / '.env'
-    ruta.write_text('EVALUADOR=gemini\nGEMINI_API_KEY=valor-${NO_INTERPOLAR}\n'
-                    'GEMINI_MODELO=desde-archivo\nGEMINI_TIMEOUT_SEGUNDOS=3.5\n', encoding='utf-8')
-    monkeypatch.setenv('GEMINI_MODELO', 'desde-proceso')
-    configuracion = cargar_configuracion(ruta_env=ruta, entorno={'GEMINI_MODELO': 'desde-proceso'})
-    assert configuracion.modelo == 'desde-proceso'
-    assert configuracion.timeout_segundos == 3.5
-    assert configuracion.clave == 'valor-${NO_INTERPOLAR}'
-    assert 'valor-' not in repr(configuracion)
-    assert cargar_configuracion(ruta_env=ruta, entorno={'EVALUADOR': 'falso'}).clave is None
-
-
-@pytest.mark.parametrize('valores,mensaje', [
-    ({'EVALUADOR': 'gemini'}, 'Falta GEMINI_API_KEY'),
-    ({'EVALUADOR': 'gemini', 'GEMINI_API_KEY': '  '}, 'Falta GEMINI_API_KEY'),
-    ({'EVALUADOR': CLAVE_SIMULADA}, 'EVALUADOR debe ser'),
-    ({'EVALUADOR': ''}, 'EVALUADOR debe ser'),
-    ({'GEMINI_MODELO': '  '}, 'GEMINI_MODELO no puede'),
-    *[({'GEMINI_TIMEOUT_SEGUNDOS': valor}, 'GEMINI_TIMEOUT_SEGUNDOS debe ser')
-      for valor in ('', '0', '-1', 'NaN', 'inf', '-inf', CLAVE_SIMULADA)],
-])
-def test_configuracion_invalida_saneada(tmp_path, valores, mensaje):
-    with pytest.raises(RuntimeError, match=mensaje) as error:
-        cargar_configuracion(ruta_env=tmp_path / 'ausente', entorno=valores)
-    assert CLAVE_SIMULADA not in str(error.value)
-
-
-def test_clave_faltante_impide_arranque_sin_crear_bd(tmp_path, monkeypatch):
-    def cargar(**kwargs):
-        return cargar_configuracion(ruta_env=tmp_path / 'ausente', entorno={'EVALUADOR': 'gemini'})
-    monkeypatch.setattr(modulo_main, 'cargar_configuracion', cargar)
-    ruta = tmp_path / 'no_creada.db'
-    with pytest.raises(RuntimeError, match='Falta GEMINI_API_KEY'):
-        with TestClient(modulo_main.crear_aplicacion(f'sqlite:///{ruta.as_posix()}')):
-            pass
-    assert not ruta.exists()
 
 
 def test_peticion_salida_estructurada_contexto_exclusivo_y_latencia():
