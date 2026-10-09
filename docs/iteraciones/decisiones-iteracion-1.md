@@ -6,6 +6,55 @@ Formato de cada entrada: fecha, fase, decisión, motivo y archivos afectados.
 
 ## Anexo de cierre, perfil y resultados
 
+### 2026-10-09 · F5: verificación final del anexo
+
+**Autorización y alcance.** Solicitud directa «procede con F5»; puntos 1–5
+de F5 de `spec-iteracion-1-cierre-perfil-resultados.md`. Se verifican ambos
+repos y se actualizan origen de datos, plan y pendientes del frontend.
+El resumen por fase, archivos y evidencias está en
+`ov_frontend/docs/student-experience/informe-f5-cierre-perfil-resultados.md`.
+No cambia implementación, contrato, dependencias ni almacenamiento.
+
+**Suites completas.** Backend: **1095 aprobadas, cuatro omitidas, cero
+fallas y dos advertencias previas**, en **1174,21 segundos**. Mismo
+resultado que F2 y cuatro aprobadas más que F0 (1091). Omisiones:
+PostgreSQL sin `TEST_POSTGRES_URL`; advertencias: Starlette/httpx y Google
+GenAI. Evaluador falso y temporales externos, sin llamadas a Gemini.
+Frontend: **463 pruebas, 449 aprobadas y 14 fallas previas**, sin omitidas
+ni canceladas; +51 aprobadas y una falla menos frente a F0. Frente a F4
+hay ocho aprobadas más y los mismos 14 diagnósticos, excluyendo duraciones
+y posiciones de pila. Dos expectativas antiguas del libro se adaptan a
+la spec F4b aprobada por el usuario; no se modifican las 14 fallas previas.
+Build y lint correctos; estructura: **565 archivos, cero infracciones y
+cero excepciones**; resultados dirigidos: **37 aprobadas, cero fallas**.
+Permanece el aviso de tamaño del bundle.
+
+**Revisión manual.** Aplicación completa con shell y módulo reales,
+escritorio y teléfono, API contra una SQLite nueva externa creada con
+Alembic/semilla plataforma. Bienvenida y repetición desde navegador,
+ficha del cierre, perfil, libro/revelación, intereses, inteligencias demo,
+guías, filtro, favoritos y plan. Para alcanzar el resultado se preparan
+las otras ocho actividades del Camino y los catorce encuentros mediante
+peticiones API a esa base desechable; no se afirma haberlas recorrido en
+la interfaz. En local se completan bienvenida, La plaza de los rumores
+con ficha/pieza, su repetición y el primer encuentro de Mara, y se revisan
+las mismas vistas y acciones. Se conserva la identificación de demo.
+Scroll final dentro del módulo, documento fijo y sin desbordamiento
+horizontal en teléfono. No se toca la BD existente del usuario.
+
+**Pendientes.** La duración de presentación procede literalmente del
+catálogo aprobado en la corrección F4; no existe en el contrato remoto.
+Siguen pendientes testimonios sin contenido/persona, catálogo incompleto
+e íconos de la Central. Se confirma la pérdida del recibo de cierre al
+volver desde una ficha en ambos modos. Se detecta y registra la recarga
+directa del detalle API que redirige al libro durante la carga inicial;
+la entrada desde el libro funciona. F5 registra estos límites, no agrega
+guardas nuevas ni interfaz para cubrirlos.
+
+**Cierre.** Un commit F5 por repo en `iteracion-1`, sin push. Logs, bases
+y capturas `f5-*` fuera de ambos repos. F5 termina y el trabajo se detiene;
+no se adelanta otra fase ni se declaran resueltas las fallas previas.
+
 ### 2026-10-09 · F2: descripciones de dimensiones
 
 **Decisión y motivo.** Se ejecuta únicamente F2 del anexo. RIASEC usa
