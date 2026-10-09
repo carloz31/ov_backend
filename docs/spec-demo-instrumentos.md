@@ -1,5 +1,7 @@
 # Demo de instrumentos, resultados y recomendación de carreras: especificación para FastAPI
 
+> Los datos y escenarios de esta spec se retiraron; sus reglas de comportamiento siguen vigentes.
+
 ## 1. Objetivo
 
 Extender el backend de la demo de desbloqueos para verificar que el modelo de datos permite:

@@ -3124,3 +3124,80 @@ No cambian interfaz, contenido, contrato ni datos de la plataforma. Los
 informes y temporales permanecen fuera de ambos repositorios. No se llama
 a Gemini ni se hace push. Un commit de P5 en el frontend y otro en el
 backend para este registro. P5 cerrada; P6 queda pendiente.
+
+
+### P6 · Documentación e informe final (9 de octubre de 2026)
+
+Se actualizan AGENTS.md, README y `.env.example` de ambos repos. Los AGENTS.md incluyen la estructura actual de pruebas, las tablas de impacto de §§6.3/8.3 y la política de §9: impacto durante el desarrollo, impacto más escenarios/servidor al cerrar fase y suites completas al cerrar iteración o integrar. La sección compartida queda idéntica en ambos repos. En los tres `docs/spec-demo-*.md` se añade la nota de retiro exigida, conservando el contenido histórico y sus reglas de comportamiento. El README del backend sustituye las instrucciones operativas retiradas por la preparación actual con Alembic, plataforma/piloto y reinicio de desarrollo. No se modifican código, contratos, interfaz, datos, pruebas, esquema ni dependencias en P6.
+
+#### Conteos y tiempos medidos
+
+| Momento | Repo y modalidad | Casos | Resultado | Tiempo |
+|---|---|---:|---|---:|
+| P0 | Backend secuencial | 1099 | 1095 pasan; 4 omitidos | 788,50 s |
+| P2 | Backend secuencial, tras retiro | 530 | 526 pasan; 4 omitidos | 227,94 s |
+| P3 | Backend secuencial, tras reorganización | 530 | 526 pasan; 4 omitidos | 192,37 s |
+| P4 | Backend secuencial, plantillas | 530 | 526 pasan; 4 omitidos | 143,86 s |
+| P4 | Backend `-n auto`, 20 procesos | 530 | 526 pasan; 4 omitidos | 46,18 s |
+| P0 | Frontend completo | 463 | 449 pasan; 14 fallas previas | 22,534 s |
+| P5 | Frontend completo, tras reorganización | 463 | 449 pasan; mismas 14 fallas | 37,285 s |
+
+P4 paralelo tarda un 94,1 % menos que P0 (17,1 veces más rápido). Esa diferencia combina retiro, reorganización, plantillas y paralelismo; no mide solo la optimización de fixtures. Frente a P3, P4 secuencial reduce un 25,2 % y P4 paralelo un 76,0 %. Frente a P4 secuencial, el paralelo reduce un 67,9 %. Son mediciones de esta máquina, no garantías de tiempo. El frontend conserva exactamente sus casos y resultados; la reorganización no demuestra una mejora temporal. P4 solo tocó backend, por lo que la comparación del frontend usa P5.
+
+#### Eliminaciones, ports y adaptaciones
+
+- El inventario P1 clasificó 418 casos A, 74 B y 607 C sobre los 1099 originales. Se eliminaron los 607 casos originales C ligados a la demo, incluido el registro y las páginas HTML, y tres variantes A parametrizadas con el conjunto retirado. Se conservan 415 A y 74 B; en B solo cambia la base de preparación, no las aserciones.
+- Se implementaron los 40 ports de comportamiento R01–R40 aprobados en [el inventario](inventario-retiro-demo.md), sobre plataforma, y un invariante nuevo que impide lecturas de datos en app. Conteo: `1099 - 607 - 3 + 40 + 1 = 530`. Los ports agrupan comportamiento; no son una promesa de conservar toda la cobertura de los 607 casos originales. El registro ligado a demo queda sin portar según la spec; las pruebas unitarias independientes del registro se conservan.
+- P2 adaptó las rutas de reinicio y listas de rutas expuestas autorizadas, eliminó parámetros demo y trasladó utilidades compartidas a soporte. En frontend solo cambió la aserción de `/desarrollo/reiniciar`. Los detalles y auditorías están en P2 y en el inventario.
+- P3 repartió el backend en 297 casos unitarios y 233 de integración. P4 cambió la preparación a copias de plantillas y mantuvo los 530 casos, 214 funciones de prueba y 815 aserciones auditadas; los casos cuyo nombre de fixture se renombró cambian únicamente ese identificador parametrizado. Las 24 excepciones de setup superiores a 1 s medidas tras P5 y sus motivos se listan en P5.
+- P5 movió 27 archivos del frontend: 12 locales, 14 de servidor y uno de despliegue. Se conservan nombres, contenido y aserciones; solo se ajustaron las importaciones relativas de soporte. Fixtures y soporte mantienen su ubicación. Las 14 fallas de aventura son previas y no se corrigen en esta spec.
+
+#### Comandos por carpeta
+
+Desde ov_backend, sustituir `<carpeta>` por uno de los destinos existentes:
+
+```powershell
+uv run pytest tests/unit/<carpeta> -q
+uv run pytest tests/integration/<carpeta> -q
+uv run pytest tests/integration/escenarios/plataforma -q
+uv run pytest tests/integration/escenarios/piloto -q
+uv run pytest -n auto -q
+```
+
+| Tipo | Carpetas existentes |
+|---|---|
+| `tests/unit` | `arquitectura`, `configuracion`, `instrumentos`, `motor`, `registro` |
+| `tests/integration` | `actividades`, `cuentas`, `desarrollo`, `fichas`, `instrumentos`, `logros`, `motor`, `datos`, `migraciones`, `contrato`, `escenarios` |
+
+Para trabajar en varios dominios, pasar todas sus carpetas al mismo comando. Las pruebas PostgreSQL están en `tests/integration/migraciones`, marca `postgres`, y se omiten sin `TEST_POSTGRES_URL`. Para Windows con fallo del lanzador, sustituir `uv run pytest` por `uv run python -m pytest`; los argumentos no cambian. Usar temporales externos exclusivos mediante `--basetemp` y `-p no:cacheprovider` cuando sea necesario.
+
+Desde ov_frontend:
+
+```powershell
+npm run test:local
+npm run test:servidor
+npm run test:despliegue
+node --test "tests/local/actividades/**/*.test.mjs"
+node --test "tests/servidor/instrumentos/**/*.test.mjs"
+npm test
+npm run build
+npm run lint
+npm run check:estructura
+```
+
+| Tipo | Carpetas existentes para el glob con comillas |
+|---|---|
+| `tests/local` | `actividades`, `aventura`, `casos`, `perfil`, `portales` |
+| `tests/servidor` | `actividades`, `mapa`, `instrumentos`, `logros`, `perfil` |
+| `tests/despliegue` | Prueba de assets, sin subcarpeta de dominio |
+
+Para otra área, sustituir la carpeta en el glob manteniendo las comillas. No ejecutar carpetas inexistentes ni agregar carpetas vacías. Para cambios de contrato, exportar desde ov_backend con `uv run python scripts/exportar_fixtures_front.py --destino "<ruta de ov_frontend>/tests/fixtures/servidor"` y ejecutar `npm run test:servidor` en ov_frontend.
+
+
+#### Verificación final P6
+
+Se ejecutan las suites completas de ambos repos para el cierre documental: backend `uv run python -m pytest -n auto -q -p no:cacheprovider --basetemp=<temporal externo>/ov-p6-final`, con **526 aprobadas y 4 omitidas en 89,24 s**, cero fallas y las 40 advertencias de terceros repetidas en 20 procesos. Incluye todos los dominios unitarios, de integración y ambos grupos de escenarios. No se configura PostgreSQL ni se llama a Gemini.
+
+Frontend `npm test`: **463 casos, 449 aprobados y 14 fallas previas en 56,259 s**. Los nombres y resultados coinciden con P5, incluidas las 14 fallas de aventura. Se ejecutan todas las carpetas local, servidor y despliegue. `npm run build`, `npm run lint` y `npm run check:estructura` pasan: 565 archivos, cero infracciones y cero excepciones; persiste el aviso previo de bundle mayor de 500 kB. Estas ejecuciones coinciden en el tiempo con la suite del backend y no sustituyen las mediciones P0/P4 de la tabla.
+
+Se comprueba que la sección compartida de los AGENTS.md es idéntica, que las tres specs históricas conservan exactamente su texto salvo la nota añadida y que `git diff --check` pasa en ambos repos. Solo hay cambios documentales y comentarios de los ejemplos de entorno. P6 cierra esta especificación sin push ni aceptación formal de la iteración; quedan las 14 fallas previas del frontend y la validación opcional de PostgreSQL.

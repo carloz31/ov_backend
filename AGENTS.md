@@ -4,13 +4,12 @@
 
 Backend en FastAPI de una plataforma gamificada de orientación vocacional. `ov_frontend` consume esta API.
 
-Las especificaciones son la fuente de verdad, y cada una extiende a la anterior sin cambiarla:
+Las especificaciones son la fuente de verdad:
 
-1. `docs/spec-demo-motor-desbloqueos.md`: motor de desbloqueos, acciones y consultas.
-2. `docs/spec-demo-instrumentos.md`: instrumentos, resultados y recomendación de carreras.
-3. `docs/spec-demo-registro-gemini.md`: actividades de registro con preguntas de seguimiento mediante Gemini.
-4. `docs/iteraciones/spec-iteracion-N.md` de la iteración vigente (hoy la 1): datos `plataforma`, integración con el front y adaptaciones de pruebas autorizadas.
-5. `docs/spec-refactor-estructura.md`: estructura del repo, base de datos, migraciones y carga de datos. Prevalece sobre lo que las anteriores dicen de semillas, `SEMILLA`, `RUTA_BD` y versión de esquema.
+1. `docs/iteraciones/spec-iteracion-N.md` de la iteración vigente (hoy la 1): alcance, datos `plataforma` e integración con el front.
+2. `docs/spec-demo-motor-desbloqueos.md`, `docs/spec-demo-instrumentos.md` y `docs/spec-demo-registro-gemini.md`: reglas de comportamiento del motor, instrumentos y registro. Sus datos y escenarios se retiraron; no son conjuntos disponibles para cargar.
+3. `docs/spec-refactor-estructura.md`: estructura, base de datos y migraciones. Prevalece sobre las referencias históricas a semillas, `SEMILLA`, `RUTA_BD` y versión de esquema.
+4. `docs/spec-pruebas-y-retiro-demo.md`: retiro de datos, páginas y rutas de demo; estructura, preparación y política de pruebas. Sustituye las instrucciones anteriores sobre esos elementos.
 
 Si dos especificaciones parecen contradecirse, detente y explica la contradicción antes de cambiar nada.
 
@@ -33,8 +32,7 @@ app/                    solo la aplicación
     instrumentos/       cálculo, consultas y resultados
     registro/           registro con LLM
   core/                 parámetros, caché de definiciones y contexto de consultas
-  static/               tablero de demo
-datos/                  todo lo que llena la base (plataforma, demo, Excel O*NET)
+datos/                  todo lo que llena la base (plataforma, piloto, Excel O*NET)
 migrations/             migraciones de Alembic
 scripts/                herramientas manuales
 tests/                  pruebas; ayudas en tests/soporte/
@@ -54,8 +52,8 @@ docs/                   especificaciones y decisiones
 | Un cuerpo de entrada o respuesta | `app/schemas/<dominio>.py`. |
 | Un umbral o constante de método | `app/core/parametros.py`. |
 | Una variable de entorno | `app/config.py` y `.env.example`. |
-| Datos de prueba o catálogo | `datos/plataforma.py` (o `datos/demo/`). Nunca en `app/`. |
-| Una tabla de estado de las cuentas | Además, en `TABLAS_DE_ESTADO` de `app/services/demo.py`, para que el reinicio la vacíe. |
+| Datos de prueba o catálogo | `datos/plataforma.py` (o `datos/piloto.py`). Nunca en `app/`. |
+| Una tabla de estado de las cuentas | Además, en `TABLAS_DE_ESTADO` de `app/services/desarrollo.py`, para que el reinicio la vacíe. |
 
 Si un dominio nuevo llega con la iteración (por ejemplo, favoritos o planes), créale un archivo en `services/`, `schemas/` y, si tiene tablas, en `models/`. Convierte un archivo en carpeta solo cuando ya no cabe en uno.
 
@@ -71,18 +69,18 @@ Si un dominio nuevo llega con la iteración (por ejemplo, favoritos o planes), c
 
 - La URL viene de `DATABASE_URL` (por defecto `sqlite:///ov.db` en la raíz). La aplicación debe funcionar igual con SQLite y PostgreSQL.
 - Nada de SQL específico de un motor fuera de `app/database.py`. Los índices parciales llevan `sqlite_where` y `postgresql_where`. No reemplaces `func.date` por `CAST(... AS DATE)` (en SQLite devuelve el año).
-- El esquema lo gestiona Alembic. La aplicación nunca llama a `create_all` ni siembra datos; solo las pruebas, `scripts/exportar_fixtures_front.py` y `scripts/evaluar_gemini.py`, sobre bases temporales, usan `create_all` (mediante los auxiliares de `datos.cargar`).
-- Todo cambio en `app/models/` lleva su migración (`uv run alembic revision --autogenerate -m "..."`), revisada a mano, en el mismo commit. `tests/test_migraciones.py` debe seguir en verde.
+- El esquema lo gestiona Alembic. La aplicación nunca llama a `create_all` ni siembra datos; solo las pruebas, `scripts/exportar_fixtures_front.py`, sobre bases temporales, usan `create_all` (mediante los auxiliares de `datos.cargar`).
+- Todo cambio en `app/models/` lleva su migración (`uv run alembic revision --autogenerate -m "..."`), revisada a mano, en el mismo commit. `tests/integration/migraciones/test_migraciones.py` debe seguir en verde.
 
 ## Datos
 
 | Conjunto | Para qué | Reglas |
 |---|---|---|
-| `demo` (`datos/demo/`) | La demo original y sus pruebas (E1–E17, I1–I14, registro). | No cambies sus datos, reglas ni los resultados esperados de sus escenarios. |
+| `piloto` (`datos/piloto.py`) | Piloto de evaluación y pruebas de integración. | Su alcance está definido en las especificaciones y decisiones vigentes del piloto. |
 | `plataforma` (`datos/plataforma.py`) | Datos alineados con el front, para integrarlo. | Los define la spec de la iteración vigente. Sus códigos son los ids del front. |
 
 - La aplicación no sabe qué conjunto tiene la base. Se carga con `uv run python -m datos.cargar <conjunto>`.
-- `POST /demo/reiniciar` borra el estado de las cuentas y conserva el catálogo.
+- `POST /desarrollo/reiniciar`, solo en `ENTORNO=desarrollo`, borra el estado de las cuentas y conserva el catálogo.
 - Los datos inventados se marcan con `DATO DE PRUEBA`.
 
 ## Reglas de trabajo
@@ -102,13 +100,41 @@ Si un dominio nuevo llega con la iteración (por ejemplo, favoritos o planes), c
 
 - Instalar: `uv sync` (con PostgreSQL: `uv sync --extra postgres`)
 - Crear o actualizar el esquema: `uv run alembic upgrade head`
-- Cargar datos: `uv run python -m datos.cargar plataforma` (o `demo`; `--vaciar` para empezar de cero)
+- Cargar datos: `uv run python -m datos.cargar plataforma` (o `piloto`; `--vaciar` para empezar de cero)
 - Levantar: `uv run uvicorn app.main:app --reload`
-- Tests: `uv run pytest -q`
+- Suite completa: `uv run pytest -n auto -q`
 - Nueva migración: `uv run alembic revision --autogenerate -m "<descripción>"`
 - Fixtures para el front: `uv run python scripts/exportar_fixtures_front.py --destino <carpeta de ov_frontend>/tests/fixtures/servidor`
 
-Corre `uv run pytest -q` antes de dar por terminada cualquier fase.
+### Organización e impacto de pruebas
+
+```text
+tests/
+  conftest.py                 # solo autouse sin base: evaluador falso
+  soporte/                    # ayudas compartidas; ninguna prueba importa test_*.py
+  unit/                       # arquitectura, configuracion, instrumentos, motor, registro
+  integration/
+    conftest.py               # plantillas SQLite por sesión y proceso; copia por prueba
+    actividades/, cuentas/, desarrollo/, fichas/, instrumentos/, logros/, motor/
+    datos/, migraciones/, contrato/
+    escenarios/plataforma/, escenarios/piloto/
+```
+
+`unit/` no usa TestClient ni bases temporales sembradas; permite falsos y SQLite en memoria sin sembrar conjuntos. Lo que use una base sembrada, migraciones, PostgreSQL o TestClient va en `integration/`; ante duda, también. Solo se crean carpetas con pruebas. Los nombres `test_*.py` son únicos; se usa `--import-mode=importlib` y `pythonpath = [".", "tests/soporte"]`.
+
+Los fixtures copian plantillas cerradas, con una base independiente por prueba. Las pruebas de carga, migraciones y atomicidad de la carga preparan bases reales. Las pruebas `postgres` se omiten sin `TEST_POSTGRES_URL`.
+
+| Si cambias… | Corre primero |
+|---|---|
+| `app/services/<dominio>*`, `app/api/<dominio>.py`, `app/schemas/<dominio>.py` | `tests/unit/<dominio>` y `tests/integration/<dominio>`, si existen |
+| `app/services/motor/*`, `app/services/eventos.py`, `app/services/comun.py` | `tests/unit/motor`, `tests/integration/motor`, `tests/integration/actividades` y `tests/integration/escenarios` |
+| `app/models/*`, `migrations/*` | `tests/integration/migraciones` y `tests/integration/datos` |
+| `datos/*` | `tests/integration/datos` y `tests/integration/escenarios` |
+| `app/main.py`, `app/config.py`, `app/database.py`, `app/dependencies.py`, `app/exceptions.py`, `app/core/*` | `tests/unit` y `tests/integration/escenarios` |
+| Una respuesta que consume el front | `tests/integration/contrato` + regenerar fixtures + `npm run test:servidor` en ov_frontend |
+| Cierre | Aplicar la política compartida del final: impacto y escenarios por fase; suite completa al cerrar una iteración o integrar |
+
+Para una carpeta: `uv run pytest tests/integration/instrumentos -q`. Si falla el lanzador de Windows, usar el equivalente `uv run python -m pytest`. Mantener temporales y logs fuera del repo; por ejemplo, `--basetemp="$env:TEMP/ov-pruebas" -p no:cacheprovider`, con una carpeta temporal exclusiva de la ejecución.
 
 ## Convenciones
 
@@ -121,8 +147,8 @@ Corre `uv run pytest -q` antes de dar por terminada cualquier fase.
 
 - La clave de Gemini se lee de `.env`, que nunca se versiona. No la escribas en código, logs, respuestas, errores ni documentación.
 - La aplicación admite `EVALUADOR=gemini` o `EVALUADOR=falso`, como define `docs/spec-demo-registro-gemini.md`. El valor por defecto es `falso`.
-- Los tests usan siempre el evaluador falso y nunca acceden a la red (salvo `tests/test_postgres.py`, que se omite si no hay `TEST_POSTGRES_URL`).
-- No ejecutes nada que llame a la API real de Gemini (la aplicación con `EVALUADOR=gemini` o `scripts/evaluar_gemini.py`) salvo que yo lo pida explícitamente.
+- Los tests usan siempre el evaluador falso y nunca acceden a la red (salvo `tests/integration/migraciones/test_postgres.py`, que se omite si no hay `TEST_POSTGRES_URL`).
+- No ejecutes nada que llame a la API real de Gemini (la aplicación con `EVALUADOR=gemini`) salvo que yo lo pida explícitamente.
 
 ## Reglas compartidas entre ov_backend y ov_frontend
 
@@ -145,6 +171,15 @@ Si dos fuentes se contradicen, detente y explica la contradicción. No la resuel
 - Las decisiones que afectan a ambos repos van en `ov_backend/docs/iteraciones/decisiones-iteracion-N.md`.
 - Datos de prueba: si el dato existe en el front, úsalo adaptándolo. Si no existe, créalo y márcalo con `DATO DE PRUEBA` (comentario en código) o `"_dato_de_prueba": true` (JSON).
 - Sin dependencias nuevas en ninguno de los repos sin avisar antes.
+
+
+**Política de ejecución de pruebas.** Las tablas de impacto de cada repo indican las carpetas afectadas. Esta política prevalece sobre las instrucciones antiguas de ejecutar toda la suite en cada fase.
+
+| Momento | Qué se corre |
+|---|---|
+| Durante el desarrollo, tras cada cambio | Solo las carpetas de la tabla de impacto. |
+| Al terminar una fase de una spec | Las carpetas de impacto de todo lo que tocó la fase, más `tests/integration/escenarios` (back) o `npm run test:servidor` (front). Se informa qué carpetas se corrieron. |
+| Al cerrar una iteración o antes de integrar una rama | Suite completa de ambos repos: `uv run pytest -n auto -q`; `npm test`, `npm run build`, `npm run lint` y `npm run check:estructura`. |
 
 **Una sola base de datos.**
 

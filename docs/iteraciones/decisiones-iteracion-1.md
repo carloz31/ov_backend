@@ -1046,3 +1046,10 @@ columna de posición. No hay migraciones, dependencias ni HUs nuevas. El
 registro de validación y los 530 casos resultantes están en
 `docs/decisiones.md`, sección «Pruebas y retiro de demo», P2. La reorganización
 de pruebas y la aceleración se reservan para P3/P4; no se hace push.
+
+
+## P6 · Documentación del retiro y política de pruebas (2026-10-09)
+
+Se actualizan los AGENTS.md, README y ejemplos de entorno de ambos repos tras P2–P5. La sección compartida es idéntica: durante el desarrollo se prueban las carpetas afectadas; al cerrar cada fase se añaden escenarios en backend y servidor en frontend; al cerrar una iteración o integrar se ejecutan ambas suites completas y build, lint y estructura del frontend. Las tablas de impacto y comandos están en los respectivos AGENTS.md.
+
+El reinicio vigente es `POST /desarrollo/reiniciar`, solo en desarrollo. La demo local del frontend se conserva. Las especificaciones antiguas conservan sus reglas de comportamiento con una nota histórica; la spec de retiro prevalece para los elementos eliminados. El informe P0–P6 está en `docs/decisiones.md`, sección «Pruebas y retiro de demo». No se modifican API, interfaz, datos, pruebas ni dependencias en P6. Las 14 fallas previas del frontend quedan fuera de este alcance; no se declara la aceptación formal de la iteración.

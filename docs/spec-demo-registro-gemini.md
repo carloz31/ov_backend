@@ -1,5 +1,7 @@
 # Demo de actividad de registro con preguntas de seguimiento (Gemini): especificación para FastAPI
 
+> Los datos y escenarios de esta spec se retiraron; sus reglas de comportamiento siguen vigentes.
+
 > **Versión 2.** Reemplaza a la versión 1. Cambio principal: el estudiante ya no reescribe su respuesta cuando es vaga. Lumi le hace una **pregunta de seguimiento** sobre los criterios que faltan, el estudiante la responde como un turno nuevo, y el registro final es la respuesta inicial más sus turnos. También cambia el papel del mínimo de caracteres: ya no decide si se llama a Gemini, sino que es el respaldo cuando Gemini falla o no responde a tiempo. Si la implementación de la versión 1 ya avanzó, se conservan la semilla, la validación del JSON, la caché, el evaluador falso y la lógica de evaluación, y se ajustan la tabla de respuestas, las acciones y los escenarios según esta versión. Las diferencias se anotan en `docs/decisiones.md`, bajo "Registro v2".
 
 ## 1. Objetivo

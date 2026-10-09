@@ -1,5 +1,7 @@
 # Demo del motor de desbloqueos: especificación para implementar en FastAPI
 
+> Los datos y escenarios de esta spec se retiraron; sus reglas de comportamiento siguen vigentes.
+
 ## 1. Objetivo
 
 Construir un backend de demostración que muestre cómo la plataforma de orientación vocacional desbloquea contenido a partir de las acciones de los usuarios. La demo debe permitir tres cosas:
