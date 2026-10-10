@@ -9,6 +9,7 @@ class Rol(StrEnum):
 class Espacio(StrEnum):
     MISIONES_CAMPO = "MISIONES_CAMPO"
     CIUDAD = "CIUDAD"
+    PORTAL_FAMILIA = "PORTAL_FAMILIA"
 
 
 class Audiencia(StrEnum):

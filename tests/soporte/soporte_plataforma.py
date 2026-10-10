@@ -12,6 +12,19 @@ CAMINO = ('mission-welcome', 'enc-mitos', 'act-07', 'mission-story', 'mission-fu
           'mission-compass', 'act-06', 'mission-expectations', 'mission-next-step')
 MARA = tuple(f'act-tip-{n:02}' for n in range(1, 15))
 
+BLOQUE_FAMILIA = {
+    'codigo': 'FAMILIA', 'nombre': 'Actividades para familias', 'numero': 1,
+    'espacio': 'PORTAL_FAMILIA', 'estado': 'DISPONIBLE',
+    'actividades': [
+        {'codigo': 'pad-01-rol', 'titulo': 'Acompañar sin decidir por él o ella',
+         'tipo': 'INFORMATIVA', 'orden': 1, 'contenido': 'pad_01_acompanar',
+         'visibilidad': 'SIEMPRE', 'visible': True, 'estado': 'DISPONIBLE'},
+        {'codigo': 'pad-02-info', 'titulo': 'Conversar con información de hoy',
+         'tipo': 'INFORMATIVA', 'orden': 2, 'contenido': 'pad_02_informacion',
+         'visibilidad': 'SIEMPRE', 'visible': True, 'estado': 'BLOQUEADA'},
+    ],
+}
+
 
 def pedir(cliente, metodo, ruta, datos=None, esperado=200):
     respuesta = cliente.request(metodo, ruta, json=datos)

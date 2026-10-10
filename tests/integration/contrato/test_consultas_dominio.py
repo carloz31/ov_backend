@@ -7,7 +7,7 @@ from app.models import Actividad, Bloque, Cuenta, EstadoProgreso, ProgresoActivi
 from datos.plataforma import (
     ACTIVIDADES_CAMINO, ACTIVIDADES_CIUDAD, CONTENIDOS_ACTIVIDADES, FICHAS, INSIGNIAS, NIVELES,
 )
-from soporte_plataforma import CAMINO, avanzar_camino, completar, pedir, responder
+from soporte_plataforma import BLOQUE_FAMILIA, CAMINO, avanzar_camino, completar, pedir, responder
 
 
 RUTAS = ('resumen', 'actividades', 'fichas', 'logros', 'testimonios', 'diario/preguntas', 'conversaciones')
@@ -86,6 +86,8 @@ def test_apoderado_sin_listas_estudiantiles(cliente, ruta):
         assert respuesta == {'insignias': [], 'niveles': []}
     elif ruta == 'conversaciones':
         assert respuesta == {'estado': 'BLOQUEADA'}
+    elif ruta == 'actividades':
+        assert respuesta == [BLOQUE_FAMILIA]
     else:
         assert respuesta == []
 

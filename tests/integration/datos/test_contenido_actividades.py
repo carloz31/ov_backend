@@ -32,6 +32,8 @@ def test_claves_y_visibilidad_de_los_conjuntos(tmp_path, conjunto):
             'mission-next-step': 'registro_siguiente_paso',
             **{f'act-tip-{n:02}': 'instrumento_mara' for n in range(1, 15)},
             'act-tip-final': 'encuentro_resultado_elena',
+            'pad-01-rol': 'pad_01_acompanar',
+            'pad-02-info': 'pad_02_informacion',
         }
     finally:
         motor.dispose()

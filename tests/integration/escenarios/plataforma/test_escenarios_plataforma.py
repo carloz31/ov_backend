@@ -113,7 +113,10 @@ def test_p13_progreso_de_lo_bloqueado(cliente):
 
 def test_p14_audiencia(cliente):
     rosa = estado(cliente, 'apo-rosa')
-    assert rosa['bloques'] == rosa['fichas'] == rosa['insignias'] == []
+    familia, = rosa['bloques']
+    assert familia['codigo'] == 'FAMILIA'
+    assert [a['codigo'] for a in familia['actividades']] == ['pad-01-rol', 'pad-02-info']
+    assert rosa['fichas'] == rosa['insignias'] == []
     assert rosa['nivel_actual'] is None
 
 

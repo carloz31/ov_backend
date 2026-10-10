@@ -16,10 +16,10 @@ def test_cargador_cli_admite_piloto_y_vaciado(tmp_path):
     entorno = {**os.environ, 'DATABASE_URL': url, 'EVALUADOR': 'falso'}
     resultado = subprocess.run([sys.executable, '-c', codigo], env=entorno, capture_output=True, text=True)
     assert resultado.returncode == 0, resultado.stderr
-    assert 'actividad: 21' in resultado.stdout
+    assert 'actividad: 23' in resultado.stdout
     app = crear_aplicacion(url)
     try:
         with app.state.fabrica_sesiones() as sesion:
-            assert len(sesion.execute(select(Base.metadata.tables['actividad'])).all()) == 21
+            assert len(sesion.execute(select(Base.metadata.tables['actividad'])).all()) == 23
     finally:
         app.state.motor_bd.dispose()

@@ -15,7 +15,11 @@ from datos.ocupaciones import RUTA_OCUPACIONES, leer_ocupaciones, validar_distri
 CUENTAS = (('est-ana', 'Ana', 'ESTUDIANTE'), ('est-luis', 'Luis', 'ESTUDIANTE'), ('apo-rosa', 'Rosa', 'APODERADO'))
 
 BLOQUES = (('CAMINO', 1, 'El camino', 'MISIONES_CAMPO', 'ESTUDIANTE'),
- ('CIUDAD', 2, 'La ciudad', 'CIUDAD', 'ESTUDIANTE'))
+ ('CIUDAD', 2, 'La ciudad', 'CIUDAD', 'ESTUDIANTE'),
+ ('FAMILIA', 1, 'Actividades para familias', 'PORTAL_FAMILIA', 'APODERADO'))
+
+ACTIVIDADES_FAMILIA = (('pad-01-rol', 'Acompañar sin decidir por él o ella', 'INFORMATIVA'),
+ ('pad-02-info', 'Conversar con información de hoy', 'INFORMATIVA'))
 
 ACTIVIDADES_CAMINO = (('mission-welcome', 'El inicio del viaje', 'INFORMATIVA'),
  ('enc-mitos', 'La plaza de los rumores', 'INFORMATIVA'),
@@ -56,6 +60,8 @@ CONTENIDOS_ACTIVIDADES = {
     'mission-next-step': 'registro_siguiente_paso',
     **{f'act-tip-{numero:02}': 'instrumento_mara' for numero in range(1, 15)},
     'act-tip-final': 'encuentro_resultado_elena',
+    'pad-01-rol': 'pad_01_acompanar',
+    'pad-02-info': 'pad_02_informacion',
 }
 
 FICHAS = (('first-steps', 'Tres pistas para comenzar el viaje', 'Observar, conversar y probar: tu primera brújula.'),
@@ -291,6 +297,8 @@ REGLAS = (
     ('R-NIV-5', 'NIVEL', 5,
      (CONDICION_MISIONES, CONDICION_CAMINO, ('SUPERA_CASO', None, 'REFERENCIAS_DISTINTAS', 6),
       ('PUBLICA_ENTREVISTA', None, 'EVENTOS', 1), ('COMPLETA_CONVERSACION', None, 'EVENTOS', 1)), 3),
+    ('R-pad-02-info', 'ACTIVIDAD', 'pad-02-info',
+     (('COMPLETA_ACTIVIDAD', 'pad-01-rol', 'EVENTOS', 1),), None),
 )
 
 
@@ -303,7 +311,7 @@ def _leer_catalogo_seleccionado():
 
 
 def _cargar_estructura(sesion, *, camino=ACTIVIDADES_CAMINO, ciudad=ACTIVIDADES_CIUDAD,
-                       contenidos=CONTENIDOS_ACTIVIDADES):
+                       familia=ACTIVIDADES_FAMILIA, contenidos=CONTENIDOS_ACTIVIDADES):
     cuentas = {c: modelos.Cuenta(codigo=c, nombre=n, rol=modelos.Rol(r)) for c, n, r in CUENTAS}
     bloques = {c: modelos.Bloque(codigo=c, numero=num, nombre=n, espacio=modelos.Espacio(e),
                                 audiencia=modelos.Audiencia(a)) for c, num, n, e, a in BLOQUES}
@@ -316,7 +324,7 @@ def _cargar_estructura(sesion, *, camino=ACTIVIDADES_CAMINO, ciudad=ACTIVIDADES_
     sesion.add(modelos.VinculoFamiliar(codigo='VIN-ANA', estudiante_id=cuentas['est-ana'].id,
                                       apoderado_id=cuentas['apo-rosa'].id))
     actividades = {}
-    for bloque, filas in (('CAMINO', camino), ('CIUDAD', ciudad)):
+    for bloque, filas in (('CAMINO', camino), ('CIUDAD', ciudad), ('FAMILIA', familia)):
         actividades.update({c: modelos.Actividad(codigo=c, titulo=t, tipo=modelos.TipoActividad(tipo),
                                                 contenido=contenidos[c],
                                                 orden=orden, bloque_id=bloques[bloque].id)

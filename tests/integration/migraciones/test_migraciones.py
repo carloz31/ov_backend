@@ -177,7 +177,8 @@ def test_migracion_0002_conserva_filas_y_referencias_de_0001(tmp_path, monkeypat
                            for nombre, tabla in anteriores.tables.items() if nombre != 'alembic_version'}
         command.upgrade(configuracion, 'head')
         with motor.connect() as conexion:
-            assert conexion.scalar(text('SELECT version_num FROM alembic_version')) == '0002'
+            assert conexion.scalar(text('SELECT version_num FROM alembic_version')) == (
+                ScriptDirectory.from_config(configuracion).get_current_head())
             assert conexion.execute(text('SELECT codigo, contenido, visibilidad FROM actividad ORDER BY id')).all() == [
                 ('ACT-01', 'act_01', 'SIEMPRE'), ('REG-ACT08', 'reg_act08', 'SIEMPRE'),
             ]
@@ -218,3 +219,66 @@ def test_visibilidad_predeterminada_y_al_desbloquear_en_base_migrada(base_migrad
         assert conexion.scalar(text('SELECT visibilidad FROM actividad')) == 'SIEMPRE'
         conexion.execute(text("UPDATE actividad SET visibilidad = 'AL_DESBLOQUEAR'"))
         assert conexion.scalar(text('SELECT visibilidad FROM actividad')) == 'AL_DESBLOQUEAR'
+
+
+@pytest.mark.parametrize('desde_0002', [False, True], ids=['base_nueva', 'desde_0002'])
+def test_migracion_0003_admite_familia_conserva_datos_y_rechaza_otros_espacios(tmp_path, monkeypatch, desde_0002):
+    url = f'sqlite:///{(tmp_path / "familia.db").as_posix()}'
+    monkeypatch.setenv('DATABASE_URL', url)
+    configuracion = Config(str(RUTA_CONFIGURACION))
+    motor = database.crear_motor_bd(url)
+    try:
+        anteriores = {}
+        if desde_0002:
+            command.upgrade(configuracion, '0002')
+            with motor.begin() as conexion:
+                # DATO DE PRUEBA: relaciones anteriores a PORTAL_FAMILIA.
+                conexion.execute(text("INSERT INTO cuenta (id, codigo, nombre, rol) "
+                                      "VALUES (1, 'prueba', 'Prueba', 'ESTUDIANTE')"))
+                conexion.execute(text("INSERT INTO bloque (id, codigo, numero, nombre, espacio, audiencia) "
+                                      "VALUES (1, 'B1', 1, 'Prueba', 'CIUDAD', 'ESTUDIANTE')"))
+                conexion.execute(text("INSERT INTO actividad (id, codigo, titulo, tipo, orden, bloque_id, contenido) "
+                                      "VALUES (1, 'prueba', 'Prueba', 'INFORMATIVA', 1, 1, 'prueba')"))
+                conexion.execute(text("INSERT INTO progreso_actividad (cuenta_id, actividad_id, estado) "
+                                      "VALUES (1, 1, 'COMPLETADA')"))
+                anteriores = {nombre: conexion.execute(select(Base.metadata.tables[nombre])).all()
+                              for nombre in ('cuenta', 'bloque', 'actividad', 'progreso_actividad')}
+        command.upgrade(configuracion, 'head')
+        with motor.begin() as conexion:
+            assert conexion.scalar(text('SELECT version_num FROM alembic_version')) == '0003'
+            for nombre, filas in anteriores.items():
+                assert conexion.execute(select(Base.metadata.tables[nombre])).all() == filas
+            conexion.execute(text("INSERT INTO bloque (codigo, numero, nombre, espacio, audiencia) "
+                                  "VALUES ('familia-prueba', 1, 'DATO DE PRUEBA', 'PORTAL_FAMILIA', 'APODERADO')"))
+        with pytest.raises(IntegrityError), motor.begin() as conexion:
+            conexion.execute(text("INSERT INTO bloque (codigo, numero, nombre, espacio, audiencia) "
+                                  "VALUES ('otro-prueba', 1, 'DATO DE PRUEBA', 'OTRO', 'APODERADO')"))
+        with motor.connect() as conexion:
+            assert conexion.execute(text('PRAGMA foreign_key_check')).all() == []
+    finally:
+        motor.dispose()
+
+
+def test_downgrade_0003_con_familia_falla_sin_perder_catalogo_ni_estado(base_migrada):
+    url, configuracion, motor = base_migrada
+    preparar_base(url, 'plataforma')
+    aplicacion = crear_aplicacion(url)
+    try:
+        with TestClient(aplicacion) as cliente:
+            for actividad in ('pad-01-rol', 'pad-02-info'):
+                assert cliente.post('/acciones/completar-actividad', json={
+                    'cuenta': 'apo-rosa', 'actividad': actividad,
+                }).status_code == 200
+        with motor.connect() as conexion:
+            anteriores = {tabla.name: conexion.execute(select(tabla).order_by(*tabla.primary_key.columns)).all()
+                          for tabla in Base.metadata.sorted_tables}
+        with pytest.raises(RuntimeError, match='existen bloques PORTAL_FAMILIA'):
+            command.downgrade(configuracion, '0002')
+        assert set(inspect(motor).get_table_names()) == set(Base.metadata.tables) | {'alembic_version'}
+        with motor.connect() as conexion:
+            assert conexion.scalar(text('SELECT version_num FROM alembic_version')) == '0003'
+            for tabla in Base.metadata.sorted_tables:
+                assert conexion.execute(select(tabla).order_by(*tabla.primary_key.columns)).all() == anteriores[tabla.name]
+            assert conexion.execute(text('PRAGMA foreign_key_check')).all() == []
+    finally:
+        aplicacion.state.motor_bd.dispose()

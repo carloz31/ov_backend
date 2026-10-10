@@ -21,4 +21,6 @@ def test_invariantes_desbloqueos_nivel_audiencia_y_eventos(cliente, aplicacion):
     assert sum(e['tipo'] == 'COMPLETA_ACTIVIDAD' and e['referencia'] == 'mission-next-step' for e in historial) == 2
     assert actividades(cliente)['mission-next-step'] == 'COMPLETADA'
     assert eventos(cliente, 'est-luis') == [] and estado(cliente, 'est-luis')['nivel_actual']['numero'] == 1
-    assert estado(cliente, 'apo-rosa')['bloques'] == []
+    familia, = estado(cliente, 'apo-rosa')['bloques']
+    assert familia['codigo'] == 'FAMILIA'
+    assert [a['codigo'] for a in familia['actividades']] == ['pad-01-rol', 'pad-02-info']

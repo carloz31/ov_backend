@@ -15,8 +15,8 @@ from datos.ocupaciones import leer_ocupaciones, validar_distribucion_items
 
 
 def test_catalogo_estructura_y_estado_vacio(sesion, aplicacion):
-    esperados = {'cuenta': 3, 'vinculo_familiar': 1, 'bloque': 2, 'actividad': 24,
-        'ficha': 4, 'insignia': 10, 'nivel': 5, 'regla_desbloqueo': 44, 'condicion_desbloqueo': 53,
+    esperados = {'cuenta': 3, 'vinculo_familiar': 1, 'bloque': 3, 'actividad': 26,
+        'ficha': 4, 'insignia': 10, 'nivel': 5, 'regla_desbloqueo': 45, 'condicion_desbloqueo': 54,
         'instrumento': 1, 'escala_respuesta': 1, 'opcion_escala': 5, 'dimension': 6,
         'item_instrumento': 60, 'actividad_item': 60, 'aplicacion': 1, 'aplicacion_actividad': 14,
         'ocupacion': 36, 'puntaje_ocupacion': 216, 'familia_carrera': 6, 'carrera': 6,
@@ -24,7 +24,7 @@ def test_catalogo_estructura_y_estado_vacio(sesion, aplicacion):
     assert len(Base.metadata.tables) == 44
     for tabla in Base.metadata.sorted_tables:
         assert sesion.scalar(select(func.count()).select_from(tabla)) == esperados.get(tabla.name, 0), tabla.name
-    assert set(sesion.scalars(select(modelos.Bloque.codigo))) == {'CAMINO', 'CIUDAD'}
+    assert set(sesion.scalars(select(modelos.Bloque.codigo))) == {'CAMINO', 'CIUDAD', 'FAMILIA'}
     assert sesion.scalars(select(modelos.Instrumento.codigo)).all() == ['TEST-RIASEC']
     assert sesion.execute(text('PRAGMA foreign_key_check')).all() == []
     ocupaciones = OCUPACIONES_APROBADAS
