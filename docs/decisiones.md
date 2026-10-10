@@ -13,3 +13,8 @@ Al cerrar la spec, lo que siga vigente pasa al `AGENTS.md` o a `docs/sistema/` (
 - En el front se actualizan solo las rutas de `parentJourneyStore` en `parent-missions.test.mjs` y `adventure-rendering.test.mjs`, según §8.2; sus aserciones permanecen idénticas.
 - Los selectores de disponibilidad y completitud del apoderado excluyen actividades invisibles o sin contenido, igual que su lista, para que no cuenten en el progreso (DA12).
 - El almacén del apoderado permite un envío a la vez: reutiliza la promesa del mismo código y devuelve 409 para otro código mientras está pendiente, conservando un único `enviando` (§5.2).
+- `useParentActivities` expone `serverCompletion` como bandera del dominio; los hooks del reproductor y las preguntas la usan sin consultar `modoApi` fuera del selector (§6.1–6.3).
+- El inicio en servidor también inicializa los progresos proyectados sin nodo; el reproductor conserva el último nodo hasta confirmar envío y consulta, permitiendo retomar y reintentar sin completitud local (DA9).
+- La vista devuelve `null` durante la carga (§7); si se remonta tras confirmar el servidor, el reproductor reconoce el último nodo pendiente y restaura el final y su celebración sin un nuevo envío.
+- `ParentQuestionnaireDetailView` usa también la ruta del contexto: es otro consumidor existente de la completitud y debe abandonar `parentActivities` para cumplir AP-F2; no cambia su marcado.
+- Se adapta únicamente la construcción de `ParentPortalContext` en el entorno de `parent-missions.test.mjs`, según §8.2; ninguna aserción cambia. Las pruebas nuevas del portal usan su propio entorno, conservando las áreas protegidas del cargador general.
