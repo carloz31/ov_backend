@@ -25,9 +25,9 @@ def _pedir(cliente, metodo, ruta, datos=None):
     return respuesta.json()
 
 
-def _completar(cliente, actividad):
+def _completar(cliente, actividad, cuenta='est-ana'):
     return _pedir(cliente, 'POST', '/acciones/completar-actividad', {
-        'cuenta': 'est-ana', 'actividad': actividad, 'fecha_hora': FECHA,
+        'cuenta': cuenta, 'actividad': actividad, 'fecha_hora': FECHA,
     })
 
 
@@ -85,8 +85,17 @@ def _recorrer_piloto(cliente):
     return fixtures
 
 
+def _recorrer_apoderado(cliente):
+    ruta = '/cuentas/apo-rosa/actividades'
+    fixtures = {'apoderado-actividades-inicial.json': _pedir(cliente, 'GET', ruta)}
+    for actividad, momento in (('pad-01-rol', 'pad-01'), ('pad-02-info', 'final')):
+        fixtures[f'apoderado-completar-{actividad}.json'] = _completar(cliente, actividad, 'apo-rosa')
+        fixtures[f'apoderado-actividades-{momento}.json'] = _pedir(cliente, 'GET', ruta)
+    return fixtures
+
+
 def exportar_fixtures(destino: Path, *, por_dominio: bool = False) -> list[Path]:
-    """Exporta trece fixtures de plataforma; por_dominio añade tres de piloto.
+    """Exporta diecinueve fixtures de plataforma; por_dominio añade tres de piloto.
 
     Cada conjunto usa su base temporal. Se termina todo el recorrido antes de
     escribir archivos, y nunca se abre DATABASE_URL ni se usa el evaluador real.
@@ -109,7 +118,9 @@ def exportar_fixtures(destino: Path, *, por_dominio: bool = False) -> list[Path]
                     if conjunto == 'piloto':
                         fixtures.update(_recorrer_piloto(cliente))
                     else:
+                        fixtures['cuentas.json'] = _pedir(cliente, 'GET', '/cuentas')
                         fixtures.update(_recorrer(cliente))
+                        fixtures.update(_recorrer_apoderado(cliente))
     finally:
         if evaluador_anterior is None:
             os.environ.pop('EVALUADOR', None)
@@ -128,7 +139,7 @@ def exportar_fixtures(destino: Path, *, por_dominio: bool = False) -> list[Path]
 
 def main() -> None:
     argumentos = argparse.ArgumentParser(
-        description='Genera los 16 fixtures de contrato en tests/fixtures/servidor de ov_frontend.',
+        description='Genera los 22 fixtures de contrato en tests/fixtures/servidor de ov_frontend.',
     )
     argumentos.add_argument('--destino', type=Path,
                            help='Carpeta tests/fixtures/servidor de ov_frontend; se crea si no existe.')

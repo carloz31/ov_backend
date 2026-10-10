@@ -1,6 +1,7 @@
 """Contrato, reproducibilidad y aislamiento del exportador de §4.5."""
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -8,10 +9,11 @@ from pathlib import Path
 import pytest
 from pydantic import TypeAdapter
 from scripts import exportar_fixtures_front as exportador
+from soporte_plataforma import BLOQUE_FAMILIA
 
 from app import main as principal
 from app.schemas.acciones import RespuestaCompletarActividad
-from app.schemas.cuentas import DesbloqueoLegible, ResumenCuenta
+from app.schemas.cuentas import CuentaResumen, DesbloqueoLegible, ResumenCuenta
 from app.schemas.actividades import BloqueActividades
 from app.schemas.comun import ContenidoEstado
 from app.schemas.logros import LogrosCuenta
@@ -25,6 +27,9 @@ NOMBRES = {
     'completar-mission-welcome.json', 'completar-mission-next-step.json',
     'items-act-tip-01.json', 'completar-act-tip-14.json',
     'resultado-riasec.json', 'desbloqueos-no-vistos.json',
+    'cuentas.json', 'apoderado-actividades-inicial.json',
+    'apoderado-completar-pad-01-rol.json', 'apoderado-actividades-pad-01.json',
+    'apoderado-completar-pad-02-info.json', 'apoderado-actividades-final.json',
 }
 
 
@@ -146,3 +151,61 @@ def test_fallo_del_recorrido_no_escribe_fixtures_y_restaura_evaluador(tmp_path, 
         exportador.exportar_fixtures(destino)
     assert not destino.exists()
     assert 'EVALUADOR' not in exportador.os.environ
+
+
+def test_fixtures_apoderado_reflejan_cuentas_desbloqueo_y_completitud(tmp_path):
+    archivos = exportador.exportar_fixtures(tmp_path / 'servidor')
+    datos = {ruta.name: json.loads(ruta.read_bytes()) for ruta in archivos}
+    cuentas = TypeAdapter(list[CuentaResumen]).validate_python(datos['cuentas.json'])
+    assert [(c.codigo, c.nombre, c.rol) for c in cuentas] == [
+        ('apo-rosa', 'Rosa', 'APODERADO'), ('est-ana', 'Ana', 'ESTUDIANTE'), ('est-luis', 'Luis', 'ESTUDIANTE'),
+    ]
+    for momento in ('inicial', 'pad-01', 'final'):
+        TypeAdapter(list[BloqueActividades]).validate_python(datos[f'apoderado-actividades-{momento}.json'])
+    assert datos['apoderado-actividades-inicial.json'] == [BLOQUE_FAMILIA]
+    for momento, estados in (
+        ('pad-01', ['COMPLETADA', 'DISPONIBLE']), ('final', ['COMPLETADA', 'COMPLETADA']),
+    ):
+        bloque, = datos[f'apoderado-actividades-{momento}.json']
+        assert {clave: valor for clave, valor in bloque.items() if clave != 'actividades'} == {
+            clave: valor for clave, valor in BLOQUE_FAMILIA.items() if clave != 'actividades'
+        }
+        assert bloque['actividades'] == [
+            {**actividad, 'estado': estado}
+            for actividad, estado in zip(BLOQUE_FAMILIA['actividades'], estados, strict=True)
+        ]
+    for actividad in ('pad-01-rol', 'pad-02-info'):
+        RespuestaCompletarActividad.model_validate(datos[f'apoderado-completar-{actividad}.json'])
+    primera = datos['apoderado-completar-pad-01-rol.json']
+    assert primera['eventos_registrados'] == [
+        {'tipo': 'COMPLETA_ACTIVIDAD', 'referencia': 'pad-01-rol', 'fecha_hora': exportador.FECHA},
+    ]
+    assert [(d['regla'], d['tipo_objetivo'], d['objetivo']['codigo']) for d in primera['nuevos_desbloqueos']] == [
+        ('R-pad-02-info', 'ACTIVIDAD', 'pad-02-info'),
+    ]
+    segunda = datos['apoderado-completar-pad-02-info.json']
+    assert segunda['eventos_registrados'] == [
+        {'tipo': 'COMPLETA_ACTIVIDAD', 'referencia': 'pad-02-info', 'fecha_hora': exportador.FECHA},
+        {'tipo': 'COMPLETA_BLOQUE', 'referencia': 'FAMILIA', 'fecha_hora': exportador.FECHA},
+    ]
+    assert segunda['nuevos_desbloqueos'] == []
+    assert primera['resultados_generados'] == segunda['resultados_generados'] == []
+
+
+@pytest.mark.parametrize('evaluador_previo', [None, 'gemini'])
+def test_fallo_del_apoderado_no_escribe_fixtures_y_restaura_evaluador(tmp_path, monkeypatch, evaluador_previo):
+    if evaluador_previo is None:
+        monkeypatch.delenv('EVALUADOR', raising=False)
+    else:
+        monkeypatch.setenv('EVALUADOR', evaluador_previo)
+    destino = tmp_path / 'sin-publicar'
+
+    def fallar(cliente):
+        assert os.environ['EVALUADOR'] == 'falso'
+        raise RuntimeError('Fallo de prueba del apoderado')
+
+    monkeypatch.setattr(exportador, '_recorrer_apoderado', fallar)
+    with pytest.raises(RuntimeError, match='Fallo de prueba del apoderado'):
+        exportador.exportar_fixtures(destino)
+    assert not destino.exists()
+    assert os.environ.get('EVALUADOR') == evaluador_previo

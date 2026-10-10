@@ -43,7 +43,7 @@ def test_exportacion_completa_reproducible_y_compatible(tmp_path, monkeypatch):
     destino = tmp_path / 'completos'
     rutas = exportador.exportar_fixtures(destino, por_dominio=True)
     assert {ruta.name for ruta in rutas} == set(bytes_originales) | NUEVOS
-    assert len(rutas) == 16
+    assert len(rutas) == 22
     assert {nombre: (destino / nombre).read_bytes() for nombre in bytes_originales} == bytes_originales
     datos = {ruta.name: json.loads(ruta.read_text(encoding='utf-8')) for ruta in rutas}
     datos_originales = {nombre: json.loads(contenido) for nombre, contenido in bytes_originales.items()}
@@ -93,12 +93,12 @@ def test_fallo_del_piloto_no_escribe_nada_y_restaura_evaluador(tmp_path, monkeyp
     assert 'EVALUADOR' not in os.environ
 
 
-def test_cli_exporta_los_dieciseis_fixtures(tmp_path):
+def test_cli_exporta_los_veintidos_fixtures(tmp_path):
     script = Path(exportador.__file__).resolve()
     destino = tmp_path / 'front' / 'tests' / 'fixtures' / 'servidor'
     resultado = subprocess.run([sys.executable, str(script), '--destino', str(destino)],
                                cwd=tmp_path, capture_output=True, text=True)
     assert resultado.returncode == 0, resultado.stderr
-    assert 'Exportados 16 fixtures' in resultado.stdout
-    assert len(list(destino.glob('*.json'))) == 16
+    assert 'Exportados 22 fixtures' in resultado.stdout
+    assert len(list(destino.glob('*.json'))) == 22
     assert NUEVOS <= {ruta.name for ruta in destino.glob('*.json')}
