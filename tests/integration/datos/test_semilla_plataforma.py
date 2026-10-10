@@ -1,8 +1,7 @@
 """Semilla plataforma."""
 
-import re
-from pathlib import Path
 import pytest
+from soporte_datos_aprobados import ENUNCIADOS_RIASEC, OCUPACIONES_APROBADAS
 from soporte_plataforma import MARA, avanzar_camino, filas_base, pedir
 from sqlalchemy import func, select, text
 from app import models as modelos
@@ -13,8 +12,6 @@ from datos import plataforma as semilla_plataforma
 from datos.cargar import preparar_base
 from datos.ocupaciones import leer_ocupaciones, validar_distribucion_items
 
-
-SPEC = (Path(__file__).resolve().parents[3] / 'docs/iteraciones/spec-iteracion-1.md').read_text(encoding='utf-8')
 
 
 def test_catalogo_estructura_y_estado_vacio(sesion, aplicacion):
@@ -30,10 +27,7 @@ def test_catalogo_estructura_y_estado_vacio(sesion, aplicacion):
     assert set(sesion.scalars(select(modelos.Bloque.codigo))) == {'CAMINO', 'CIUDAD'}
     assert sesion.scalars(select(modelos.Instrumento.codigo)).all() == ['TEST-RIASEC']
     assert sesion.execute(text('PRAGMA foreign_key_check')).all() == []
-    tabla_spec = SPEC.split('#### 4.3.8')[1].split('Familias y carreras')[0]
-    ocupaciones = set(re.findall(r'^\| ([a-z][a-z-]+) \| (.+?) \| (\d{2}-\d{4}\.\d{2})', tabla_spec, re.M))
-    ocupaciones = {(c, t.split(' (DATO DE PRUEBA:')[0], o) for c, t, o in ocupaciones}
-    # El título de nurse no incluye la anotación documental entre paréntesis.
+    ocupaciones = OCUPACIONES_APROBADAS
     assert set(sesion.execute(select(modelos.Ocupacion.codigo, modelos.Ocupacion.titulo, modelos.Ocupacion.codigo_onet))) == ocupaciones
     excel = {fila.codigo_onet: fila.valores for fila in leer_ocupaciones(datos_ocupaciones.RUTA_OCUPACIONES)}
     puntajes = list(sesion.execute(select(modelos.Ocupacion.codigo_onet, modelos.Dimension.codigo, modelos.PuntajeOcupacion.valor)
@@ -45,14 +39,7 @@ def test_catalogo_estructura_y_estado_vacio(sesion, aplicacion):
 
 def test_riasec_enunciados_y_distribucion_exactos(sesion, cliente):
     validar_distribucion_items(sesion)
-    enunciados = {d: [] for d in 'RIASEC'}
-    for inicio, fin, dimensiones in (('| k | R Realista', '| k | S Social', 'RIA'),
-                                   ('| k | S Social', 'No se siembran TEST-INT', 'SEC')):
-        for linea in SPEC[SPEC.index(inicio):SPEC.index(fin)].splitlines():
-            if re.match(r'^\| \d+ \|', linea):
-                valores = [v.strip() for v in linea.strip().strip('|').split('|')][1:]
-                for d, valor in zip(dimensiones, valores, strict=True):
-                    enunciados[d].append(valor)
+    enunciados = ENUNCIADOS_RIASEC
     todos = []
     for n, actividad in enumerate(MARA, start=1):
         items = pedir(cliente, 'GET', f'/actividades/{actividad}/items')

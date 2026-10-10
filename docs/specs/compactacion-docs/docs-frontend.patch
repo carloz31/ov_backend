@@ -1,0 +1,931 @@
+diff --git a/AGENTS.md b/AGENTS.md
+dissimilarity index 62%
+index ebbd77b..725ba56 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -1,195 +1,191 @@
+-# AGENTS.md
+-
+-## Proyecto
+-
+-Frontend en React + Vite + TypeScript de una plataforma gamificada de orientación vocacional, con tres portales: estudiante (aventura inmersiva), apoderado y orientadora. Consume la API de `ov_backend`.
+-
+-Fuentes de verdad, además de las «Reglas compartidas» del final:
+-
+-- Estructura del repo, origen de los datos y tamaño de los componentes: `docs/refactor/spec-refactor-estructura.md` y `docs/refactor/origen-de-datos.md`. Este archivo resume sus reglas.
+-- Presentación e interacción del estudiante: las especificaciones de `docs/student-experience/` (precedencias en «Interfaz del estudiante»).
+-- Presentación de orientadora y apoderado: `docs/staff-experience/`.
+-- Significado de los nodos de las actividades: `docs/mission-spec.md`, salvo donde una especificación indique otra cosa.
+-
+-## Estructura
+-
+-Esta estructura es fija. No crees carpetas ni archivos fuera de ella; si algo no encaja, detente y pregunta. `npm run check:estructura` la comprueba.
+-
+-```
+-src/
+-  main.tsx, App.tsx, index.css
+-  config/        entorno (env.ts: modoApi, urlApi, desarrollo) y alcance de la demo
+-  routes/        AppRoutes.tsx (solo la tabla de rutas), paths.ts, guardas
+-  pages/         una vista por ruta y los layouts de cada portal: auth/, student/, parent/, counselor/
+-  features/      un dominio por carpeta: auth, activities, adventure, backpack, cases, discovery,
+-                 journal, family-conversations, parent, counselor, student-tracking
+-    <dominio>/   components/, hooks/, lib/, data/, store/, context/, styles/, types.ts
+-  components/    reutilizables sin lógica de dominio: ui/ (shadcn), common/, layout/, staff/, student/
+-  context/       contextos que usan varios dominios
+-  store/         estado global; servidor/ es el estado sincronizado con el backend
+-  services/api/  el único acceso al backend: cliente.ts (obtener, enviar, actualizar, eliminar) y un archivo por grupo de rutas
+-  data/          datos fijos de varios dominios: activities/, catalog/, content/, demo/
+-  lib/           lógica pura compartida; lib/activities (motor), lib/servidor (adaptadores)
+-  hooks/         hooks globales
+-  types/         tipos compartidos; servidor.ts es el contrato con el backend
+-  styles/        theme.css y styles/student/
+-```
+-
+-### Dónde va cada cosa
+-
+-| Si agregas… | Va en… |
+-|---|---|
+-| Un contenido de actividad | `src/data/activities/contenidos/<clave>.json`, registrado en `contenidos.ts`. La clave es la que indica el backend en `contenido`. |
+-| Una sección nueva de datos del servidor | `services/api/<dominio>.ts` y una sección en `store/servidor/` que se pide al abrir su vista. |
+-| Una ruta | `routes/AppRoutes.tsx` + su vista en `pages/<portal>/`. La vista lee parámetros, llama a hooks y compone; no contiene lógica de dominio. |
+-| Un componente de un dominio | `features/<dominio>/components/`. |
+-| Un componente que usan dos dominios | `components/student/`, `components/staff/` o `components/common/` si no conoce el dominio. Si lo conoce, detente y pregunta. |
+-| Una primitiva de interfaz | `components/ui/`. Usa la de shadcn antes de crear otra. |
+-| Una llamada al backend | `services/api/<recurso>.ts`, con el mismo agrupamiento que los routers del backend (`cuentas`, `acciones`, `instrumentos`, `desarrollo`). Usa la función del método que define la ruta del backend (GET → `obtener`, POST → `enviar`, PATCH → `actualizar`, DELETE → `eliminar`). Si el backend define una ruta PUT, detente y avisa antes de agregar un método nuevo al cliente. |
+-| Un tipo del contrato | `types/servidor.ts`, copiado tal cual del esquema Pydantic. |
+-| Convertir una respuesta en datos para la vista | `lib/servidor/adaptadores.ts`. |
+-| Estado que viene del servidor | `store/servidor/`. |
+-| Elegir entre dato del servidor y dato local | Un hook en `features/<dominio>/hooks/`. Nunca en una vista. |
+-| Estado persistente de varios dominios | `store/<nombre>Store.ts`; de un dominio, `features/<dominio>/store/`. |
+-| Lógica pura | `features/<dominio>/lib/`; si la usan varios dominios o una capa inferior, `lib/`. |
+-| Contenido fijo | `features/<dominio>/data/` si es de un dominio; si no, `data/content/` (narrativo), `data/catalog/` (catálogo que podría venir del servidor) o `data/activities/` (nodos JSON). |
+-| Datos inventados | `data/demo/` o `features/<dominio>/data/`, marcados con `DATO DE PRUEBA`. |
+-| Un tipo de varias capas | `types/<dominio>.ts`; de una feature, `features/<dominio>/types.ts`. |
+-| Una variable de entorno | `config/env.ts` y `.env.example`. |
+-| CSS | `features/<dominio>/styles/`; si se aplica a todo el portal del estudiante, `styles/student/`. |
+-
+-Si una iteración trae un dominio nuevo (por ejemplo, favoritos), créale su carpeta en `features/` con las subcarpetas que necesite y agrégalo a la lista de arriba y a `docs/refactor/spec-refactor-estructura.md` §3.1.
+-
+-### Dependencias entre capas
+-
+-- `routes → pages → features → store → services/api`. Todas pueden usar `components`, `hooks`, `lib`, `data`, `types` y `config`, salvo lo que sigue.
+-- `components/` no importa `features`, `pages`, `store`, `services` ni `context`.
+-- `services/api/` solo importa `config` y `types`. `fetch` solo existe en `services/api/cliente.ts`, que exporta `obtener`, `enviar`, `actualizar` y `eliminar`; estas funciones solo se importan dentro de `services/api/`.
+-- `store/` no importa `features`, `pages`, `components` ni `context`. `lib/`, `data/`, `types/` y `config/` no importan capas superiores.
+-- `pages/` y `features/` no importan `services/`: los datos del backend llegan por `store/servidor/` y los hooks.
+-- Una feature no usa componentes de otra. Las únicas features compartidas, cuyos componentes pueden usar otras, son `family-conversations` y `student-tracking`. Si hace falta un componente ajeno, pásalo desde la vista de ruta como prop o `children`, o súbelo a `components/`.
+-- `modoApi` y `desarrollo` no se importan en `components/`, `pages/` ni `features/*/components/`.
+-- `lib/activities/logic.ts`, `lib/servidor/adaptadores.ts` y `lib/explorationAssets.ts` solo importan tipos: las pruebas los cargan aislados.
+-
+-### Componentes
+-
+-- Un componente exportado por archivo; ayudantes privados de hasta unas 40 líneas en el mismo archivo.
+-- Máximo 300 líneas por `.tsx` y 400 por `.ts` (sin contar `data/` ni `components/ui/`). Una vista de ruta, idealmente 150. El estado y los efectos de un componente grande van a un hook del dominio.
+-- Antes de crear un componente, busca uno que ya lo haga. No copies un componente para variarlo: agrega una prop o extrae la parte común.
+-- Nombres: componentes en `PascalCase.tsx`; el resto en `camelCase.ts`; CSS en `kebab-case.css`. Sin barriles (`index.ts`): importa el archivo concreto. Usa `@/` para salir de la propia feature o capa.
+-
+-### Verificador
+-
+-- `npm run check:estructura` debe pasar al terminar cualquier tarea.
+-- `scripts/estructura-excepciones.json` está vacío. No agregues excepciones; si una regla no se puede cumplir, detente y explica por qué.
+-
+-## Origen de los datos
+-
+-- `VITE_DATOS=local` (por defecto) debe comportarse exactamente como antes. En `VITE_DATOS=api`, `prototypeAllUnlocked`, `studentDemoEnabled` y `pendingContent` no afectan la disponibilidad.
+-- `docs/refactor/origen-de-datos.md` dice qué viene del servidor, qué es contenido del front, qué es catálogo fijo y qué es demostración. Si una tarea mueve un dato de un grupo a otro, actualiza ese documento en la misma tarea.
+-- Cuando un dato pase al servidor, cambia el hook del dominio y `store/servidor/`; las vistas no deberían cambiar.
+-- No cambies claves ni formatos de `localStorage`, `sessionStorage` o IndexedDB sin una migración que conserve lo guardado (las claves están en `docs/refactor/origen-de-datos.md`).
+-- Para la red basta `fetch`. El proxy de desarrollo `/api` apunta a `http://127.0.0.1:8000`.
+-
+-## Datos del servidor sin vista
+-
+-La interfaz la decide el usuario. Un agente conecta datos a la interfaz que ya existe; no diseña interfaz nueva para mostrarlos.
+-
+-- **Conectar sí:** que un elemento que ya existe (un contador, una insignia, un estado de candado, un texto) pase a tomar su valor del servidor en lugar del dato local, con el mismo marcado, los mismos textos y el mismo estilo.
+-- **Agregar no:** si el backend entrega un dato que ninguna vista muestra hoy, o mostrarlo exige algo que no existe (una pantalla, sección, tarjeta, columna, pestaña, texto, ícono, estado visual o ruta), **no crees ni modifiques interfaz para mostrarlo**. Tampoco lo resuelvas reutilizando un componente en otro lugar ni con un texto provisional.
+-- Hasta ahí sí puedes llevar el dato: `types/servidor.ts`, `services/api/`, `store/servidor/`, `lib/servidor/adaptadores.ts` y el hook del dominio. Se queda sin pintar.
+-- **Detente y avisa.** Al terminar la fase (o antes, si bloquea), lista cada dato en `docs/pendientes-interfaz.md` y en tu resumen, con: dato y campo de la respuesta (`LogrosCuenta.insignias[].requisito`), petición que lo trae, dónde crees que se mostraría, 2 o 3 opciones de interfaz y qué pasa si no se muestra. El usuario decide; no implementes ninguna opción hasta que responda.
+-- **Lo mismo al revés:** si una vista necesita un dato que el servidor no entrega, no lo inventes ni lo calcules en el front para cubrir el hueco; anótalo en el mismo documento y avisa.
+-- Si crees que la tarea no se puede terminar sin tocar una vista, **detente antes de tocarla** y pide autorización. Nunca cambies una vista esperando aprobarla después: el usuario prefiere hacer esos cambios aparte, con los datos que ya llegan del backend.
+-- Solo se agrega o cambia interfaz cuando el usuario lo pide o la spec vigente lo describe expresamente (qué vista, qué elemento, qué texto). Cita en el resumen la línea de la spec que lo autoriza.
+-- Estados de carga y error: usa los mensajes y componentes que ya existen (`mensajeErrorServidor`, los avisos actuales). Un estado visual nuevo también se consulta.
+-
+-## Interfaz del estudiante
+-
+-- Para la tarjeta de cierre de actividad, la vista de perfil y la vista de resultado completo prevalece `ov_backend/docs/iteraciones/spec-iteracion-1-cierre-perfil-resultados.md`.
+-- Para el piloto de evaluación, registros personalizados y misiones adicionales del Bloque 1 prevalecen las decisiones aprobadas en `docs/student-experience/implementacion-piloto-bloque1.md`; el contenido de referencia está en `docs/student-experience/especificacion-registros-personalizados-adicionales.md`.
+-- Para progreso, comprobaciones, cierre de misión, desafíos y exploración inesperada del catálogo prevalece `docs/student-experience/especificacion-progreso-comprobaciones-desafios.md`, con las decisiones y límites registrados en `docs/student-experience/implementacion-progreso-comprobaciones-desafios.md`.
+-- El historial de señales y Mis actividades siguen los patrones visuales de descubrimiento por solicitud directa del usuario, registrada en `docs/student-experience/plan.md`; se conservan sus registros y acciones.
+-- Para panel del mapa, mochila, diario y pasaporte prevalece `docs/student-experience/especificacion-panel-mochila-diario-pasaporte.md`, con los acuerdos registrados en `docs/student-experience/plan.md`.
+-- Para perfil, libro de Helena, planes, investigaciones y catálogo prevalece `docs/student-experience/especificacion-vistas-descubrimiento.md`, con los acuerdos registrados en `docs/student-experience/plan.md`.
+-- Para las demás vistas, la fuente de verdad es `docs/student-experience/especificacion-interfaz-inmersiva-estudiante.md`.
+-- En ese alcance, si contradice otros documentos de `docs/`, comentarios del código o pruebas antiguas, prevalece esa especificación.
+-- Las decisiones de presentación del estudiante se registran en `docs/student-experience/plan.md`.
+-
+-## Comandos y pruebas
+-
+-- Instalar: `npm ci`
+-- Desarrollo: `npm run dev` (con `VITE_DATOS=api` en `.env.local` para usar el backend)
+-- Verificar según la política compartida del final y la tabla de impacto de abajo. `npm run check:estructura` sigue siendo obligatorio al terminar cualquier tarea.
+-- Las pruebas nuevas de integración van en `tests/servidor/<área>/` y usan los fixtures de `tests/fixtures/servidor/`, generados desde ov_backend. Los ayudantes compartidos van en `tests/soporte/`.
+-
+-```text
+-tests/
+-  local/actividades/, local/aventura/, local/casos/, local/perfil/, local/portales/
+-  servidor/actividades/, servidor/mapa/, servidor/instrumentos/, servidor/logros/, servidor/perfil/
+-  despliegue/
+-  fixtures/servidor/          # destino fijo del exportador del backend
+-  soporte/                   # ayudantes compartidos
+-```
+-
+-| Si cambias… | Corre primero |
+-|---|---|
+-| `src/features/servidor/`, `src/store/servidor/`, `src/lib/servidor/`, `src/services/api/`, `src/types/servidor.ts` | `npm run test:servidor` |
+-| `src/features/<área>/`, `src/lib/activities/`, `src/data/activities/` | Las carpetas existentes de esa área en `tests/local/` y `tests/servidor/` |
+-| Fixtures regenerados desde el backend | `npm run test:servidor` |
+-| Cierre | Aplicar la política compartida: impacto y servidor por fase; suite completa, build, lint y estructura al cerrar una iteración o integrar |
+-
+-Comandos: `npm test` (todo), `npm run test:local`, `npm run test:servidor` y `npm run test:despliegue`. Para una carpeta: `node --test "tests/servidor/instrumentos/**/*.test.mjs"`. Los globs siempre llevan comillas para que los expanda Node y funcionen también en PowerShell.
+-
+-- Las pruebas cargan archivos por su ruta: si mueves un archivo, actualiza esas rutas en la misma tarea. No agregues resolución de carpetas a los cargadores.
+-
+-## Reglas compartidas entre ov_backend y ov_frontend
+-
+-> Esta sección es idéntica en el `AGENTS.md` de ambos repos. Si la cambias en uno, cámbiala en el otro en la misma tarea.
+-
+-**Los repos.** `ov_backend` (FastAPI, rama `master`) y `ov_frontend` (React + Vite + TypeScript, rama `main`) están en carpetas independientes y son repos git separados. Para referirte al otro, usa su nombre de carpeta; no asumas una ruta relativa entre ellos.
+-
+-**Fuentes de verdad, en este orden:**
+-
+-1. La especificación de la iteración vigente, `ov_backend/docs/iteraciones/spec-iteracion-N.md` (hoy la **1**), para el alcance, la integración entre repos y los datos de prueba.
+-2. Las especificaciones de cada repo para su propio dominio.
+-3. Este `AGENTS.md`, para convenciones y áreas protegidas.
+-
+-Si dos fuentes se contradicen, detente y explica la contradicción. No la resuelvas en el código.
+-
+-**Cómo se trabaja.**
+-
+-- Solo se implementa la iteración vigente. `ov_backend/docs/iteraciones/plan-iteraciones.md` muestra lo que viene después para no cerrar caminos, no para adelantarlo.
+-- Por fases, en el orden de la spec. Al terminar cada fase, detente y resume qué hiciste, qué pruebas pasan en cada repo y qué queda pendiente. Si la fase tocó ambos repos, corre las pruebas de los dos.
+-- Las decisiones que afectan a ambos repos van en `ov_backend/docs/iteraciones/decisiones-iteracion-N.md`.
+-- Datos de prueba: si el dato existe en el front, úsalo adaptándolo. Si no existe, créalo y márcalo con `DATO DE PRUEBA` (comentario en código) o `"_dato_de_prueba": true` (JSON).
+-- Sin dependencias nuevas en ninguno de los repos sin avisar antes.
+-
+-
+-**Política de ejecución de pruebas.** Las tablas de impacto de cada repo indican las carpetas afectadas. Esta política prevalece sobre las instrucciones antiguas de ejecutar toda la suite en cada fase.
+-
+-| Momento | Qué se corre |
+-|---|---|
+-| Durante el desarrollo, tras cada cambio | Solo las carpetas de la tabla de impacto. |
+-| Al terminar una fase de una spec | Las carpetas de impacto de todo lo que tocó la fase, más `tests/integration/escenarios` (back) o `npm run test:servidor` (front). Se informa qué carpetas se corrieron. |
+-| Al cerrar una iteración o antes de integrar una rama | Suite completa de ambos repos: `uv run pytest -n auto -q`; `npm test`, `npm run build`, `npm run lint` y `npm run check:estructura`. |
+-
+-**Una sola base de datos.**
+-
+-- La base del backend es la única fuente de disponibilidad, progreso, respuestas de cuestionario, resultados, fichas obtenidas, insignias y nivel.
+-- En modo `VITE_DATOS=api`, el front nunca decide si algo está disponible, completado u obtenido: lo lee del servidor. Si el servidor no responde, lo dice; no inventa un estado.
+-- El contenido narrativo de las actividades (nodos JSON) sigue en el front. El backend guarda estructura y estado, y no interpreta ese contenido.
+-- El modo `local` del front debe seguir funcionando igual que antes.
+-
+-**Contrato.**
+-
+-- El backend lista bloques y actividades, con su orden, tipo, `contenido` y `visibilidad`. El front solo guarda el contenido de cada actividad (`src/data/activities/contenidos/<clave>.json`) y lo encuentra por la clave `contenido`. Una actividad cuyo contenido no existe en el front no se muestra y se anota en `ov_frontend/docs/pendientes-interfaz.md`.
+-- Cada dominio tiene su propia consulta de lectura (`GET /cuentas/{c}/<dominio>`). El front pide al ingresar solo lo que se ve siempre y el resto al abrir su vista.
+-- Los códigos del backend son los ids del front (`mission-welcome`, `act-tip-01`, `I1`, `psychologist`). No hay tablas de traducción.
+-- El JSON usa los nombres en español y `snake_case` de los esquemas Pydantic. El front los copia tal cual en `src/types/servidor.ts` y accede al backend solo desde `src/services/api/` (un archivo por router del backend); las vistas leen esos datos a través de `src/store/servidor/`.
+-- Si el backend entrega un dato que ninguna vista del front muestra, o una vista necesita un dato que el backend no entrega, no se crea ni se modifica interfaz para cubrirlo: se registra en `ov_frontend/docs/pendientes-interfaz.md` y se avisa al usuario, que decide la interfaz (detalle en «Datos del servidor sin vista» del `AGENTS.md` del front). Vale también al trabajar solo en el backend: si agregas o cambias un campo de una respuesta, revisa si el front tiene dónde mostrarlo y, si no, anótalo igual.
+-- Si una tarea cambia una respuesta que consume el front, en la misma tarea se actualizan el esquema y las pruebas del backend, `src/types/servidor.ts`, `src/services/api/` y `src/lib/servidor/adaptadores.ts` del front, los fixtures (`scripts/exportar_fixtures_front.py` de `ov_backend`, con `--destino` apuntando a `tests/fixtures/servidor/` de `ov_frontend`) y las pruebas del front.
+-
+-**Git.** No hagas push salvo que se pida. Trabaja en una rama `iteracion-N` en cada repo, con un commit por fase y por repo y mensaje en español (`Iteración 1 · F2: semilla plataforma`). Nunca versiones `.env`, `.env.local` ni archivos `*.db`.
+-
+-**Idioma.** Documentación, mensajes al usuario y commits en español.
++# AGENTS.md
++
++## Proyecto
++
++Frontend en React + Vite + TypeScript de una plataforma gamificada de orientación vocacional, con tres portales: estudiante (aventura inmersiva), apoderado y orientadora. Consume la API de `ov_backend`.
++
++Documentos vigentes (lee los que toque la tarea):
++
++| Documento | Qué define |
++|---|---|
++| `docs/origen-de-datos.md` | Qué viene del servidor, qué es contenido, catálogo o demostración, y las claves del navegador. |
++| `docs/contenidos-actividades.md` | Formato de los JSON de actividades: nodos, tipos y reglas de completitud. |
++| `docs/pendientes-interfaz.md` | Datos sin vista que esperan decisión del usuario. |
++| `ov_backend/docs/sistema/integracion.md` | Contrato con el backend. |
++| `ov_backend/docs/specs/` | La spec en curso. |
++
++## Estructura
++
++Esta estructura es fija. No crees carpetas ni archivos fuera de ella; si algo no encaja, detente y pregunta. `npm run check:estructura` la comprueba.
++
++```
++src/
++  main.tsx, App.tsx, index.css
++  config/        entorno (env.ts: modoApi, urlApi, desarrollo) y alcance de la demo
++  routes/        AppRoutes.tsx (solo la tabla de rutas), paths.ts, guardas
++  pages/         una vista por ruta y los layouts de cada portal: auth/, student/, parent/, counselor/
++  features/      un dominio por carpeta: auth, activities, adventure, backpack, cases, discovery,
++                 journal, family-conversations, parent, counselor, student-tracking
++    <dominio>/   components/, hooks/, lib/, data/, store/, context/, styles/, types.ts
++  components/    reutilizables sin lógica de dominio: ui/ (shadcn), common/, layout/, staff/, student/
++  context/       contextos que usan varios dominios
++  store/         estado global; servidor/ es el estado sincronizado con el backend
++  services/api/  el único acceso al backend: cliente.ts y un archivo por grupo de rutas
++  data/          datos fijos de varios dominios: activities/, catalog/, content/, demo/
++  lib/           lógica pura compartida; lib/activities (motor de actividades), lib/servidor (adaptadores)
++  hooks/         hooks globales
++  types/         tipos compartidos; servidor.ts es el contrato con el backend
++  styles/        theme.css y styles/student/
++```
++
++### Dónde va cada cosa
++
++| Si agregas… | Va en… |
++|---|---|
++| Un contenido de actividad | `src/data/activities/contenidos/<clave>.json`, registrado en `contenidos.ts` con un import explícito (sin `import.meta.glob`). La clave es la que indica el backend en `contenido`. |
++| Una sección nueva de datos del servidor | `services/api/<dominio>.ts` y una sección en `store/servidor/` que se pide al abrir su vista. |
++| Una ruta | `routes/AppRoutes.tsx` + su vista en `pages/<portal>/`. La vista lee parámetros, llama a hooks y compone; no contiene lógica de dominio. |
++| Un componente de un dominio | `features/<dominio>/components/`. |
++| Un componente que usan dos dominios | `components/student/`, `components/staff/` o `components/common/` si no conoce el dominio. Si lo conoce, detente y pregunta. |
++| Una primitiva de interfaz | `components/ui/`. Usa la de shadcn antes de crear otra. |
++| Una llamada al backend | `services/api/<recurso>.ts`, agrupado como los routers del backend. GET → `obtener`, POST → `enviar`, PATCH → `actualizar`, DELETE → `eliminar`. Si el backend define un PUT, detente y avisa antes de agregar un método al cliente. |
++| Un tipo del contrato | `types/servidor.ts`, copiado tal cual del esquema Pydantic. |
++| Convertir una respuesta en datos para la vista | `lib/servidor/adaptadores.ts`. |
++| Estado que viene del servidor | `store/servidor/`. |
++| Elegir entre dato del servidor y dato local | Un hook en `features/<dominio>/hooks/`. Nunca en una vista. |
++| Estado persistente de varios dominios | `store/<nombre>Store.ts`; de un dominio, `features/<dominio>/store/`. |
++| Lógica pura | `features/<dominio>/lib/`; si la usan varios dominios o una capa inferior, `lib/`. |
++| Contenido fijo | `features/<dominio>/data/` si es de un dominio; si no, `data/content/` (narrativo), `data/catalog/` (catálogo que podría venir del servidor) o `data/activities/`. |
++| Datos inventados | `data/demo/` o `features/<dominio>/data/`, con `// DATO DE PRUEBA: <qué es y qué lo reemplazará>` al inicio. |
++| Un tipo de varias capas | `types/<dominio>.ts`; de una feature, `features/<dominio>/types.ts`. |
++| Una variable de entorno | `config/env.ts` y `.env.example`. |
++| CSS | `features/<dominio>/styles/`; si es de todo el portal del estudiante, `styles/student/`. |
++| Un dominio nuevo (favoritos…) | Su carpeta en `features/`, con las subcarpetas que necesite; agrégalo a la lista de arriba. |
++
++### Dependencias entre capas
++
++- `routes → pages → features → store → services/api`. Todas pueden usar `components`, `hooks`, `lib`, `data`, `types` y `config`, salvo lo que sigue.
++- `components/` no importa `features`, `pages`, `store`, `services` ni `context`.
++- `services/api/` solo importa `config` y `types`. `fetch` solo existe en `services/api/cliente.ts`, cuyas funciones solo se importan dentro de `services/api/`.
++- `store/` no importa `features`, `pages`, `components` ni `context`. `lib/`, `data/`, `types/` y `config/` no importan capas superiores.
++- `pages/` y `features/` no importan `services/`: los datos del backend llegan por `store/servidor/` y los hooks.
++- Una feature no usa componentes de otra, salvo de `family-conversations` y `student-tracking`. Si hace falta un componente ajeno, pásalo desde la vista de ruta como prop o `children`, o súbelo a `components/`.
++- `modoApi` y `desarrollo` no se importan en `components/`, `pages/` ni `features/*/components/` (sí en `lib/` y `store/`, que son selectores). El hook del dominio devuelve el mismo modelo en los dos modos y, si algo solo se muestra en uno, una bandera con nombre del dominio (`puedeReiniciar`, `mostrarRequisito`), no `modoApi`.
++- `lib/activities/logic.ts`, `lib/servidor/adaptadores.ts` y `lib/explorationAssets.ts` solo importan tipos: las pruebas los cargan aislados.
++
++### Componentes
++
++- Un componente exportado por archivo; ayudantes privados de hasta unas 40 líneas en el mismo archivo.
++- Máximo 300 líneas por `.tsx` y 400 por `.ts` (sin contar `data/` ni `components/ui/`). Una vista de ruta, idealmente 150. El estado y los efectos de un componente grande van a un hook del dominio. Dividir un componente no cambia su marcado (mismos elementos, clases, `aria-*` y orden): las pruebas de renderizado comparan HTML.
++- Antes de crear un componente, busca uno que ya lo haga. No copies un componente para variarlo: agrega una prop o extrae la parte común.
++- Componentes en `PascalCase.tsx`; el resto en `camelCase.ts`; CSS en `kebab-case.css`. Sin barriles (`index.ts`): importa el archivo concreto. Usa `@/` para salir de la propia feature o capa.
++- `scripts/estructura-excepciones.json` está vacío. No agregues excepciones; si una regla no se puede cumplir, detente y explica por qué.
++
++## Origen de los datos
++
++- `VITE_DATOS=local` (por defecto) debe comportarse exactamente como antes. En `VITE_DATOS=api`, `prototypeAllUnlocked`, `studentDemoEnabled` y `pendingContent` no afectan la disponibilidad.
++- Si una tarea mueve un dato entre servidor, contenido, catálogo o demostración, actualiza `docs/origen-de-datos.md` en la misma tarea. Cuando un dato pase al servidor, cambian el hook del dominio y `store/servidor/`; las vistas no deberían cambiar.
++- No cambies claves ni formatos de `localStorage`, `sessionStorage` o IndexedDB sin una migración que conserve lo guardado (claves en `docs/origen-de-datos.md`).
++- Para la red basta `fetch`. El proxy de desarrollo `/api` apunta a `http://127.0.0.1:8000`.
++
++## Interfaz
++
++Las vistas actuales son la referencia: el código y sus pruebas definen cómo se ven y se comportan. La interfaz la decide el usuario; una vista nueva o un cambio de vista llega como spec, con su mockup, y solo se hace lo que esa spec describe (qué vista, qué elemento, qué texto). Cita en el resumen la sección que lo autoriza.
++
++### Datos del servidor sin vista
++
++Un agente conecta datos a la interfaz que ya existe; no diseña interfaz nueva para mostrarlos.
++
++- **Conectar sí:** que un elemento que ya existe (un contador, una insignia, un candado, un texto) tome su valor del servidor en lugar del dato local, con el mismo marcado, textos y estilo.
++- **Agregar no:** si el backend entrega un dato que ninguna vista muestra, o mostrarlo exige algo que no existe (pantalla, sección, tarjeta, columna, pestaña, texto, ícono, estado visual o ruta), no crees ni modifiques interfaz. Tampoco reutilices un componente en otro lugar ni pongas un texto provisional.
++- El dato sí puede llegar hasta `types/servidor.ts`, `services/api/`, `store/servidor/`, `lib/servidor/adaptadores.ts` y el hook del dominio, sin pintarse.
++- **Detente y avisa.** Anota cada caso en `docs/pendientes-interfaz.md` (formato en `ov_backend/docs/sistema/integracion.md`) y en tu resumen, con 2 o 3 opciones de interfaz. No implementes ninguna hasta que el usuario responda.
++- **Al revés:** si una vista necesita un dato que el servidor no entrega, no lo inventes ni lo calcules en el front; anótalo igual y avisa.
++- Si crees que la tarea no se puede terminar sin tocar una vista, detente antes de tocarla y pide autorización. Nunca cambies una vista esperando aprobarla después.
++- Estados de carga y error: usa los mensajes y componentes que ya existen (`mensajeErrorServidor`, los avisos actuales). Un estado visual nuevo también se consulta.
++
++## Comandos y pruebas
++
++- Instalar: `npm ci`. Desarrollo: `npm run dev` (con `VITE_DATOS=api` en `.env.local` para usar el backend).
++- `npm run check:estructura` debe pasar al terminar cualquier tarea.
++
++```text
++tests/
++  local/        actividades/, aventura/, casos/, perfil/, portales/   (modo local)
++  servidor/     actividades/, mapa/, instrumentos/, logros/, perfil/  (modo api, con fixtures)
++  despliegue/
++  fixtures/servidor/   generados por ov_backend; no se editan a mano
++  soporte/             ayudantes compartidos
++```
++
++- Las pruebas nuevas de integración van en `tests/servidor/<área>/` y usan `tests/fixtures/servidor/`.
++- Las pruebas cargan archivos por su ruta: si mueves un archivo, actualiza esas rutas en la misma tarea. No agregues resolución de carpetas a los cargadores.
++- Comandos: `npm test`, `npm run test:local`, `npm run test:servidor`, `npm run test:despliegue`. Una carpeta: `node --test "tests/servidor/instrumentos/**/*.test.mjs"` (con comillas, para que funcione en PowerShell).
++- Fallas previas conocidas: 14 en `tests/local/aventura/adventure-rendering.test.mjs`. No se corrigen salvo que una spec lo pida; ninguna tarea debe agregar fallas.
++
++| Si cambias… | Corre primero |
++|---|---|
++| `store/servidor/`, `lib/servidor/`, `services/api/`, `types/servidor.ts`, o regeneras fixtures | `npm run test:servidor` |
++| `features/activities/`, `lib/activities/`, `data/activities/` | `tests/local/actividades` y `tests/servidor/actividades` |
++| `features/adventure/` | `tests/local/aventura`, `tests/servidor/mapa` y `tests/servidor/logros` |
++| `features/discovery/` | `tests/servidor/instrumentos`, `tests/servidor/perfil` y `tests/servidor/logros` |
++| `features/cases/` | `tests/local/casos` |
++| `features/parent/`, `features/counselor/`, `features/student-tracking/`, `pages/parent/`, `pages/counselor/` | `tests/local/portales` y `tests/local/perfil` |
++| `lib/explorationAssets.ts` o recursos de `public/` | `npm run test:despliegue` |
++
++## Reglas compartidas entre ov_backend y ov_frontend
++
++> Esta sección es idéntica en el `AGENTS.md` de ambos repos. Si la cambias en uno, cámbiala en el otro en la misma tarea.
++
++**Los repos.** `ov_backend` (FastAPI) y `ov_frontend` (React + Vite + TypeScript) son repos git separados, en carpetas independientes. Para referirte al otro, usa su nombre de carpeta; no asumas una ruta relativa entre ellos.
++
++**Qué leer.**
++
++1. La spec de la tarea, en `ov_backend/docs/specs/`. Define el alcance y prevalece sobre todo lo demás.
++2. Este `AGENTS.md` y, del repo que toques, los documentos vigentes que nombre la tarea: `ov_backend/docs/sistema/` y `ov_frontend/docs/`.
++3. `ov_backend/docs/plan-iteraciones.md`, solo para no cerrar caminos a las iteraciones siguientes. No se adelanta trabajo de otra iteración.
++
++No leas `docs/historico/` de ningún repo salvo que el usuario lo pida: es el registro del trabajo terminado. Si algo de ahí contradice un documento vigente, prevalece el vigente. Si dos fuentes vigentes se contradicen, detente y explica la contradicción; no la resuelvas en el código.
++
++**Cómo se trabaja.**
++
++- Lee la spec completa antes de escribir código. No agregues endpoints, vistas ni funciones que la spec no pida.
++- Por fases, en el orden de la spec. Al terminar cada fase, detente y resume qué hiciste, qué carpetas de pruebas corriste en cada repo y qué queda pendiente.
++- Si la spec no define algo, elige la opción más simple, anótala en `ov_backend/docs/decisiones.md` y sigue.
++- Una prueba existente solo se adapta cuando la spec lo autoriza; anótalo también en `decisiones.md`. Si un escenario falla, se corrige la implementación, no el escenario.
++- Datos de prueba: si el dato existe en el front, úsalo adaptado. Si no existe, créalo y márcalo con `DATO DE PRUEBA` (comentario en código) o `"_dato_de_prueba": true` (JSON).
++- Ninguna dependencia nueva en ninguno de los repos sin avisar antes.
++
++**Documentación.**
++
++- `ov_backend/docs/decisiones.md` es el único registro de decisiones, para los dos repos, y solo de la spec en curso. Una viñeta por decisión: qué se decidió y por qué, en una o dos líneas. No registra conteos de pruebas, tiempos, líneas base ni el relato de cada fase; eso va en el resumen al usuario.
++- Al cerrar una spec, lo que siga vigente de ella y de `decisiones.md` se incorpora al `AGENTS.md` o al documento vigente que corresponda. Después, la spec y `decisiones.md` se mueven a `ov_backend/docs/historico/<nombre-de-la-spec>/` y `decisiones.md` vuelve a quedar con su encabezado.
++- Ningún documento vigente remite a uno histórico.
++
++**Política de pruebas.** Las tablas de impacto de cada `AGENTS.md` indican qué carpetas corresponden a cada archivo.
++
++| Momento | Qué se corre |
++|---|---|
++| Durante el desarrollo, tras cada cambio | Solo las carpetas de la tabla de impacto. |
++| Al terminar una fase | Las carpetas de impacto de todo lo que tocó la fase, más `tests/integration/escenarios` (back) o `npm run test:servidor` (front). |
++| Al cerrar una spec o antes de integrar una rama | Todo, en los dos repos: `uv run pytest -n auto -q`; `npm test`, `npm run build`, `npm run lint` y `npm run check:estructura`. |
++
++**Una sola base de datos.**
++
++- La base del backend es la única fuente de disponibilidad, progreso, respuestas de cuestionario, resultados, fichas obtenidas, insignias y nivel.
++- En modo `VITE_DATOS=api`, el front nunca decide si algo está disponible, completado u obtenido: lo lee del servidor. Si el servidor no responde, lo dice; no inventa un estado.
++- El contenido narrativo de las actividades (nodos JSON) está en el front. El backend guarda estructura y estado, y no interpreta ese contenido.
++- El modo `local` del front debe seguir funcionando igual.
++
++**Contrato.** El detalle está en `ov_backend/docs/sistema/integracion.md`.
++
++- El backend lista bloques y actividades con su orden, tipo, `contenido` y `visibilidad`. El front guarda el contenido de cada actividad en `src/data/activities/contenidos/<clave>.json` y lo encuentra por la clave `contenido`. Una actividad cuyo contenido no existe en el front no se muestra, y se anota en `ov_frontend/docs/pendientes-interfaz.md`.
++- Cada dominio tiene su propia consulta de lectura (`GET /cuentas/{c}/<dominio>`). El front pide al ingresar solo lo que se ve siempre, y el resto al abrir su vista.
++- Los códigos del backend son los ids del front (`mission-welcome`, `act-tip-01`, `I1`, `psychologist`). No hay tablas de traducción.
++- El JSON usa los nombres en español y `snake_case` de los esquemas Pydantic. El front los copia tal cual en `src/types/servidor.ts`, accede al backend solo desde `src/services/api/` (un archivo por router) y las vistas leen esos datos a través de `src/store/servidor/`.
++- Si el backend entrega un dato que ninguna vista muestra, o una vista necesita un dato que el backend no entrega, no se crea ni se modifica interfaz para cubrirlo: se registra en `ov_frontend/docs/pendientes-interfaz.md` y se avisa al usuario, que decide (detalle en «Datos del servidor sin vista» del `AGENTS.md` del front). Vale también al trabajar solo en el backend.
++- Si una tarea cambia una respuesta que consume el front, en la misma tarea se actualizan: el esquema y las pruebas del backend; `src/types/servidor.ts`, `src/services/api/` y `src/lib/servidor/adaptadores.ts` del front; los fixtures (se regeneran con `scripts/exportar_fixtures_front.py`), y las pruebas del front.
++
++**Git.** No hagas push salvo que se pida. Trabaja en la rama que indique la spec, con un commit por fase y por repo y mensaje en español (`Iteración 2 · F1: semilla de registros`). Nunca versiones `.env`, `.env.local` ni archivos `*.db`, y no dejes en los repos logs, bases temporales ni carpetas temporales de pruebas.
++
++**Idioma.** Documentación, mensajes al usuario y commits en español.
+diff --git a/README.md b/README.md
+dissimilarity index 98%
+index 0075111..df7fe4f 100644
+--- a/README.md
++++ b/README.md
+@@ -1,184 +1,42 @@
+-# Orientación Explora · frontend
+-
+-Interfaz en React, TypeScript y Vite para una plataforma de orientación vocacional. El estudiante recorre Camino y Ciudad, conversa con Mara y consulta sus intereses, mochila y pasaporte.
+-
+-La fuente de verdad de la integración es `ov_backend/docs/iteraciones/spec-iteracion-1.md`. Las decisiones compartidas están en `ov_backend/docs/iteraciones/decisiones-iteracion-1.md`; las de presentación en [el plan del estudiante](docs/student-experience/plan.md).
+-
+-## Ejecutar
+-
+-Requisitos: Node.js y npm compatibles con las versiones fijadas en `package-lock.json`.
+-
+-```powershell
+-npm ci
+-npm run dev
+-```
+-
+-Abre la dirección que imprime Vite. El acceso es de demostración: acepta usuario y contraseña de prueba y permite elegir un perfil.
+-
+-## Origen de los datos
+-
+-`VITE_DATOS=local` es el valor predeterminado. Conserva el recorrido de demostración, sus cálculos y almacenamiento local, sin solicitar la API.
+-
+-Para usar el servidor, crea `.env.local` a partir de [.env.example](.env.example):
+-
+-```dotenv
+-VITE_DATOS=api
+-VITE_API_URL=/api
+-```
+-
+-En otra terminal, desde la raíz de **ov_backend**, arranca la plataforma con el evaluador falso:
+-
+-```powershell
+-uv sync
+-$env:EVALUADOR="falso"
+-uv run alembic upgrade head
+-uv run python -m datos.cargar plataforma
+-uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+-```
+-
+-La migración y la carga se ejecutan una vez sobre una base nueva. En los siguientes
+-arranques basta con Uvicorn. El backend usa `DATABASE_URL` (por defecto,
+-`sqlite:///ov.db` en su raíz); para otra base, definirla antes de migrar y cargar.
+-`POST /desarrollo/reiniciar` (solo en desarrollo) borra el estado y conserva el catálogo. La preparación
+-vigente se define en `ov_backend/docs/spec-refactor-estructura.md`.
+-
+-Reinicia Vite al cambiar variables. Su proxy de desarrollo dirige `/api` a `http://127.0.0.1:8000` y quita ese prefijo. El proxy no forma parte del build de producción; el entorno que sirva `dist` debe resolver `/api` o proporcionar una URL accesible del backend.
+-
+-Usa `est-ana` o `est-luis` para elegir una cuenta ESTUDIANTE. Un usuario que no coincide usa `est-ana`. Es identificación de prueba, sin autenticación real. El menú permite reiniciar datos con confirmación exclusivamente en desarrollo y API.
+-
+-En API, el servidor decide disponibilidad, finalización, respuestas de Mara, resultado RIASEC, fichas obtenidas, insignias y nivel. Nodos narrativos, textos, borradores, comprobaciones y respuestas de brújula permanecen locales. La finalización se informa únicamente desde `move` en `src/features/activities/hooks/useActivityCompletion.ts`, al llegar a `$fin`; consultar y revisar no completa actividades.
+-
+-Los almacenes de Camino y aventura separan sus claves API con `.api` y por cuenta. Descubrimiento guarda preferencias por cuenta y revelación de intereses por cuenta y `calculado_en`. Recargar mantiene el estado remoto y los borradores locales. No versiones `.env`, `.env.local` ni bases `*.db`.
+-
+-## Estructura del proyecto
+-
+-La estructura y sus reglas están en [AGENTS.md](AGENTS.md). El [inventario de origen de los datos](docs/refactor/origen-de-datos.md) distingue servidor, contenido, catálogo, demostración y estado del navegador.
+-
+-```
+-src/
+-├── main.tsx                 # punto de entrada: configura el entorno y monta App
+-├── App.tsx                  # DemoAccessGate + AppRoutes
+-├── index.css                # Tailwind y estilos globales
+-├── assets/                  # imágenes y fuentes que se importan desde código (hoy vacía; public/ sigue para URLs)
+-├── config/                  # configuración de la aplicación
+-│   ├── env.ts               # modoApi, urlApi, desarrollo, configurarServidor (antes servidor/config.ts)
+-│   └── studentDemoScope.ts  # alcance de la demo del estudiante
+-├── routes/
+-│   ├── AppRoutes.tsx        # SOLO la tabla de rutas
+-│   ├── SoloLocal.tsx        # guarda «Disponible en una próxima iteración» (sale de AppRoutes)
+-│   ├── paths.ts             # appPaths
+-│   └── discoveryPaths.ts
+-├── pages/                   # un archivo por ruta (y los layouts de cada portal); componen features
+-│   ├── auth/                # LoginRoute, RoleSelectionRoute (salen de AppRoutes)
+-│   ├── student/             # StudentShell, CaminoScreen, CiudadScreen, StudentJournalView, …
+-│   ├── parent/
+-│   └── counselor/
+-├── features/                # un dominio por carpeta (ver tabla)
+-│   └── <dominio>/
+-│       ├── components/      # componentes del dominio (subcarpetas por área si hace falta)
+-│       ├── hooks/           # hooks del dominio; aquí se decide el origen de los datos
+-│       ├── lib/             # lógica pura y selectores
+-│       ├── data/            # contenido fijo que solo usa este dominio
+-│       ├── store/           # estado que solo usa este dominio
+-│       ├── context/         # contextos de React del dominio
+-│       ├── styles/          # CSS del dominio
+-│       └── types.ts         # tipos que solo usa este dominio
+-├── components/              # componentes reutilizables, sin lógica de dominio
+-│   ├── ui/                  # primitivas shadcn/Radix (Button, Dialog, Drawer, Select…)
+-│   ├── common/              # PageHeader, ThemeScope, GuideDialogue
+-│   ├── layout/              # AppShell, AppSidebar, AppTopBar… (portales de personal)
+-│   ├── staff/               # patrones visuales compartidos por orientadora y apoderado
+-│   └── student/             # piezas visuales del estudiante que usan varios dominios (Parchment, Seal, CharacterAvatar…)
+-├── context/                 # contextos compartidos entre dominios (occupationExplorationContext)
+-├── store/                   # estado global
+-│   ├── servidor/            # estado sincronizado con el backend: sesión de cuenta, estado, operaciones
+-│   ├── adventureStore.ts    # aventura del estudiante (antes AdventureStore.ts)
+-│   ├── journeyStore.ts      # progreso local de actividades (antes missions/store.ts)
+-│   ├── discoveryStore.ts, explorationStore.ts, reflectionStore.ts, studentUiStore.ts
+-├── services/
+-│   └── api/                 # ÚNICO lugar que habla con el backend
+-│       ├── cliente.ts       # obtener, enviar, actualizar, eliminar: el único fetch; solo se importan en services/api/
+-│       ├── cuentas.ts       # /cuentas…
+-│       ├── acciones.ts      # /acciones/…
+-│       ├── instrumentos.ts  # /actividades/{a}/items, /cuentas/{c}/instrumentos…
+-│       └── desarrollo.ts    # /desarrollo/reiniciar
+-├── data/                    # datos fijos que usan dos o más dominios
+-│   ├── activities/          # contenidos/ (13 JSON), contenidos.ts, content.ts, catálogo de brújula y reflectionConfig.ts
+-│   ├── catalog/             # ocupaciones, carreras e instituciones
+-│   ├── content/             # textos y contenido narrativo (guías, personajes, casos, diario, investigación, familia…)
+-│   └── demo/                # perfiles de estudiantes ficticios para orientadora y apoderado
+-├── lib/                     # utilidades y lógica pura compartida
+-│   ├── utils.ts             # cn() (shadcn)
+-│   ├── persistentStore.ts   # ayudante de almacenes persistentes
+-│   ├── activities/          # motor de actividades: logic.ts, validation.ts
+-│   ├── servidor/            # adaptadores.ts: respuesta del servidor → modelo de la vista
+-│   └── challenges.ts, lumiFriendship.ts, explorationAssets.ts, studentViews.ts
+-├── hooks/                   # hooks globales (useIsMobile, useLumiNow, useReturnFocus, useTypewriter)
+-├── types/                   # tipos compartidos entre capas
+-│   ├── servidor.ts          # contrato con el backend (antes servidor/tipos.ts)
+-│   └── activities.ts, adventure.ts, cases.ts, catalog.ts, challenges.ts, decisions.ts, reflection.ts, studentProfile.ts, …
+-└── styles/
+-    ├── theme.css            # tokens de la plataforma (antes Theme.css)
+-    └── student/             # CSS global del estudiante (student-base, student-logbook, student-targets, student-progress, discovery, journey, adventure…)
+-```
+-
+-### Dónde va cada cosa
+-
+-La tabla reproduce §3.3 de la [spec del refactor](docs/refactor/spec-refactor-estructura.md); las referencias §7 y §5.4 remiten a ese documento.
+-
+-| Si agregas… | Va en… |
+-|---|---|
+-| Una ruta | La entrada en `routes/AppRoutes.tsx` y su vista en `pages/<portal>/`. |
+-| Una vista de ruta | `pages/<portal>/<Nombre>.tsx`: lee parámetros, llama a hooks y compone componentes. Hasta 150 líneas como guía, 300 como máximo. |
+-| Un componente de un dominio | `features/<dominio>/components/`. |
+-| Un componente que usan dos dominios | `components/student/`, `components/staff/` o `components/common/` si no conoce el dominio; si lo conoce, en la feature dueña y marcándola compartida en `AGENTS.md` (decisión del usuario). |
+-| Una primitiva de interfaz | `components/ui/` (shadcn). |
+-| Una llamada al backend | `services/api/<recurso>.ts`, igual que el router del backend. |
+-| Un tipo del contrato | `types/servidor.ts`, copiado tal cual del esquema Pydantic. |
+-| Convertir una respuesta del servidor en datos para la vista | `lib/servidor/adaptadores.ts`. |
+-| Estado que viene del servidor | `store/servidor/`. |
+-| Decidir si un dato sale del servidor o es local | Un hook en `features/<dominio>/hooks/` (§7). Nunca en una vista. |
+-| Estado persistente que usan varios dominios | `store/<nombre>Store.ts`. Si lo usa uno solo, `features/<dominio>/store/`. |
+-| Lógica pura | `features/<dominio>/lib/`; si la usan varios dominios o una capa inferior, `lib/`. |
+-| Contenido fijo | `features/<dominio>/data/` si lo usa un dominio; si no, `data/content/` (texto narrativo), `data/catalog/` (catálogo que podría venir del servidor) o `data/activities/`. |
+-| Datos inventados | `data/demo/` o `features/<dominio>/data/`, con `DATO DE PRUEBA` al inicio del archivo (§5.4). |
+-| Un tipo que usan varias capas | `types/<dominio>.ts`. Si solo lo usa una feature, `features/<dominio>/types.ts`. |
+-| Una variable de entorno | `config/env.ts` y `.env.example`. |
+-| CSS | `features/<dominio>/styles/`; el que se aplica a todo el portal del estudiante, `styles/student/`. |
+-
+-## Verificar
+-
+-```powershell
+-npm run build
+-npm run lint
+-npm test
+-npm run check:estructura
+-```
+-
+-Las pruebas se organizan por tipo y área:
+-
+-```text
+-tests/
+-  local/         # actividades, aventura, casos, perfil, portales (12 archivos)
+-  servidor/      # actividades, mapa, instrumentos, logros, perfil (14 archivos)
+-  despliegue/    # assets de producción (1 archivo)
+-  fixtures/servidor/  # 16 fixtures generados desde ov_backend
+-  soporte/
+-```
+-
+-```powershell
+-npm run test:local
+-npm run test:servidor
+-npm run test:despliegue
+-node --test "tests/servidor/instrumentos/**/*.test.mjs"
+-```
+-
+-Conserva las comillas del glob para que Node lo expanda también en PowerShell. Durante el desarrollo se ejecutan las carpetas afectadas; al cerrar una fase se añade `servidor`. Para cerrar una iteración o integrar se ejecutan todos los comandos del bloque «Verificar». La tabla de impacto y la política completa están en [AGENTS.md](AGENTS.md).
+-
+-Cierre del retiro de demo (P6): se conservan 463 pruebas, con 449 aprobadas y las 14 fallas previas de `tests/local/aventura/adventure-rendering.test.mjs`. Esta spec no autoriza corregirlas. Build, lint y estructura pasan. La demo local sigue disponible; se retiraron únicamente los datos, páginas y rutas de demo del backend. El informe de conteos, tiempos y adaptaciones está en `ov_backend/docs/decisiones.md`, sección «Pruebas y retiro de demo».
+-
+-### Historial de cierres anteriores
+-
+-**Cierre F6 · 2026-10-07:** HU-073 y HU-074 corregidas y revalidadas; las catorce HU del recorrido F7 pasan en el alcance comprobado. Build y lint pasan. Hay 356 pruebas: 340 pasan y solo quedan las 16 fallas previas, con los mismos nombres y líneas. El backend pasa 1006 pruebas con evaluador falso. Consulta [el informe por HU y las evidencias](docs/student-experience/informe-f7.md); la aprobación formal de la iteración corresponde al usuario.
+-
+-**Cierre R7 · 2026-10-08:** refactor de estructura completado en `refactor-estructura`, sin integrar ni hacer push. Build, lint y estructura pasan, sin excepciones. La suite conserva 365 pruebas: 350 correctas y las mismas 15 fallas previas registradas; las 77 pruebas `servidor-*` pasan. El [registro del refactor](docs/refactor/decisiones.md) documenta los movimientos, extracciones, adaptaciones autorizadas y comprobaciones.
++# Orientación Explora · frontend
++
++Interfaz en React, TypeScript y Vite de una plataforma de orientación vocacional. El estudiante recorre el Camino y la Ciudad, conversa con Mara y consulta sus intereses, mochila y pasaporte; también hay portales de apoderado y orientadora.
++
++## Ejecutar
++
++```powershell
++npm ci
++npm run dev
++```
++
++El acceso es de demostración: acepta un usuario y contraseña de prueba y permite elegir un perfil.
++
++### Con el backend
++
++Por defecto (`VITE_DATOS=local`) el front funciona solo, con datos y cálculos de demostración. Para usar el servidor, crea `.env.local` a partir de [.env.example](.env.example):
++
++```dotenv
++VITE_DATOS=api
++VITE_API_URL=/api
++```
++
++Levanta `ov_backend` (ver su README) en `http://127.0.0.1:8000` y reinicia Vite. El proxy de desarrollo envía `/api` al backend; en producción, el entorno que sirva `dist` debe resolver `/api`. Ingresa con `est-ana` o `est-luis`. En desarrollo, el menú del estudiante permite reiniciar los datos de prueba.
++
++## Verificar
++
++```powershell
++npm run build
++npm run lint
++npm test
++npm run check:estructura
++```
++
++Pruebas por grupo: `npm run test:local`, `npm run test:servidor`, `npm run test:despliegue`, o una carpeta con `node --test "tests/servidor/instrumentos/**/*.test.mjs"`.
++
++## Documentación
++
++- [AGENTS.md](AGENTS.md): estructura, reglas, dónde va cada cosa y tabla de impacto de pruebas.
++- [docs/origen-de-datos.md](docs/origen-de-datos.md): qué viene del servidor y qué es local.
++- [docs/contenidos-actividades.md](docs/contenidos-actividades.md): formato de los JSON de actividades.
++- [docs/pendientes-interfaz.md](docs/pendientes-interfaz.md): datos sin vista que esperan decisión.
++- [docs/historico/](docs/historico/): specs de vistas, planes e informes de trabajos terminados.
+diff --git a/docs/contenidos-actividades.md b/docs/contenidos-actividades.md
+new file mode 100644
+index 0000000..b7faa6c
+--- /dev/null
++++ b/docs/contenidos-actividades.md
+@@ -0,0 +1,67 @@
++# Contenidos de actividades
++
++Formato de los JSON de `src/data/activities/contenidos/<clave>.json`. El tipo de referencia es `Actividad` en `src/types/activities.ts`; la validación está en `src/lib/activities/validation.ts`. El backend solo conoce la clave (`actividad.contenido`) y no interpreta el contenido.
++
++## Principio
++
++Toda actividad, de cualquier rol, es el mismo objeto: metadatos, una lista ordenada de `nodos` y una `recompensa`. El **tipo** decide qué nodos se permiten y cuándo está completa; la **audiencia**, solo cómo se dibuja.
++
++| Front (`tipo`) | Backend (`TipoActividad`) | Nodos permitidos |
++|---|---|---|
++| `encuentro` | INFORMATIVA | `dialogo`, `eleccion`, `diapositiva`, `pregunta` |
++| `registro` | REGISTRO | `dialogo`, `eleccion`, `consigna` |
++| `instrumento` | CUESTIONARIO | `dialogo`, `eleccion`, `item`, `resultado` |
++
++- `audiencia`: `estudiante` (inmersivo, por defecto) o `apoderado` (sobrio). El apoderado solo admite `encuentro`.
++- `presentacion` (solo instrumentos): `narrativa` dibuja todos los nodos; `directa`, solo `item` y `resultado`.
++- `plantilla` (solo registros): `secuencial` (una consigna tras otra) o `matriz` (celdas `columna.fila`; sirve para línea de tiempo o FODA).
++- `mapa` (opcional): `{ x, y, etiqueta, icono }` para dibujar la actividad como punto del mapa. Sin `mapa`, no se dibuja.
++
++## Metadatos
++
++| Campo | Uso |
++|---|---|
++| `id`, `codigo`, `tipo`, `titulo`, `subtitulo` | Identidad. En modo api, el reproductor recibe el contenido con `id` igual al código de la actividad del backend. |
++| `audiencia`, `bloque`, `orden`, `obligatoria`, `requisitos` | Ruta y desbloqueos en modo local. En api manda el backend. |
++| `duracionEstimadaMin` | Se muestra en el detalle o la tarjeta. |
++| `personajeIds` | Personajes de la escena; el apoderado solo usa `orientacion` (narrador sin avatar). |
++| `objetivoAprendizaje` | Interno, en encuentros. |
++| `recompensa` | `afinidad`, `piezaLlave`, `recursoIds`, `mensajeFin` (apoderado: solo `recursoIds` y `mensajeFin`). |
++| `siguienteSugerida`, `promptDiario` | Botón al terminar; entrada de diario que se desbloquea (solo estudiante). |
++
++## Nodos
++
++| Nodo | Qué hace | Qué se guarda |
++|---|---|---|
++| `dialogo` | Caja de diálogo con hablante y `expresion`. | Nada |
++| `eleccion` | Botones del jugador; luego `reaccion`. `enunciado` y `nota` opcionales. | `RespuestaEleccion` solo si `registrar: true` |
++| `diapositiva` | Tarjeta con `etiqueta`, `titulo` y `bloques`; `recursoIds` como «Profundizar» o «Ver ficha». | Nada |
++| `pregunta` | Reto de comprensión (`opcion_unica` u `opcion_multiple`) con retroalimentación, pistas y explicación. | `IntentoPregunta` por intento |
++| `item` | Ítem de instrumento con el formato de su escala (`si_no`, `likert`, `opcion_unica`). | `RespuestaItem` (en api, `responder-items`) |
++| `consigna` | Texto, archivo u opción; en registros, celdas de plantilla y preguntas de seguimiento. | `Entregable` |
++| `resultado` | Revelación del perfil. | Resultado del instrumento |
++
++Bloques de diapositiva: `parrafo`, `lista`, `destacado` (`dato`, `idea_clave`, `alerta`), `comparacion` (dos columnas con títulos libres), `pasos`, `reflexion` (pregunta sin campo), `fuente` (con enlace opcional) y `tabla` (`columnas`, `filas`, `nota`; cada fila con tantas celdas como columnas).
++
++## Reglas de comportamiento
++
++- **Pregunta:** si acierta, retroalimentación y explicación; si falla, retroalimentación y la siguiente pista, y reintenta. Sin pistas y con `alAgotarPistas: "revelar_y_continuar"`, se revela la correcta y continúa. En opción múltiple, solo es correcta si coincide exactamente el conjunto. No hay puntaje visible.
++- **Ítem:** no tiene respuesta correcta; la reacción repite lo respondido sin elogios ni juicios. No se vuelve atrás durante la interacción.
++- **Retomar:** el progreso guarda el nodo actual (`nodoActualId`); al volver, sigue desde el siguiente pendiente.
++- **Completitud de un encuentro:** se llega a `$fin` y todas las `pregunta` con `bloqueante: true` tienen un intento correcto o revelado.
++- **Completitud de un registro:** todas las consignas obligatorias tienen entregable (en plantillas con `alternativa`, el archivo puede reemplazar celdas según `reemplazaSlots`).
++- **Instrumento:** completo cuando todos sus `item` tienen respuesta.
++- **Preguntas de seguimiento:** solo en registros.
++- **Editar después:** una celda editada crea un `Entregable` con versión nueva.
++
++## Para producir contenido
++
++Secuencia de un encuentro: gancho (diapositiva o elección personal) → concepto → reto → (concepto → reto) × N → práctica → resumen con ficha. Una pregunta cada una o dos diapositivas.
++
++- Cada diapositiva enseña una sola idea y termina en un `destacado` o una `reflexion`.
++- Cada `pregunta` tiene retroalimentación en todas las opciones, al menos una pista y una explicación que refuerza el contenido, no que repite la respuesta.
++- Los casos usan nombres y situaciones cotidianas del contexto limeño.
++- Las afirmaciones con dato llevan `fuente`; sin cifras que cambien con el tiempo, salvo de una fuente oficial con fecha.
++- Apoderado: tono informativo y sin culpa, entre 10 y 15 minutos, frases cortas.
++
++Para agregar un contenido: crea el JSON, regístralo en `src/data/activities/contenidos.ts` (una prueba exige que todo archivo de la carpeta esté registrado) y, si es una actividad del backend, usa su clave en `contenido` en `ov_backend/datos/`.
+diff --git a/docs/especificacion-actividades-comunes.md b/docs/historico/actividades/especificacion-actividades-comunes.md
+similarity index 100%
+rename from docs/especificacion-actividades-comunes.md
+rename to docs/historico/actividades/especificacion-actividades-comunes.md
+diff --git a/docs/mission-implementation.md b/docs/historico/actividades/mission-implementation.md
+similarity index 100%
+rename from docs/mission-implementation.md
+rename to docs/historico/actividades/mission-implementation.md
+diff --git a/docs/mission-spec.md b/docs/historico/actividades/mission-spec.md
+similarity index 100%
+rename from docs/mission-spec.md
+rename to docs/historico/actividades/mission-spec.md
+diff --git a/docs/student-adventure-prototype.md b/docs/historico/actividades/student-adventure-prototype.md
+similarity index 100%
+rename from docs/student-adventure-prototype.md
+rename to docs/historico/actividades/student-adventure-prototype.md
+diff --git a/docs/occupation-exploration/ProcesoExperienciaModuloExploracionOcupaciones.md b/docs/historico/occupation-exploration/ProcesoExperienciaModuloExploracionOcupaciones.md
+similarity index 100%
+rename from docs/occupation-exploration/ProcesoExperienciaModuloExploracionOcupaciones.md
+rename to docs/historico/occupation-exploration/ProcesoExperienciaModuloExploracionOcupaciones.md
+diff --git a/docs/parent-experience/progreso-retroalimentacion.md b/docs/historico/parent-experience/progreso-retroalimentacion.md
+similarity index 100%
+rename from docs/parent-experience/progreso-retroalimentacion.md
+rename to docs/historico/parent-experience/progreso-retroalimentacion.md
+diff --git a/docs/refactor/decisiones.md b/docs/historico/refactor/decisiones.md
+similarity index 100%
+rename from docs/refactor/decisiones.md
+rename to docs/historico/refactor/decisiones.md
+diff --git a/docs/refactor/mapa-archivos.md b/docs/historico/refactor/mapa-archivos.md
+similarity index 100%
+rename from docs/refactor/mapa-archivos.md
+rename to docs/historico/refactor/mapa-archivos.md
+diff --git a/docs/refactor/origen-de-datos.md b/docs/historico/refactor/origen-de-datos.md
+similarity index 100%
+rename from docs/refactor/origen-de-datos.md
+rename to docs/historico/refactor/origen-de-datos.md
+diff --git a/docs/refactor/spec-refactor-estructura.md b/docs/historico/refactor/spec-refactor-estructura.md
+similarity index 100%
+rename from docs/refactor/spec-refactor-estructura.md
+rename to docs/historico/refactor/spec-refactor-estructura.md
+diff --git a/docs/staff-experience/especificacion-nuevo-estilo-portales.md b/docs/historico/staff-experience/especificacion-nuevo-estilo-portales.md
+similarity index 100%
+rename from docs/staff-experience/especificacion-nuevo-estilo-portales.md
+rename to docs/historico/staff-experience/especificacion-nuevo-estilo-portales.md
+diff --git a/docs/staff-experience/implementacion-nuevo-estilo-portales.md b/docs/historico/staff-experience/implementacion-nuevo-estilo-portales.md
+similarity index 100%
+rename from docs/staff-experience/implementacion-nuevo-estilo-portales.md
+rename to docs/historico/staff-experience/implementacion-nuevo-estilo-portales.md
+diff --git a/docs/student-experience/especificacion-central-casos-incendio-forestal.md b/docs/historico/student-experience/especificacion-central-casos-incendio-forestal.md
+similarity index 100%
+rename from docs/student-experience/especificacion-central-casos-incendio-forestal.md
+rename to docs/historico/student-experience/especificacion-central-casos-incendio-forestal.md
+diff --git a/docs/student-experience/especificacion-interfaz-inmersiva-estudiante.md b/docs/historico/student-experience/especificacion-interfaz-inmersiva-estudiante.md
+similarity index 100%
+rename from docs/student-experience/especificacion-interfaz-inmersiva-estudiante.md
+rename to docs/historico/student-experience/especificacion-interfaz-inmersiva-estudiante.md
+diff --git a/docs/student-experience/especificacion-panel-mochila-diario-pasaporte.md b/docs/historico/student-experience/especificacion-panel-mochila-diario-pasaporte.md
+similarity index 100%
+rename from docs/student-experience/especificacion-panel-mochila-diario-pasaporte.md
+rename to docs/historico/student-experience/especificacion-panel-mochila-diario-pasaporte.md
+diff --git a/docs/student-experience/especificacion-pantalla-ingreso.md b/docs/historico/student-experience/especificacion-pantalla-ingreso.md
+similarity index 100%
+rename from docs/student-experience/especificacion-pantalla-ingreso.md
+rename to docs/historico/student-experience/especificacion-pantalla-ingreso.md
+diff --git a/docs/student-experience/especificacion-progreso-comprobaciones-desafios.md b/docs/historico/student-experience/especificacion-progreso-comprobaciones-desafios.md
+similarity index 100%
+rename from docs/student-experience/especificacion-progreso-comprobaciones-desafios.md
+rename to docs/historico/student-experience/especificacion-progreso-comprobaciones-desafios.md
+diff --git a/docs/student-experience/especificacion-registros-personalizados-adicionales.md b/docs/historico/student-experience/especificacion-registros-personalizados-adicionales.md
+similarity index 100%
+rename from docs/student-experience/especificacion-registros-personalizados-adicionales.md
+rename to docs/historico/student-experience/especificacion-registros-personalizados-adicionales.md
+diff --git a/docs/student-experience/especificacion-vistas-descubrimiento.md b/docs/historico/student-experience/especificacion-vistas-descubrimiento.md
+similarity index 100%
+rename from docs/student-experience/especificacion-vistas-descubrimiento.md
+rename to docs/historico/student-experience/especificacion-vistas-descubrimiento.md
+diff --git a/docs/student-experience/implementacion-central-casos-incendio-forestal.md b/docs/historico/student-experience/implementacion-central-casos-incendio-forestal.md
+similarity index 100%
+rename from docs/student-experience/implementacion-central-casos-incendio-forestal.md
+rename to docs/historico/student-experience/implementacion-central-casos-incendio-forestal.md
+diff --git a/docs/student-experience/implementacion-piloto-bloque1.md b/docs/historico/student-experience/implementacion-piloto-bloque1.md
+similarity index 100%
+rename from docs/student-experience/implementacion-piloto-bloque1.md
+rename to docs/historico/student-experience/implementacion-piloto-bloque1.md
+diff --git a/docs/student-experience/implementacion-progreso-comprobaciones-desafios.md b/docs/historico/student-experience/implementacion-progreso-comprobaciones-desafios.md
+similarity index 100%
+rename from docs/student-experience/implementacion-progreso-comprobaciones-desafios.md
+rename to docs/historico/student-experience/implementacion-progreso-comprobaciones-desafios.md
+diff --git a/docs/student-experience/informe-f5-cierre-perfil-resultados.md b/docs/historico/student-experience/informe-f5-cierre-perfil-resultados.md
+similarity index 100%
+rename from docs/student-experience/informe-f5-cierre-perfil-resultados.md
+rename to docs/historico/student-experience/informe-f5-cierre-perfil-resultados.md
+diff --git a/docs/student-experience/informe-f7.md b/docs/historico/student-experience/informe-f7.md
+similarity index 100%
+rename from docs/student-experience/informe-f7.md
+rename to docs/historico/student-experience/informe-f7.md
+diff --git a/docs/student-experience/plan.md b/docs/historico/student-experience/plan.md
+similarity index 100%
+rename from docs/student-experience/plan.md
+rename to docs/historico/student-experience/plan.md
+diff --git a/docs/student-experience/spec-f4b-libro-helena-resumen.md b/docs/historico/student-experience/spec-f4b-libro-helena-resumen.md
+similarity index 100%
+rename from docs/student-experience/spec-f4b-libro-helena-resumen.md
+rename to docs/historico/student-experience/spec-f4b-libro-helena-resumen.md
+diff --git a/docs/origen-de-datos.md b/docs/origen-de-datos.md
+new file mode 100644
+index 0000000..3235928
+--- /dev/null
++++ b/docs/origen-de-datos.md
+@@ -0,0 +1,113 @@
++# Origen de los datos
++
++De dónde sale cada dato del front. Las rutas parten de `src/`. Si una tarea mueve un dato de un grupo a otro, actualiza este documento en la misma tarea.
++
++## 1. Del servidor (`VITE_DATOS=api`)
++
++`services/api/cliente.ts` tiene el único `fetch` y exporta `obtener` (GET), `enviar` (POST), `actualizar` (PATCH) y `eliminar` (DELETE). Los módulos de recursos solo arman URL y cuerpo: no guardan estado ni leen la cuenta activa. Una respuesta 204 devuelve `undefined`.
++
++| Módulo | Función | Petición |
++|---|---|---|
++| `services/api/cuentas.ts` | `listarCuentas` | `GET /cuentas` |
++| | `obtenerResumen` | `GET /cuentas/{c}/resumen` |
++| | `obtenerProgreso` | `GET /cuentas/{c}/progreso/{tipo}/{codigo}` |
++| | `obtenerDesbloqueosNoVistos` | `GET /cuentas/{c}/desbloqueos?solo_no_vistos=true` |
++| | `marcarDesbloqueosVistos` | `POST /cuentas/{c}/desbloqueos/marcar-vistos` |
++| `services/api/actividades.ts` | `obtenerActividades` | `GET /cuentas/{c}/actividades` |
++| `services/api/fichas.ts` | `obtenerFichas` | `GET /cuentas/{c}/fichas` |
++| `services/api/logros.ts` | `obtenerLogros` | `GET /cuentas/{c}/logros` |
++| `services/api/acciones.ts` | `ingresar`, `completarActividad`, `responderItems` | `POST /acciones/ingresar`, `/completar-actividad`, `/responder-items` |
++| `services/api/instrumentos.ts` | `obtenerItems`, `obtenerRespuestas`, `obtenerAvance`, `obtenerResultado` | `GET /actividades/{a}/items`, `/cuentas/{c}/actividades/{a}/respuestas`, `/cuentas/{c}/instrumentos`, `/cuentas/{c}/instrumentos/{i}/resultado` |
++| `services/api/desarrollo.ts` | `reiniciar` | `POST /desarrollo/reiniciar` |
++
++Con eso el servidor decide: disponibilidad y finalización de actividades, acceso a la Ciudad, respuestas de Mara, resultado RIASEC (dimensiones con su descripción, código de interés, coincidencias y carreras), fichas obtenidas, insignias, nivel y avisos de desbloqueo.
++
++**Estado sincronizado (`store/servidor/`).** `sesion.ts`, `secciones.ts`, `avisos.ts`, `resultado.ts`, `consultas.ts`, `refresco.ts`, `operaciones.ts` y `cuenta.ts`. Cada dominio es una sección en memoria con `datos`, `estado` (`sin_cargar`, `cargando`, `listo`, `vencido`, `error`) y `error`. Se descartan respuestas de otra cuenta o sesión y no se duplican pedidos en curso. Qué se pide y cuándo: `ov_backend/docs/sistema/integracion.md`.
++
++**Mapa en modo api.** La lista y el orden de los puntos salen de `actividades`; la posición, la etiqueta y el ícono, del campo `mapa` del JSON de contenido. Las actividades consecutivas con el mismo contenido forman un punto. Un contenido sin `mapa` no se dibuja y se anota en `pendientes-interfaz.md`. El modo local conserva su lista fija (`baseRoute`, `fieldMissions`).
++
++**Resultados (libro de Helena).** En modo api, dimensiones, código, empate, perfil plano, coincidencias y carreras vienen del resultado remoto; no se calculan afinidades. Se completan con presentación del front:
++
++- Descripción de cada dimensión: del servidor. Ejemplos por dimensión (`ejemplosDimension`), fragmentos del resumen (`fragmentosResumen`) y descripciones del modo local (`descripcionesLocales`): `features/discovery/data/dimensionExamples.ts`.
++- Duración de una carrera: `data/catalog/careersAndInstitutions.ts` (`careerCatalog.duration`), cruzando por código; si no hay coincidencia, se omite.
++- Tipo de resultado por página: `features/discovery/data/resultPages.ts` (el almacén todavía no carga `GET /instrumentos`).
++- Familias: etiqueta local de `careerFamilies` por el mismo id; si no existe, el valor remoto.
++- Inteligencias: siempre la demostración `demoIntelligences` (`features/discovery/lib/helenaPages.ts`, `DATO DE PRUEBA`), con aviso de que no es personal. El instrumento real llega en su iteración.
++
++## 2. Contenido del front
++
++El backend no interpreta el contenido narrativo.
++
++| Qué | Dónde |
++|---|---|
++| Nodos de las actividades (JSON con metadatos de mapa), registro por clave y catálogo local | `data/activities/contenidos/<clave>.json`, `data/activities/contenidos.ts`, `data/activities/content.ts`. Formato: `docs/contenidos-actividades.md`. |
++| Personajes, recursos e instrumentos del reproductor | `data/activities/catalogo.json`; brújula en `data/activities/standardActivities.ts` (`compassInstrument`) |
++| Configuración del piloto de reflexión | `data/activities/reflectionConfig.ts` |
++| Personajes y textos de guía | `data/content/characters.ts`, `data/content/guideTexts.ts` |
++| Recuerdos de Lumi | `features/journal/data/lumiMemories.ts` |
++| Desafíos | `data/content/challenges.ts` |
++| Geometría y puntos del mapa | `features/adventure/lib/` (`geometry`, `caminoPoints`, `ciudadPoints`, `pointDetails`, `missionSync`, `mapPoints`) |
++| Títulos de viajero e íconos de insignias | `features/discovery/lib/passport.ts`; títulos locales en `store/adventureStore.ts` |
++| Rol del apoderado y opciones de rol | `features/parent/data/parentMotivation.ts`, `features/auth/data/roleOptions.ts` |
++
++## 3. Catálogo fijo (en el front; podría venir del servidor)
++
++| Qué | Dónde | Iteración que lo toca |
++|---|---|---|
++| Ocupaciones | `data/catalog/occupations.ts`, `data/catalog/additionalOccupations.ts` | 3 |
++| Carreras e instituciones | `data/catalog/careersAndInstitutions.ts` | 3 |
++| Preguntas del diario | `data/content/journalPrompts.ts` | 3 |
++| Caso del incendio forestal | `data/content/forestFireCase.ts` | 4 |
++| Entrevistas de leyenda, videos y detalles | `data/content/adventure.ts`, `data/content/research.ts` | 4 |
++| Temas de conversaciones en familia | `data/content/familyConversations.ts` | 4 |
++| Niveles de viajero (modo local) | `store/adventureStore.ts` (en api se usa `nivel_actual`) | — |
++
++## 4. Datos de demostración (`DATO DE PRUEBA`)
++
++| Qué | Dónde |
++|---|---|
++| Perfiles, cuestionarios y planes ficticios (orientadora y apoderado) | `data/demo/studentProfiles.ts` |
++| Salones y personas de la orientadora | `features/counselor/data/counselorPortal.ts`, `features/counselor/data/exampleStudents.ts` |
++| Hijos y perfil del apoderado | `features/parent/data/parentPortal.ts` |
++| Comentarios, reacciones, aliados y nivel de investigación | `data/content/research.ts` (`interviewDetails` es la única definición; la orientadora la importa) |
++| Alias de salón, avisos, videos y lecturas de recursos | `data/content/adventure.ts` |
++| Entradas y check-ins de ejemplo | `data/content/journalPrompts.ts` |
++| Perfiles de ocupación de ejemplo | `data/catalog/occupations.ts` (`mockOccupationProfiles`) |
++| Intereses e inteligencias de ejemplo del libro de Helena | `features/discovery/lib/helenaPages.ts`; descripciones en `features/discovery/data/dimensionExamples.ts` |
++| Conversaciones familiares de ejemplo | `data/content/familyConversations.ts` |
++
++## 5. Estado local (navegador)
++
++Todas en `localStorage`, salvo donde se indica. No se cambian sin una migración que conserve lo guardado.
++
++| Clave | Almacén | Contenido |
++|---|---|---|
++| `ov.demo-access.v1` (`sessionStorage`) | `features/auth/lib/demoAccess.ts` | sesión de demostración |
++| `ov.cuenta-servidor.v1` (`sessionStorage`) | `store/servidor/cuenta.ts` | usuario y cuenta activa en api |
++| `ov.missions.v2` / `ov.missions.v2.api` | `store/journeyStore.ts` | progreso, intentos, entregas y borradores |
++| `ov.mission-files` (IndexedDB) | `store/journeyStore.ts` | archivos adjuntos |
++| `ov.student-adventure.v1` / `ov.student-adventure.v1.api` | `store/adventureStore.ts` | aventura, diario, casos, investigación, conversaciones |
++| `ov.student-discovery.v1` | `store/discoveryStore.ts` | visitas, favoritos, publicaciones, páginas reveladas |
++| `ov.student-exploration.v1` | `store/explorationStore.ts` | intereses y hojas de decisión |
++| `ov.student-reflections.v1` | `store/reflectionStore.ts` | respuestas y evaluaciones del piloto |
++| `ov.student-followups.v1` | `features/activities/store/followUpStore.ts` | preguntas de seguimiento |
++| `ov.student-ui.v1` | `store/studentUiStore.ts` | guías vistas, desbloqueos vistos, preferencias |
++| `ov.parent-missions.v1` | `features/parent/store/parentJourneyStore.ts` | actividades del apoderado |
++| `ov.staff.priorities.v1` (`sessionStorage`) | `features/counselor/store/prioritySettings.ts` | prioridades de la orientadora |
++| `ov.staff.selected-salon.v1` (`sessionStorage`) | `features/counselor/hooks/useSelectedSalon.ts` | salón elegido |
++
++En api, las claves `.api` guardan `por_cuenta[codigo]` y no se mezclan con el modo local ni entre cuentas. `ov.student-discovery.v1` guarda además `profileBadgesApi[cuenta]` y `revealedPagesApi[cuenta][calculado_en]`: revelar una página o elegir insignias es una preferencia local, no completa nada en el servidor. El navegador conserva borradores, nodo actual, comprobaciones, adjuntos, respuestas de la brújula, favoritos y planes.
++
++## 6. Recorrido de los datos
++
++`services/api/` → `store/servidor/` → hooks del dominio → vistas. `types/servidor.ts` copia el contrato y `lib/servidor/adaptadores.ts` lo convierte a los modelos de la interfaz (solo importa tipos). Los hooks deciden entre dato remoto y local; las vistas no importan `modoApi` ni `desarrollo`.
++
++| Dominio | Hooks |
++|---|---|
++| Ingreso | `features/auth/hooks/useLogin.ts` |
++| Aventura | `features/adventure/hooks/` (sesión, sincronización, nivel, Ciudad, detalles del mapa, cuenta, novedades) |
++| Actividades | `features/activities/hooks/` (`useActivityCompletion`, `useActivityPlayer`, `useInstrumentResponses`, `useActivityResources`, `useActivityFinish`, `useInstrumentResult`) |
++| Mochila | `features/backpack/hooks/useBackpack.ts` |
++| Descubrimiento | `features/discovery/hooks/` (`useCatalogAffinity`, `useStudentProfile`, `usePassport`, `useBadgeDetail`, `useHelenaPages`, `useResultPage`) |
++
++La única llamada a `completarActividad` está en `move`, dentro de `useActivityCompletion.ts`, al alcanzar `$fin`.
+diff --git a/scripts/verificar-estructura.mjs b/scripts/verificar-estructura.mjs
+index 97532a8..154a620 100644
+--- a/scripts/verificar-estructura.mjs
++++ b/scripts/verificar-estructura.mjs
+@@ -1,5 +1,5 @@
+ #!/usr/bin/env node
+-// Verifica que src/ respete la estructura de docs/spec-refactor-estructura.md y AGENTS.md.
++// Verifica que src/ respete la estructura y las dependencias definidas en AGENTS.md.
+ // Uso:
+ //   node scripts/verificar-estructura.mjs                          comprueba (sale con 1 si hay infracciones nuevas)
+ //   node scripts/verificar-estructura.mjs --actualizar-excepciones reescribe scripts/estructura-excepciones.json

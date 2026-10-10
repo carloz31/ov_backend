@@ -4,25 +4,27 @@
 
 Backend en FastAPI de una plataforma gamificada de orientación vocacional. `ov_frontend` consume esta API.
 
-Las especificaciones son la fuente de verdad:
+Documentos vigentes (lee los que toque la tarea):
 
-1. `docs/iteraciones/spec-iteracion-N.md` de la iteración vigente (hoy la 1): alcance, datos `plataforma` e integración con el front.
-2. `docs/spec-demo-motor-desbloqueos.md`, `docs/spec-demo-instrumentos.md` y `docs/spec-demo-registro-gemini.md`: reglas de comportamiento del motor, instrumentos y registro. Sus datos y escenarios se retiraron; no son conjuntos disponibles para cargar.
-3. `docs/spec-refactor-estructura.md`: estructura, base de datos y migraciones. Prevalece sobre las referencias históricas a semillas, `SEMILLA`, `RUTA_BD` y versión de esquema.
-4. `docs/spec-pruebas-y-retiro-demo.md`: retiro de datos, páginas y rutas de demo; estructura, preparación y política de pruebas. Sustituye las instrucciones anteriores sobre esos elementos.
-
-Si dos especificaciones parecen contradecirse, detente y explica la contradicción antes de cambiar nada.
+| Documento | Qué define |
+|---|---|
+| `docs/sistema/motor.md` | Eventos, reglas, disponibilidad, acciones y progreso. |
+| `docs/sistema/instrumentos.md` | Cuestionarios, cálculo de resultados, coincidencias O*NET y carreras. |
+| `docs/sistema/registro.md` | Respuestas de registro, preguntas de seguimiento y evaluador (Gemini o falso). |
+| `docs/sistema/integracion.md` | Contrato con el front, conjuntos de datos, fixtures y reinicio. |
+| `docs/specs/` | La spec en curso. |
+| `docs/decisiones.md` | Decisiones de la spec en curso. |
 
 ## Estructura
 
 Esta estructura es fija. No crees carpetas ni módulos sueltos fuera de ella; si algo no encaja, detente y pregunta.
 
 ```
-app/                    solo la aplicación
+app/                    solo la aplicación; no lee archivos de datos
   main.py               crear_aplicacion(): configuración, lifespan, routers
   config.py             Configuracion y cargar_configuracion()
   database.py           motor, sesiones y todo lo que depende del dialecto
-  dependencies.py       dependencias compartidas de FastAPI (SesionBD, ejecutar_accion)
+  dependencies.py       dependencias compartidas (SesionBD, ejecutar_accion, cuenta)
   exceptions.py         excepciones de dominio y su traducción a HTTP
   api/                  rutas, un archivo por grupo; sin lógica de negocio
   models/               tablas SQLAlchemy por dominio; __init__ reexporta todo
@@ -30,13 +32,13 @@ app/                    solo la aplicación
   services/             lógica de negocio por dominio
     motor/              núcleo de desbloqueos
     instrumentos/       cálculo, consultas y resultados
-    registro/           registro con LLM
+    registro/           registro con evaluador de respuestas
   core/                 parámetros, caché de definiciones y contexto de consultas
-datos/                  todo lo que llena la base (plataforma, piloto, Excel O*NET)
+datos/                  lo que llena la base: plataforma.py, piloto.py, ocupaciones.py (Excel O*NET), cargar.py
 migrations/             migraciones de Alembic
-scripts/                herramientas manuales
-tests/                  pruebas; ayudas en tests/soporte/
-docs/                   especificaciones y decisiones
+scripts/                herramientas manuales (exportador de fixtures)
+tests/                  pruebas (ver «Pruebas»)
+docs/                   sistema/, specs/, decisiones.md, plan-iteraciones.md, historico/
 ```
 
 ### Dónde va cada cosa
@@ -44,85 +46,87 @@ docs/                   especificaciones y decisiones
 | Si agregas… | Va en… |
 |---|---|
 | Una consulta para una vista | `GET /cuentas/{c}/<dominio>` en `app/api/<dominio>.py`, con su esquema y servicio del mismo nombre. No agregues campos de otro dominio a una respuesta para ahorrar una petición. |
-| Una actividad nueva | `datos/<conjunto>.py`, con `contenido` (la clave de su JSON en el front) y `visibilidad`. |
+| Una actividad | `datos/<conjunto>.py`, con `contenido` (la clave de su JSON en el front) y `visibilidad`. |
 | Un endpoint | `app/api/<grupo>.py`. Solo valida, llama a un servicio y devuelve. |
 | Lógica de negocio | `app/services/<dominio>.py`, o `app/services/<dominio>/` si el dominio ya es carpeta. |
-| Una tabla o columna | `app/models/<dominio>.py` **y** una migración en `migrations/versions/` en el mismo commit. |
+| Una tabla o columna | `app/models/<dominio>.py` **y** su migración en `migrations/versions/`, en el mismo commit. |
 | Un enumerado | `app/models/enums.py`. |
 | Un cuerpo de entrada o respuesta | `app/schemas/<dominio>.py`. |
 | Un umbral o constante de método | `app/core/parametros.py`. |
 | Una variable de entorno | `app/config.py` y `.env.example`. |
-| Datos de prueba o catálogo | `datos/plataforma.py` (o `datos/piloto.py`). Nunca en `app/`. |
-| Una tabla de estado de las cuentas | Además, en `TABLAS_DE_ESTADO` de `app/services/desarrollo.py`, para que el reinicio la vacíe. |
-
-Si un dominio nuevo llega con la iteración (por ejemplo, favoritos o planes), créale un archivo en `services/`, `schemas/` y, si tiene tablas, en `models/`. Convierte un archivo en carpeta solo cuando ya no cabe en uno.
+| Datos de prueba o catálogo | `datos/plataforma.py` o `datos/piloto.py`. Nunca en `app/`. |
+| Una tabla de estado de las cuentas | Además, en `TABLAS_DE_ESTADO` de `app/services/desarrollo.py`, para que el reinicio la vacíe (una prueba exige clasificar toda tabla como catálogo o estado). |
+| Un dominio nuevo (favoritos, planes…) | Un archivo en `services/`, `schemas/` y, si tiene tablas, `models/`. Un archivo pasa a carpeta solo cuando ya no cabe en uno. |
 
 ### Dependencias entre capas
 
-- `api` → `services` → `core`, `models`. `api` también usa `schemas`, `dependencies` y `exceptions`.
+- `api` → `services` → `core`, `models`. `api` también usa `schemas`, `dependencies` y `exceptions`. `datos` → `app.models`, `app.core.parametros`.
 - `app/` nunca importa `datos`, `scripts` ni `tests`.
 - `services/` nunca importa `api/`. `core/` y `models/` nunca importan `services/`.
 - `services/instrumentos/calculo.py` no accede a la base.
-- Importa módulos con alias cuando los nombres coinciden entre capas: `from app.services import actividades as servicio_actividades`.
+- Si los nombres coinciden entre capas, importa con alias: `from app.services import actividades as servicio_actividades`.
 
 ## Base de datos
 
-- La URL viene de `DATABASE_URL` (por defecto `sqlite:///ov.db` en la raíz). La aplicación debe funcionar igual con SQLite y PostgreSQL.
-- Nada de SQL específico de un motor fuera de `app/database.py`. Los índices parciales llevan `sqlite_where` y `postgresql_where`. No reemplaces `func.date` por `CAST(... AS DATE)` (en SQLite devuelve el año).
-- El esquema lo gestiona Alembic. La aplicación nunca llama a `create_all` ni siembra datos; solo las pruebas, `scripts/exportar_fixtures_front.py`, sobre bases temporales, usan `create_all` (mediante los auxiliares de `datos.cargar`).
+- La URL viene de `DATABASE_URL` (por defecto `sqlite:///ov.db`, relativa a la raíz). La aplicación funciona igual con SQLite y PostgreSQL.
+- Nada de SQL específico de un motor fuera de `app/database.py`. Los índices parciales llevan `sqlite_where` y `postgresql_where`. No reemplaces `func.date` por `CAST(... AS DATE)`: en SQLite devuelve el año.
+- El esquema lo gestiona Alembic (`render_as_batch` para SQLite; nombres de restricciones por la `naming_convention` de `Base`). La aplicación nunca llama a `create_all` ni siembra datos: si falta el esquema, no arranca y pide `alembic upgrade head`. Solo las pruebas y el exportador de fixtures usan `create_all`, sobre bases temporales, mediante `datos.cargar`.
 - Todo cambio en `app/models/` lleva su migración (`uv run alembic revision --autogenerate -m "..."`), revisada a mano, en el mismo commit. `tests/integration/migraciones/test_migraciones.py` debe seguir en verde.
 
 ## Datos
 
-| Conjunto | Para qué | Reglas |
-|---|---|---|
-| `piloto` (`datos/piloto.py`) | Piloto de evaluación y pruebas de integración. | Su alcance está definido en las especificaciones y decisiones vigentes del piloto. |
-| `plataforma` (`datos/plataforma.py`) | Datos alineados con el front, para integrarlo. | Los define la spec de la iteración vigente. Sus códigos son los ids del front. |
+| Conjunto | Para qué |
+|---|---|
+| `plataforma` (`datos/plataforma.py`) | Datos alineados con el front, para la integración. Sus códigos son los ids del front. |
+| `piloto` (`datos/piloto.py`) | Variante pequeña de `plataforma` para probar visibilidad y contenido faltante. |
 
-- La aplicación no sabe qué conjunto tiene la base. Se carga con `uv run python -m datos.cargar <conjunto>`.
-- `POST /desarrollo/reiniciar`, solo en `ENTORNO=desarrollo`, borra el estado de las cuentas y conserva el catálogo.
+- La aplicación no sabe qué conjunto tiene la base. Se carga con `uv run python -m datos.cargar <conjunto>` (`--vaciar` para reemplazarlo). El cargador valida que `contenido` use solo `[a-z0-9_]`.
+- `POST /desarrollo/reiniciar`, solo con `ENTORNO=desarrollo`, borra el estado de las cuentas y conserva el catálogo.
 - Los datos inventados se marcan con `DATO DE PRUEBA`.
 
-## Reglas de trabajo
+## Convenciones
 
-- Lee la especificación completa antes de escribir código.
-- Si un test de escenario falla, corrige la implementación, no el test. Solo se adaptan tests existentes cuando la spec vigente lo autoriza de forma explícita, y se anota en `docs/decisiones.md`.
-- Si algo no está definido en la especificación, elige la opción más simple, anótala en `docs/decisiones.md` y sigue. Si afecta también al front, anótala en `docs/iteraciones/decisiones-iteracion-N.md`.
-- No agregues endpoints que la spec no pida.
-- No dejes archivos de log, carpetas temporales de pytest ni bases `.db` en el repo.
+- Carpetas estándar en inglés (`api`, `models`, `schemas`, `services`, `core`); módulos, código, tablas, columnas y funciones en español y `snake_case`. Sin sufijos como `_service` o `_repo`. Enumerados en MAYÚSCULAS.
+- La API expone códigos legibles (`act-tip-01`, `est-ana`), nunca ids internos.
+- Cada acción (`POST /acciones/*`) ocurre en una sola transacción, abierta por `ejecutar_accion`; los servicios solo hacen `flush`. Si algo falla, se revierten estado, eventos, desbloqueos y resultados.
+- Errores: `detail: {"mensaje": ...}`. 404 si no existe la cuenta, la referencia o el objetivo, o si es de otra audiencia; 409 si la acción no está permitida en el estado actual (con `progreso` del objetivo bloqueado o `items_faltantes` cuando aplica); 422 si la entrada es inválida; 403 solo para el progreso de una insignia oculta no obtenida.
+- Fechas: las acciones aceptan `fecha_hora` opcional; se guarda sin zona, conservando la hora local. Sin fecha, se usa la hora de Lima (UTC−05:00). Todos los eventos de una petición comparten la misma fecha.
+- Listas ordenadas por código (contenido, reglas), número (niveles, bloques) u orden (actividades, ítems); eventos y desbloqueos por fecha descendente. Los GET nunca escriben.
+- Consultas: definiciones en la caché (`core/definiciones.py`), lecturas agrupadas por cuenta (`core/contexto.py`), escrituras en lote y ninguna consulta dentro de bucles. Las pruebas de presupuesto exigen que el número de consultas no crezca con el tamaño del catálogo.
 
-## Stack
+## Secretos y servicios externos
 
-- Python 3.14 (como fijan `.python-version` y `pyproject.toml`), FastAPI, Pydantic v2, SQLAlchemy 2.0, Alembic, SQLite (desarrollo y pruebas) y PostgreSQL (opcional, extra `postgres`), pytest.
-- Dependencias gestionadas con `uv` en `pyproject.toml` (con `uv.lock`). Agrégalas solo con `uv add` (`uv add --dev` para herramientas de prueba). No uses `pip` ni `requirements.txt`, y no agregues dependencias sin avisar.
+- La clave de Gemini se lee de `.env`, que nunca se versiona. No la escribas en código, logs, respuestas, errores ni documentación.
+- `EVALUADOR=falso` (por defecto) o `EVALUADOR=gemini`. Las pruebas usan siempre el evaluador falso y nunca acceden a la red (salvo las de marca `postgres`, que se omiten sin `TEST_POSTGRES_URL`).
+- No ejecutes nada que llame a la API real de Gemini salvo que el usuario lo pida explícitamente.
 
-## Comandos
+## Stack y comandos
+
+Python 3.14, FastAPI, Pydantic v2, SQLAlchemy 2.0, Alembic, SQLite (desarrollo y pruebas), PostgreSQL opcional (extra `postgres`), pytest. Dependencias solo con `uv add` (`uv add --dev` para pruebas); no uses `pip` ni `requirements.txt`.
 
 - Instalar: `uv sync` (con PostgreSQL: `uv sync --extra postgres`)
-- Crear o actualizar el esquema: `uv run alembic upgrade head`
-- Cargar datos: `uv run python -m datos.cargar plataforma` (o `piloto`; `--vaciar` para empezar de cero)
+- Esquema: `uv run alembic upgrade head`
+- Datos: `uv run python -m datos.cargar plataforma` (o `piloto`)
 - Levantar: `uv run uvicorn app.main:app --reload`
-- Suite completa: `uv run pytest -n auto -q`
-- Nueva migración: `uv run alembic revision --autogenerate -m "<descripción>"`
 - Fixtures para el front: `uv run python scripts/exportar_fixtures_front.py --destino <carpeta de ov_frontend>/tests/fixtures/servidor`
 
-### Organización e impacto de pruebas
+## Pruebas
 
 ```text
 tests/
-  conftest.py                 # solo autouse sin base: evaluador falso
-  soporte/                    # ayudas compartidas; ninguna prueba importa test_*.py
-  unit/                       # arquitectura, configuracion, instrumentos, motor, registro
+  conftest.py        solo autouse sin base (evaluador falso)
+  soporte/           ayudas compartidas; ninguna prueba importa un test_*.py
+  unit/              arquitectura, configuracion, instrumentos, motor, registro
   integration/
-    conftest.py               # plantillas SQLite por sesión y proceso; copia por prueba
-    actividades/, cuentas/, desarrollo/, fichas/, instrumentos/, logros/, motor/
-    datos/, migraciones/, contrato/
-    escenarios/plataforma/, escenarios/piloto/
+    conftest.py      plantillas SQLite por sesión y proceso; cada prueba copia la suya
+    actividades/ cuentas/ desarrollo/ fichas/ instrumentos/ logros/ motor/
+    datos/ migraciones/ contrato/
+    escenarios/plataforma/ escenarios/piloto/
 ```
 
-`unit/` no usa TestClient ni bases temporales sembradas; permite falsos y SQLite en memoria sin sembrar conjuntos. Lo que use una base sembrada, migraciones, PostgreSQL o TestClient va en `integration/`; ante duda, también. Solo se crean carpetas con pruebas. Los nombres `test_*.py` son únicos; se usa `--import-mode=importlib` y `pythonpath = [".", "tests/soporte"]`.
-
-Los fixtures copian plantillas cerradas, con una base independiente por prueba. Las pruebas de carga, migraciones y atomicidad de la carga preparan bases reales. Las pruebas `postgres` se omiten sin `TEST_POSTGRES_URL`.
+- `unit/` no usa TestClient ni bases sembradas (permite falsos y SQLite en memoria sin conjunto). Lo que use una base sembrada, migraciones, PostgreSQL o TestClient va en `integration/`; ante la duda, también.
+- Las pruebas nuevas usan los fixtures de plantilla (`aplicacion` con `plataforma`, `aplicacion_piloto`, `cliente`, `sesion`). Solo las pruebas de carga, migraciones y atomicidad de la carga preparan bases propias.
+- Solo se crean carpetas con pruebas. Los nombres `test_*.py` son únicos en todo `tests/` (`--import-mode=importlib`).
 
 | Si cambias… | Corre primero |
 |---|---|
@@ -130,73 +134,64 @@ Los fixtures copian plantillas cerradas, con una base independiente por prueba. 
 | `app/services/motor/*`, `app/services/eventos.py`, `app/services/comun.py` | `tests/unit/motor`, `tests/integration/motor`, `tests/integration/actividades` y `tests/integration/escenarios` |
 | `app/models/*`, `migrations/*` | `tests/integration/migraciones` y `tests/integration/datos` |
 | `datos/*` | `tests/integration/datos` y `tests/integration/escenarios` |
-| `app/main.py`, `app/config.py`, `app/database.py`, `app/dependencies.py`, `app/exceptions.py`, `app/core/*` | `tests/unit` y `tests/integration/escenarios` |
-| Una respuesta que consume el front | `tests/integration/contrato` + regenerar fixtures + `npm run test:servidor` en ov_frontend |
-| Cierre | Aplicar la política compartida del final: impacto y escenarios por fase; suite completa al cerrar una iteración o integrar |
+| `app/main.py`, `config.py`, `database.py`, `dependencies.py`, `exceptions.py`, `app/core/*` | `tests/unit` y `tests/integration/escenarios` |
+| Una respuesta que consume el front | `tests/integration/contrato`, regenerar fixtures y `npm run test:servidor` en ov_frontend |
 
-Para una carpeta: `uv run pytest tests/integration/instrumentos -q`. Si falla el lanzador de Windows, usar el equivalente `uv run python -m pytest`. Mantener temporales y logs fuera del repo; por ejemplo, `--basetemp="$env:TEMP/ov-pruebas" -p no:cacheprovider`, con una carpeta temporal exclusiva de la ejecución.
-
-## Convenciones
-
-- Carpetas estándar en inglés (`api`, `models`, `schemas`, `services`, `core`); módulos, código, tablas, columnas y funciones en español y `snake_case`. Sin sufijos como `_service` o `_repo` en los archivos.
-- La API expone códigos legibles (`act-tip-01`, `est-ana`), nunca ids internos.
-- `app/services/motor/` no importa nada de `app/api/`.
-- Consultas: definiciones en caché, lecturas agrupadas por cuenta, escrituras en lote y ninguna consulta dentro de bucles.
-
-## Secretos y servicios externos
-
-- La clave de Gemini se lee de `.env`, que nunca se versiona. No la escribas en código, logs, respuestas, errores ni documentación.
-- La aplicación admite `EVALUADOR=gemini` o `EVALUADOR=falso`, como define `docs/spec-demo-registro-gemini.md`. El valor por defecto es `falso`.
-- Los tests usan siempre el evaluador falso y nunca acceden a la red (salvo `tests/integration/migraciones/test_postgres.py`, que se omite si no hay `TEST_POSTGRES_URL`).
-- No ejecutes nada que llame a la API real de Gemini (la aplicación con `EVALUADOR=gemini`) salvo que yo lo pida explícitamente.
+Ejemplo: `uv run pytest tests/integration/instrumentos -q`. En Windows, si falla el lanzador, usa `uv run python -m pytest`. Temporales y logs fuera del repo (por ejemplo, `--basetemp="$env:TEMP/ov-pruebas" -p no:cacheprovider`).
 
 ## Reglas compartidas entre ov_backend y ov_frontend
 
 > Esta sección es idéntica en el `AGENTS.md` de ambos repos. Si la cambias en uno, cámbiala en el otro en la misma tarea.
 
-**Los repos.** `ov_backend` (FastAPI, rama `master`) y `ov_frontend` (React + Vite + TypeScript, rama `main`) están en carpetas independientes y son repos git separados. Para referirte al otro, usa su nombre de carpeta; no asumas una ruta relativa entre ellos.
+**Los repos.** `ov_backend` (FastAPI) y `ov_frontend` (React + Vite + TypeScript) son repos git separados, en carpetas independientes. Para referirte al otro, usa su nombre de carpeta; no asumas una ruta relativa entre ellos.
 
-**Fuentes de verdad, en este orden:**
+**Qué leer.**
 
-1. La especificación de la iteración vigente, `ov_backend/docs/iteraciones/spec-iteracion-N.md` (hoy la **1**), para el alcance, la integración entre repos y los datos de prueba.
-2. Las especificaciones de cada repo para su propio dominio.
-3. Este `AGENTS.md`, para convenciones y áreas protegidas.
+1. La spec de la tarea, en `ov_backend/docs/specs/`. Define el alcance y prevalece sobre todo lo demás.
+2. Este `AGENTS.md` y, del repo que toques, los documentos vigentes que nombre la tarea: `ov_backend/docs/sistema/` y `ov_frontend/docs/`.
+3. `ov_backend/docs/plan-iteraciones.md`, solo para no cerrar caminos a las iteraciones siguientes. No se adelanta trabajo de otra iteración.
 
-Si dos fuentes se contradicen, detente y explica la contradicción. No la resuelvas en el código.
+No leas `docs/historico/` de ningún repo salvo que el usuario lo pida: es el registro del trabajo terminado. Si algo de ahí contradice un documento vigente, prevalece el vigente. Si dos fuentes vigentes se contradicen, detente y explica la contradicción; no la resuelvas en el código.
 
 **Cómo se trabaja.**
 
-- Solo se implementa la iteración vigente. `ov_backend/docs/iteraciones/plan-iteraciones.md` muestra lo que viene después para no cerrar caminos, no para adelantarlo.
-- Por fases, en el orden de la spec. Al terminar cada fase, detente y resume qué hiciste, qué pruebas pasan en cada repo y qué queda pendiente. Si la fase tocó ambos repos, corre las pruebas de los dos.
-- Las decisiones que afectan a ambos repos van en `ov_backend/docs/iteraciones/decisiones-iteracion-N.md`.
-- Datos de prueba: si el dato existe en el front, úsalo adaptándolo. Si no existe, créalo y márcalo con `DATO DE PRUEBA` (comentario en código) o `"_dato_de_prueba": true` (JSON).
-- Sin dependencias nuevas en ninguno de los repos sin avisar antes.
+- Lee la spec completa antes de escribir código. No agregues endpoints, vistas ni funciones que la spec no pida.
+- Por fases, en el orden de la spec. Al terminar cada fase, detente y resume qué hiciste, qué carpetas de pruebas corriste en cada repo y qué queda pendiente.
+- Si la spec no define algo, elige la opción más simple, anótala en `ov_backend/docs/decisiones.md` y sigue.
+- Una prueba existente solo se adapta cuando la spec lo autoriza; anótalo también en `decisiones.md`. Si un escenario falla, se corrige la implementación, no el escenario.
+- Datos de prueba: si el dato existe en el front, úsalo adaptado. Si no existe, créalo y márcalo con `DATO DE PRUEBA` (comentario en código) o `"_dato_de_prueba": true` (JSON).
+- Ninguna dependencia nueva en ninguno de los repos sin avisar antes.
 
+**Documentación.**
 
-**Política de ejecución de pruebas.** Las tablas de impacto de cada repo indican las carpetas afectadas. Esta política prevalece sobre las instrucciones antiguas de ejecutar toda la suite en cada fase.
+- `ov_backend/docs/decisiones.md` es el único registro de decisiones, para los dos repos, y solo de la spec en curso. Una viñeta por decisión: qué se decidió y por qué, en una o dos líneas. No registra conteos de pruebas, tiempos, líneas base ni el relato de cada fase; eso va en el resumen al usuario.
+- Al cerrar una spec, lo que siga vigente de ella y de `decisiones.md` se incorpora al `AGENTS.md` o al documento vigente que corresponda. Después, la spec y `decisiones.md` se mueven a `ov_backend/docs/historico/<nombre-de-la-spec>/` y `decisiones.md` vuelve a quedar con su encabezado.
+- Ningún documento vigente remite a uno histórico.
+
+**Política de pruebas.** Las tablas de impacto de cada `AGENTS.md` indican qué carpetas corresponden a cada archivo.
 
 | Momento | Qué se corre |
 |---|---|
 | Durante el desarrollo, tras cada cambio | Solo las carpetas de la tabla de impacto. |
-| Al terminar una fase de una spec | Las carpetas de impacto de todo lo que tocó la fase, más `tests/integration/escenarios` (back) o `npm run test:servidor` (front). Se informa qué carpetas se corrieron. |
-| Al cerrar una iteración o antes de integrar una rama | Suite completa de ambos repos: `uv run pytest -n auto -q`; `npm test`, `npm run build`, `npm run lint` y `npm run check:estructura`. |
+| Al terminar una fase | Las carpetas de impacto de todo lo que tocó la fase, más `tests/integration/escenarios` (back) o `npm run test:servidor` (front). |
+| Al cerrar una spec o antes de integrar una rama | Todo, en los dos repos: `uv run pytest -n auto -q`; `npm test`, `npm run build`, `npm run lint` y `npm run check:estructura`. |
 
 **Una sola base de datos.**
 
 - La base del backend es la única fuente de disponibilidad, progreso, respuestas de cuestionario, resultados, fichas obtenidas, insignias y nivel.
 - En modo `VITE_DATOS=api`, el front nunca decide si algo está disponible, completado u obtenido: lo lee del servidor. Si el servidor no responde, lo dice; no inventa un estado.
-- El contenido narrativo de las actividades (nodos JSON) sigue en el front. El backend guarda estructura y estado, y no interpreta ese contenido.
-- El modo `local` del front debe seguir funcionando igual que antes.
+- El contenido narrativo de las actividades (nodos JSON) está en el front. El backend guarda estructura y estado, y no interpreta ese contenido.
+- El modo `local` del front debe seguir funcionando igual.
 
-**Contrato.**
+**Contrato.** El detalle está en `ov_backend/docs/sistema/integracion.md`.
 
-- El backend lista bloques y actividades, con su orden, tipo, `contenido` y `visibilidad`. El front solo guarda el contenido de cada actividad (`src/data/activities/contenidos/<clave>.json`) y lo encuentra por la clave `contenido`. Una actividad cuyo contenido no existe en el front no se muestra y se anota en `ov_frontend/docs/pendientes-interfaz.md`.
-- Cada dominio tiene su propia consulta de lectura (`GET /cuentas/{c}/<dominio>`). El front pide al ingresar solo lo que se ve siempre y el resto al abrir su vista.
+- El backend lista bloques y actividades con su orden, tipo, `contenido` y `visibilidad`. El front guarda el contenido de cada actividad en `src/data/activities/contenidos/<clave>.json` y lo encuentra por la clave `contenido`. Una actividad cuyo contenido no existe en el front no se muestra, y se anota en `ov_frontend/docs/pendientes-interfaz.md`.
+- Cada dominio tiene su propia consulta de lectura (`GET /cuentas/{c}/<dominio>`). El front pide al ingresar solo lo que se ve siempre, y el resto al abrir su vista.
 - Los códigos del backend son los ids del front (`mission-welcome`, `act-tip-01`, `I1`, `psychologist`). No hay tablas de traducción.
-- El JSON usa los nombres en español y `snake_case` de los esquemas Pydantic. El front los copia tal cual en `src/types/servidor.ts` y accede al backend solo desde `src/services/api/` (un archivo por router del backend); las vistas leen esos datos a través de `src/store/servidor/`.
-- Si el backend entrega un dato que ninguna vista del front muestra, o una vista necesita un dato que el backend no entrega, no se crea ni se modifica interfaz para cubrirlo: se registra en `ov_frontend/docs/pendientes-interfaz.md` y se avisa al usuario, que decide la interfaz (detalle en «Datos del servidor sin vista» del `AGENTS.md` del front). Vale también al trabajar solo en el backend: si agregas o cambias un campo de una respuesta, revisa si el front tiene dónde mostrarlo y, si no, anótalo igual.
-- Si una tarea cambia una respuesta que consume el front, en la misma tarea se actualizan el esquema y las pruebas del backend, `src/types/servidor.ts`, `src/services/api/` y `src/lib/servidor/adaptadores.ts` del front, los fixtures (`scripts/exportar_fixtures_front.py` de `ov_backend`, con `--destino` apuntando a `tests/fixtures/servidor/` de `ov_frontend`) y las pruebas del front.
+- El JSON usa los nombres en español y `snake_case` de los esquemas Pydantic. El front los copia tal cual en `src/types/servidor.ts`, accede al backend solo desde `src/services/api/` (un archivo por router) y las vistas leen esos datos a través de `src/store/servidor/`.
+- Si el backend entrega un dato que ninguna vista muestra, o una vista necesita un dato que el backend no entrega, no se crea ni se modifica interfaz para cubrirlo: se registra en `ov_frontend/docs/pendientes-interfaz.md` y se avisa al usuario, que decide (detalle en «Datos del servidor sin vista» del `AGENTS.md` del front). Vale también al trabajar solo en el backend.
+- Si una tarea cambia una respuesta que consume el front, en la misma tarea se actualizan: el esquema y las pruebas del backend; `src/types/servidor.ts`, `src/services/api/` y `src/lib/servidor/adaptadores.ts` del front; los fixtures (se regeneran con `scripts/exportar_fixtures_front.py`), y las pruebas del front.
 
-**Git.** No hagas push salvo que se pida. Trabaja en una rama `iteracion-N` en cada repo, con un commit por fase y por repo y mensaje en español (`Iteración 1 · F2: semilla plataforma`). Nunca versiones `.env`, `.env.local` ni archivos `*.db`.
+**Git.** No hagas push salvo que se pida. Trabaja en la rama que indique la spec, con un commit por fase y por repo y mensaje en español (`Iteración 2 · F1: semilla de registros`). Nunca versiones `.env`, `.env.local` ni archivos `*.db`, y no dejes en los repos logs, bases temporales ni carpetas temporales de pruebas.
 
 **Idioma.** Documentación, mensajes al usuario y commits en español.
