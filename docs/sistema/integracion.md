@@ -11,6 +11,7 @@ Contrato vigente entre los dos repos. Lo usan los agentes de ambos. Las reglas g
 | Instrumento RIASEC (ítems, enunciados, escala, dimensiones con descripción, aplicación) | Base de datos |
 | Ocupaciones y carreras del universo de recomendación, con sus puntajes O*NET | Base de datos |
 | Estado del estudiante: progreso, eventos, desbloqueos, respuestas a ítems, resultados | Base de datos. El front solo guarda una copia de presentación. |
+| Estado del apoderado: disponibilidad, completitud de actividades y eventos | Base de datos. Nodo actual, intentos de práctica y elecciones quedan en el front por cuenta. |
 | Contenido narrativo de cada actividad (nodos JSON) | Front (`src/data/activities/contenidos/`) |
 | Textos de registros, borradores, respuestas de la brújula, intentos de comprobaciones, favoritos, planes | Front (local). Pasan al servidor en iteraciones siguientes. |
 | Detalle del catálogo (descripciones, ingresos, instituciones, duración de carreras) | Front (`src/data/catalog/`) |
@@ -35,7 +36,7 @@ Todas son GET, reciben el código de la cuenta y responden 404 «Cuenta no encon
 | Ruta | Respuesta | El front la pide |
 |---|---|---|
 | `/cuentas/{c}/resumen` | `ResumenCuenta`: `cuenta` y `nivel_actual` | Al ingresar (menú y panel) |
-| `/cuentas/{c}/actividades` | `list[BloqueActividades]` | Al ingresar (mapa y panel) |
+| `/cuentas/{c}/actividades` | `list[BloqueActividades]` | Al ingresar (mapa y panel del estudiante; inicio y actividades del apoderado) |
 | `/cuentas/{c}/fichas` | `list[ContenidoEstado]` | Al abrir la mochila o un recurso |
 | `/cuentas/{c}/logros` | `LogrosCuenta`: `insignias` y `niveles` | Al abrir el perfil, el pasaporte o una insignia |
 | `/cuentas/{c}/testimonios` | `list[ContenidoEstado]` | Todavía no (sin vista) |
@@ -63,10 +64,14 @@ Además usa `/cuentas`, `/cuentas/{c}/progreso/...`, `/cuentas/{c}/desbloqueos` 
 
 Una sección vencida con una vista montada se vuelve a pedir enseguida; si no, al abrir su vista.
 
+El portal del apoderado tiene su propia sesión en `ov_frontend/src/store/servidor/apoderado.ts`, separada del estado del estudiante. Al ingresar consulta `/cuentas`, elige la cuenta `APODERADO` que coincide con el usuario escrito (o la primera por código), envía `ingresar` y consulta solo sus `actividades`. Tras completar vuelve a pedir `actividades`; no consulta resumen, logros ni desbloqueos del estudiante. La cuenta se conserva en memoria y se vuelve a seleccionar al recargar. Se descartan respuestas de otra sesión y se reutilizan pedidos en curso; durante una finalización solo se admite un envío, compartido si es del mismo código.
+
 ## Finalizar actividades desde el front
 
-- El front informa la finalización solo al llegar al nodo `$fin` del reproductor (`useActivityCompletion.ts`). Consultar, revelar o revisar no completa nada.
-- Repetir una actividad siempre llega al servidor (registra otro COMPLETA_ACTIVIDAD).
+- El estudiante informa la finalización solo al llegar al nodo `$fin` del reproductor (`useActivityCompletion.ts`). Consultar, revelar o revisar no completa nada.
+- Repetir una actividad del estudiante siempre llega al servidor (registra otro COMPLETA_ACTIVIDAD).
+- El apoderado sigue la misma regla de confirmación remota en api: al terminar el último nodo, `useParentActivitySession` envía `completar-actividad` y espera la nueva consulta de `actividades` antes de mostrar el cierre. Con error conserva el nodo y permite reintentar; repasar una actividad ya completada no envía otra finalización.
+- La disponibilidad, los candados y el diploma del apoderado usan el estado remoto. Los nodos JSON siguen en el front; `ov.parent-missions.v1` conserva nodo, intentos y elecciones en `accounts[codigo]`, proyectando el estado del servidor sin alterar esos datos. En local conserva `apo-prototipo`, los requisitos del JSON y la completitud local.
 - Mara: cada interacción guarda sus respuestas con `responder-items` y se puede retomar. El resultado se revela cuando existe un resultado vigente en el servidor.
 
 ## Conjuntos de datos
@@ -75,9 +80,11 @@ Una sección vencida con una vista montada se vuelve a pedir enseguida; si no, a
 
 **`piloto`** (`datos/piloto.py`): reutiliza `plataforma` con un Camino de 5 actividades, la Ciudad abierta al completar la segunda, `act-tip-final` como `AL_DESBLOQUEAR` y `cdd-sin-contenido` (una actividad cuyo contenido no existe en el front). Sirve para probar visibilidad y contenido faltante.
 
+Ambos conjuntos incluyen el bloque `FAMILIA` («Actividades para familias»), audiencia `APODERADO`, espacio `PORTAL_FAMILIA`, disponible desde el inicio. Para `apo-rosa` contiene `pad-01-rol` («Acompañar sin decidir por él o ella», contenido `pad_01_acompanar`) y después `pad-02-info` («Conversar con información de hoy», contenido `pad_02_informacion`). Ambas son `INFORMATIVA` y `SIEMPRE`, sin ítems de instrumento ni registro; sus preguntas de práctica se evalúan en el front. La regla `R-pad-02-info` abre la segunda al completar la primera. No se agregan fichas, insignias ni niveles del apoderado; completar las dos registra `COMPLETA_BLOQUE FAMILIA` una sola vez.
+
 ## Fixtures de contrato
 
-`scripts/exportar_fixtures_front.py --destino <ov_frontend>/tests/fixtures/servidor` crea bases temporales con `plataforma` y `piloto`, recorre los momentos de prueba y escribe 16 JSON: `resumen-inicial`; `actividades`, `fichas` y `logros` al inicio y con la Ciudad abierta; tres finalizaciones (`completar-*`); `items-act-tip-01`; `resultado-riasec`; `desbloqueos-no-vistos`, y tres momentos de `piloto-actividades-*`. Las pruebas `tests/servidor/` del front los usan. Si cambia una respuesta del contrato, se regeneran en la misma tarea; nunca se editan a mano.
+`scripts/exportar_fixtures_front.py --destino <ov_frontend>/tests/fixtures/servidor` crea bases temporales con `plataforma` y `piloto`, recorre los momentos de prueba y escribe 22 JSON: `resumen-inicial`; `actividades`, `fichas` y `logros` al inicio y con la Ciudad abierta; tres finalizaciones del estudiante (`completar-*`); `items-act-tip-01`; `resultado-riasec`; `desbloqueos-no-vistos`, y tres momentos de `piloto-actividades-*`. Incluye también `cuentas.json`, consultado al inicio, y cinco del apoderado con `plataforma`: `apoderado-actividades-inicial.json`, `apoderado-completar-pad-01-rol.json`, `apoderado-actividades-pad-01.json`, `apoderado-completar-pad-02-info.json` y `apoderado-actividades-final.json`. Las pruebas `tests/servidor/` del front los usan. Si cambia una respuesta del contrato, se regeneran en la misma tarea; nunca se editan a mano.
 
 ## Reinicio de datos de prueba
 

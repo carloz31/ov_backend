@@ -7,11 +7,13 @@ Cómo funciona hoy el núcleo de la plataforma: las acciones registran eventos, 
 | Grupo | Tablas |
 |---|---|
 | Cuentas | `cuenta` (rol ESTUDIANTE o APODERADO), `vinculo_familiar` (estudiante, apoderado y sus cartas) |
-| Catálogo | `bloque` (espacio MISIONES_CAMPO o CIUDAD, audiencia), `actividad` (tipo INFORMATIVA, REGISTRO, CUESTIONARIO o CASO; `orden`, `contenido`, `visibilidad`, `puntaje_minimo` solo en CASO), `ficha`, `testimonio`, `pregunta_diario`, `conversacion`, `insignia` (`es_oculta`, audiencia), `nivel`, `familia_carrera`, `carrera` |
+| Catálogo | `bloque` (espacio MISIONES_CAMPO, CIUDAD o PORTAL_FAMILIA, audiencia), `actividad` (tipo INFORMATIVA, REGISTRO, CUESTIONARIO o CASO; `orden`, `contenido`, `visibilidad`, `puntaje_minimo` solo en CASO), `ficha`, `testimonio`, `pregunta_diario`, `conversacion`, `insignia` (`es_oculta`, audiencia), `nivel`, `familia_carrera`, `carrera` |
 | Estado de la cuenta | `progreso_actividad` (EN_CURSO o COMPLETADA, `posicion`), `resultado_caso`, `entrada_diario`, `check_in`, `entrevista`, `entrevista_autor`, `conversacion_vinculo` |
 | Motor | `evento_uso`, `regla_desbloqueo`, `condicion_desbloqueo`, `desbloqueo` (único por cuenta y regla; `visto`) |
 
 `id_objetivo` de una regla e `id_referencia` de un evento o condición son referencias polimórficas sin FK; los cargadores resuelven códigos a ids. `id_objetivo` es nulo solo para CONVERSACIONES, que es una sección y no un objeto.
+
+El espacio `PORTAL_FAMILIA` identifica los bloques del portal del apoderado. La migración `0003` amplía el `CHECK` de `bloque.espacio` para admitirlo en SQLite y PostgreSQL; su downgrade falla si todavía existen bloques con ese espacio y conserva los datos.
 
 ### A qué apunta `id_referencia`
 

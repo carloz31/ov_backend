@@ -46,7 +46,7 @@ docs/                   sistema/, specs/, decisiones.md, plan-iteraciones.md, hi
 | Si agregas… | Va en… |
 |---|---|
 | Una consulta para una vista | `GET /cuentas/{c}/<dominio>` en `app/api/<dominio>.py`, con su esquema y servicio del mismo nombre. No agregues campos de otro dominio a una respuesta para ahorrar una petición. |
-| Una actividad | `datos/<conjunto>.py`, con `contenido` (la clave de su JSON en el front) y `visibilidad`. |
+| Una actividad | `datos/<conjunto>.py`, con `contenido` (la clave de su JSON en el front) y `visibilidad`. Si es del apoderado, en un bloque de audiencia `APODERADO` y espacio `PORTAL_FAMILIA`. |
 | Un endpoint | `app/api/<grupo>.py`. Solo valida, llama a un servicio y devuelve. |
 | Lógica de negocio | `app/services/<dominio>.py`, o `app/services/<dominio>/` si el dominio ya es carpeta. |
 | Una tabla o columna | `app/models/<dominio>.py` **y** su migración en `migrations/versions/`, en el mismo commit. |
